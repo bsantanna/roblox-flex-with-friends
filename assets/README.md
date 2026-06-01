@@ -13,6 +13,26 @@ world must be reachable from this folder (or built at runtime by a service).
   saved model files and is mapped into `Workspace.Scenery` by Rojo. The two
   folders never collide.
 
+## manifest.json — the asset spec (single source of prompts + attributes)
+
+`manifest.json` is the structured spec for every designed model: its
+generation `prompt`, `attributes` defaults, target `zone`, and `offset` from the
+zone origin. It is an **authoring-time** spec — the game runtime never reads it.
+It replaces the old per-model `scenery/<Name>.md` notes; record new models here.
+
+Each entry's fields:
+
+| Field | Meaning |
+|---|---|
+| `id` | Model name → `Workspace.Scenery.<id>`, saved as `scenery/<id>.rbxmx`. |
+| `zone` | `Home` / `Airport` / `Beach`; resolves the origin (mirrors `Config.Zones`). |
+| `category` | `structure` / `prop` / `vehicle` / `character`. |
+| `status` | `buildable` (build it now) or `planned` (Phase 2+ stub, prompt only). |
+| `prompt` | Natural-language input for `generate_procedural_model`. |
+| `attributes` | Desired editable-attribute defaults to apply after generation. |
+| `offset`, `rotationY` | Placement relative to the zone origin. |
+| `justification` | Why it exists / what it ties to in code. |
+
 ## scenery/ — designed models (the main asset path)
 
 `default.project.json` maps `assets/scenery/` → `Workspace.Scenery`. Each saved
@@ -21,19 +41,25 @@ model file becomes an instance:
 - `assets/scenery/House.rbxmx` → `Workspace.Scenery.House`
 - `.rbxmx` = XML (larger, somewhat diffable in git). `.rbxm` = binary (smaller).
 
-### Workflow to add a model
+### Driver: turning a manifest entry into a committed model
 
-1. Build it in Studio, or generate a ProceduralModel (Studio Assistant or the
-   `generate_procedural_model` MCP tool). ProceduralModels are preferred: scripted
-   primitives with editable attributes (size/color/proportions).
-2. Position it at the right zone before saving (`Config.Zones`):
-   Home `(0, 0, 0)`, Airport `(0, 0, 200)`, Beach `(0, 0, 400)`.
-3. In Explorer: right-click the model → **Save to File…** → save into
-   `assets/scenery/` as `<Name>.rbxmx`.
-4. `make build` (or live `make serve`) now includes it. Commit the file.
+For each `buildable` entry in `manifest.json` (`planned` entries are skipped
+until their phase):
 
-Record each ProceduralModel's prompt + key attribute defaults in
-`scenery/<Name>.md` so it can be regenerated/justified from source.
+1. Generate the model with the `generate_procedural_model` MCP tool (or Studio
+   Assistant), passing the entry's `prompt`. ProceduralModels are preferred:
+   scripted primitives with editable attributes (size/color/proportions).
+2. Apply the entry's `attributes` and name the model `<id>`.
+3. Position it at `Config.Zones[zone] + offset`, rotated by `rotationY`
+   (Home `(0,0,0)`, Airport `(0,0,200)`, Beach `(0,0,400)`).
+4. In Explorer: right-click the model → **Save to File…** → save into
+   `assets/scenery/` as `<id>.rbxmx`.
+5. `make build` (or live `make serve`) now includes it. Commit the file.
+
+The `prop`/`vehicle`/`character` offsets in `Home` overlay the existing
+`WorldService` ProximityPrompt anchors (and the Personal Trainer spawn), so the
+visual art lands on top of the functional greybox without changing the
+interaction contract.
 
 ## Terrain
 

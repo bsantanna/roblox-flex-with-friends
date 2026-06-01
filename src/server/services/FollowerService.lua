@@ -12,6 +12,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local FollowerService = {}
 
 local followerChanged: RemoteEvent
+local changedCallbacks: { (Player, number) -> () } = {}
 
 local function getLeaderstatValue(player: Player): IntValue?
 	local leaderstats = player:FindFirstChild("leaderstats")
@@ -38,6 +39,10 @@ local function set(player: Player, value: number)
 	end
 
 	followerChanged:FireClient(player, value)
+
+	for _, callback in changedCallbacks do
+		task.spawn(callback, player, value)
+	end
 end
 
 function FollowerService:Init()
@@ -78,6 +83,11 @@ end
 function FollowerService:Get(player: Player): number
 	local profile = DataService:GetProfile(player)
 	return if profile then profile.Data.Followers else 0
+end
+
+-- Register a callback run with (player, newFollowerValue) whenever a balance changes.
+function FollowerService:OnChanged(callback: (Player, number) -> ())
+	table.insert(changedCallbacks, callback)
 end
 
 return FollowerService

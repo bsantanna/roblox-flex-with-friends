@@ -16,6 +16,11 @@ local EVENTS = {
 	"MinigameInput", -- client -> server: () -- player acted (e.g. boarded)
 	"RequestPhotoCapture", -- client -> server: ()
 	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
+	"UnlockNpc", -- server -> client: (npcId: string)
+	"RequestTrainer", -- client -> server: ()
+	"TrainerQuestion", -- server -> client: (index: number, total: number, question: string, options: {string})
+	"TrainerAnswer", -- client -> server: (optionIndex: number)
+	"TrainerResult", -- server -> client: (correct: boolean, reward: number, finished: boolean, score: number, message: string?)
 }
 
 -- Request/response functions.

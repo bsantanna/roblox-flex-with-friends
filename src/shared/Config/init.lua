@@ -53,4 +53,39 @@ Config.Photo = {
 	Cooldown = 3, -- seconds between captures per player
 }
 
+-- Collectible NPCs. An NPC unlocks once the player reaches UnlockFollowers; the Personal Trainer
+-- then offers a quiz minigame that pays RewardPerCorrect per correct answer.
+type Question = { q: string, options: { string }, answer: number }
+type NpcDef = {
+	UnlockFollowers: number,
+	SpawnOffset: Vector3, -- relative to the Home zone origin
+	RewardPerCorrect: number,
+	Questions: { Question },
+}
+
+Config.Npc = {
+	PersonalTrainer = {
+		UnlockFollowers = 100,
+		SpawnOffset = Vector3.new(-12, 0, 10),
+		RewardPerCorrect = 30,
+		Questions = {
+			{
+				q = "Which macronutrient mainly builds muscle?",
+				options = { "Protein", "Sugar", "Trans fat" },
+				answer = 1,
+			},
+			{
+				q = "How many rest days a week are healthy?",
+				options = { "Zero", "One to two", "Never rest" },
+				answer = 2,
+			},
+			{
+				q = "Which best supports heart health?",
+				options = { "Smoking", "Regular cardio", "Skipping sleep" },
+				answer = 2,
+			},
+		},
+	},
+} :: { [string]: NpcDef }
+
 return Config

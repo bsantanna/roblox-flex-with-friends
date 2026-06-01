@@ -24,4 +24,10 @@ Config.ProfileTemplate = {
 	-- CompanionNpc defaults to nil (no companion).
 } :: Types.ProfileData
 
+-- World zone origins. MVP keeps Home/Airport/Beach as zones in one place; "travel"
+-- repositions the player between these origins (Airport/Beach added in step 1.4).
+Config.Zones = {
+	Home = Vector3.new(0, 0, 0),
+}
+
 return Config

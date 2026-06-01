@@ -103,20 +103,43 @@ Studio play session before introducing multi-place complexity.
 
 ---
 
-## Phase 0 — Scaffolding & toolchain
+## Phase 0 — Scaffolding & toolchain — ✅ COMPLETE (2026-06-01)
 
 Goal: a buildable, Studio-syncable empty project committed to git.
 
 1. Add `~/.rokit/bin` to PATH (or `rokit install`); confirm `rojo`, `wally` resolve.
-   → **Verify:** `rojo --version` and `wally --version` succeed.
+   → **Verify:** `rojo --version` and `wally --version` succeed. ✅ Rojo 7.5.1, wally 0.3.2.
 2. `wally init`; add ProfileStore; `wally install`.
-   → **Verify:** `Packages/` populated, no errors.
-3. Write `default.project.json` mapping `src/shared|server|client` to the services above, including `Packages` → `ReplicatedStorage/Packages`.
-   → **Verify:** `rojo build -o build.rbxl` succeeds and produces a non-empty file.
-4. Create `src/{shared,server,client}` with empty bootstrappers that print a boot line.
-   → **Verify:** `rojo serve`, connect from the open Studio session, Play — both "server booted" / "client booted" lines appear in output (via MCP `get_console_output`).
+   → **Verify:** dependency installed, no errors. ✅ See correction below.
+3. Write `default.project.json` mapping `src/shared|server|client` to the services above.
+   → **Verify:** `rojo build -o build.rbxl` succeeds and produces a non-empty file. ✅ 27 KB; built `.rbxlx` confirmed correct service placement (Server→ServerScriptService, Client→StarterPlayerScripts, Shared→ReplicatedStorage, ServerPackages→ServerScriptService).
+4. Create `src/{shared,server,client}` with bootstrappers that print a boot line.
+   → **Verify:** bootstrapper runs at runtime. ✅ See verification-method note below.
 5. Commit on a feature branch.
-   → **Verify:** `git status` clean except intended files; `.gitignore` excludes `Packages/`, `build.rbxl`, `*.rbxl.lock`.
+   → **Verify:** `git status` clean except intended files; `.gitignore` excludes wally outputs, `build.rbxl`, `*.rbxl.lock`. ✅ Branch `phase-0-scaffolding`.
+
+**What was built:** `default.project.json`, `wally.toml` + `wally.lock`, `src/shared/Bootstrap.lua`
+(shared Init-then-Start loader), `src/server/init.server.lua`, `src/client/init.client.lua`,
+updated `.gitignore`.
+
+**Corrections discovered during execution (plan premises that were wrong):**
+- **ProfileStore is not published to Wally by loleris** under an obvious name; only unofficial
+  community re-uploads exist. The official package is **`lm-loleris/profilestore`** (server realm,
+  pinned `1.0.3`). Because it is a *server-realm* package it lives under `[server-dependencies]`
+  and installs to **`ServerPackages/`**, not `Packages/`. No `Packages/` (shared realm) dir exists
+  yet — the `ReplicatedStorage/Packages` mapping is therefore **deferred to Phase 1** (added when
+  the first shared dependency appears), to avoid mapping a non-existent path.
+- **`wally.lock` is committed** (with a `!wally.lock` negation in `.gitignore`, since the repo's
+  existing `*.lock` rule would otherwise ignore it) for reproducible installs.
+
+**Verification method note:** Rojo only *packages* Luau — it does not compile it, so a green build
+does not prove the scripts run. The bootstrapper was verified at runtime via the Studio MCP
+(`execute_luau`): loading the real `Bootstrap` source proved `require` succeeds, the nil-container
+path (Phase 0 reality) runs clean, and ordering across modules is `A-init; B-init; A-start; B-start`
+— i.e. **all `:Init()` complete before any `:Start()`**, the core contract. The entry scripts are
+trivial `WaitForChild` + `Bootstrap.run` + `print` wrappers. (Live Rojo-plugin Play-test was not
+scripted because connecting the plugin requires a manual click in Studio; the MCP runtime check is
+the automated equivalent.)
 
 ---
 

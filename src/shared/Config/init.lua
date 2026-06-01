@@ -45,4 +45,12 @@ Config.Travel = {
 	MinigameWindow = 5, -- seconds the player has to board the plane at the Airport
 }
 
+Config.Photo = {
+	BaseReward = 25, -- followers per photo
+	CoopBonus = 40, -- extra followers per participant when >= 2 players pose together
+	CoopRange = 20, -- max studs between participants
+	FacingDot = 0, -- min dot of look vectors to count as posing together (>= 0: same-ish way)
+	Cooldown = 3, -- seconds between captures per player
+}
+
 return Config

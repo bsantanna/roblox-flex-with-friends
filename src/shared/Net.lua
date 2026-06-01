@@ -14,6 +14,8 @@ local EVENTS = {
 	"TravelComplete", -- server -> client: (success: boolean, reason: string?, placeId: string?)
 	"StartMinigame", -- server -> client: (kind: string, durationSeconds: number)
 	"MinigameInput", -- client -> server: () -- player acted (e.g. boarded)
+	"RequestPhotoCapture", -- client -> server: ()
+	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
 }
 
 -- Request/response functions.

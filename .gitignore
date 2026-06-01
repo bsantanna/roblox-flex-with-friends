@@ -10,3 +10,10 @@
 # Rojo build artifacts
 build.rbxl
 build.rbxlx
+
+# CI-generated analysis inputs
+sourcemap.json
+globalTypes.d.luau
+
+# Editor
+.vscode/

@@ -12,7 +12,9 @@ function Bootstrap.run(container: Instance?)
 	if container then
 		for _, child in container:GetChildren() do
 			if child:IsA("ModuleScript") then
-				table.insert(modules, require(child))
+				-- Dynamic require: the path is a runtime Instance, so cast away
+				-- static path resolution (intentional for a generic loader).
+				table.insert(modules, (require :: any)(child))
 			end
 		end
 	end

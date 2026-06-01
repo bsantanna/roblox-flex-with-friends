@@ -10,7 +10,7 @@ verifiable **Verify** success criterion.
 |---|---|
 | Code workflow | **Rojo + git** — Luau in `src/`, synced to Studio. Studio MCP used only for asset/model generation. |
 | MVP scope | **Core loop + 1 NPC** (Personal Trainer + one minigame). **Co-op included in MVP.** |
-| Assets | **Procedural generation + free Creator Store**. Grey-box only as temporary placeholder. |
+| Assets | **GenAI ProceduralModels first** (Studio Assistant / MCP `generate_procedural_model`), then `generate_mesh` / `generate_material`, then free Creator Store. Grey-box only as temporary placeholder. |
 | Co-op | **In MVP**: co-op photos + friend-invite follower bonus. |
 
 ## Guiding Principles (from CLAUDE.md)
@@ -63,7 +63,7 @@ src/
       MinigameController.lua    # minigame UI
       TravelController.lua      # destination picker UI
     ui/                     # UI component modules
-assets/                     # generated model metadata / notes (binary models stay in Studio/Creator Store)
+assets/                     # ProceduralModel specs (prompts + attribute defaults) and asset notes; the generated instances live in the .rbxl
 ```
 
 `init.server.lua` / `init.client.lua` are a ~20-line loop that `require`s each module,
@@ -103,20 +103,43 @@ Studio play session before introducing multi-place complexity.
 
 ---
 
-## Phase 0 — Scaffolding & toolchain
+## Phase 0 — Scaffolding & toolchain — ✅ COMPLETE (2026-06-01)
 
 Goal: a buildable, Studio-syncable empty project committed to git.
 
 1. Add `~/.rokit/bin` to PATH (or `rokit install`); confirm `rojo`, `wally` resolve.
-   → **Verify:** `rojo --version` and `wally --version` succeed.
+   → **Verify:** `rojo --version` and `wally --version` succeed. ✅ Rojo 7.5.1, wally 0.3.2.
 2. `wally init`; add ProfileStore; `wally install`.
-   → **Verify:** `Packages/` populated, no errors.
-3. Write `default.project.json` mapping `src/shared|server|client` to the services above, including `Packages` → `ReplicatedStorage/Packages`.
-   → **Verify:** `rojo build -o build.rbxl` succeeds and produces a non-empty file.
-4. Create `src/{shared,server,client}` with empty bootstrappers that print a boot line.
-   → **Verify:** `rojo serve`, connect from the open Studio session, Play — both "server booted" / "client booted" lines appear in output (via MCP `get_console_output`).
+   → **Verify:** dependency installed, no errors. ✅ See correction below.
+3. Write `default.project.json` mapping `src/shared|server|client` to the services above.
+   → **Verify:** `rojo build -o build.rbxl` succeeds and produces a non-empty file. ✅ 27 KB; built `.rbxlx` confirmed correct service placement (Server→ServerScriptService, Client→StarterPlayerScripts, Shared→ReplicatedStorage, ServerPackages→ServerScriptService).
+4. Create `src/{shared,server,client}` with bootstrappers that print a boot line.
+   → **Verify:** bootstrapper runs at runtime. ✅ See verification-method note below.
 5. Commit on a feature branch.
-   → **Verify:** `git status` clean except intended files; `.gitignore` excludes `Packages/`, `build.rbxl`, `*.rbxl.lock`.
+   → **Verify:** `git status` clean except intended files; `.gitignore` excludes wally outputs, `build.rbxl`, `*.rbxl.lock`. ✅ Branch `phase-0-scaffolding`.
+
+**What was built:** `default.project.json`, `wally.toml` + `wally.lock`, `src/shared/Bootstrap.lua`
+(shared Init-then-Start loader), `src/server/init.server.lua`, `src/client/init.client.lua`,
+updated `.gitignore`.
+
+**Corrections discovered during execution (plan premises that were wrong):**
+- **ProfileStore is not published to Wally by loleris** under an obvious name; only unofficial
+  community re-uploads exist. The official package is **`lm-loleris/profilestore`** (server realm,
+  pinned `1.0.3`). Because it is a *server-realm* package it lives under `[server-dependencies]`
+  and installs to **`ServerPackages/`**, not `Packages/`. No `Packages/` (shared realm) dir exists
+  yet — the `ReplicatedStorage/Packages` mapping is therefore **deferred to Phase 1** (added when
+  the first shared dependency appears), to avoid mapping a non-existent path.
+- **`wally.lock` is committed** (with a `!wally.lock` negation in `.gitignore`, since the repo's
+  existing `*.lock` rule would otherwise ignore it) for reproducible installs.
+
+**Verification method note:** Rojo only *packages* Luau — it does not compile it, so a green build
+does not prove the scripts run. The bootstrapper was verified at runtime via the Studio MCP
+(`execute_luau`): loading the real `Bootstrap` source proved `require` succeeds, the nil-container
+path (Phase 0 reality) runs clean, and ordering across modules is `A-init; B-init; A-start; B-start`
+— i.e. **all `:Init()` complete before any `:Start()`**, the core contract. The entry scripts are
+trivial `WaitForChild` + `Bootstrap.run` + `print` wrappers. (Live Rojo-plugin Play-test was not
+scripted because connecting the plugin requires a manual click in Studio; the MCP runtime check is
+the automated equivalent.)
 
 ---
 
@@ -135,7 +158,7 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
   - **Verify:** Awarding 100 updates HUD and native leaderboard instantly; value survives rejoin.
 
 ### 1.3 Home lobby
-- **Build:** Procedurally generate / Creator-Store a simple Home interior; set as spawn; place ProximityPrompts for Phone, Computer, Cab (Cab opens the travel picker).
+- **Build:** Generate a simple Home interior as ProceduralModels (`generate_procedural_model`), falling back to Creator Store; set as spawn; place ProximityPrompts for Phone, Computer, Cab (Cab opens the travel picker).
   - **Verify:** Player spawns in Home; prompts appear and fire their client events.
 
 ### 1.4 Travel: Airport minigame → Beach
@@ -213,4 +236,4 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
 - **Multi-place vs single-place** is a real fork at Phase 2 — confirm reserved-server party model before building it.
 - **Educational-question theme/source** (Phase 3/4) — needs a content decision (topics, age range).
 - **Decay aggressiveness** (1.8) — left off-by-default until playtested; tune with real data.
-- **Asset pipeline** — procedural/Creator-Store models live in Studio; `assets/` holds notes/metadata only, since binary models aren't cleanly diffable in git.
+- **Asset pipeline** — 3D assets are **GenAI ProceduralModels** (`generate_procedural_model`): scripted models built from primitives with user-editable attributes, so they're parametric, AI-(re)generatable, and tweakable without regenerating. Use `generate_mesh` / `generate_material` only when primitives can't express the shape; Creator Store as a fallback. The generated instances live in the `.rbxl` (not cleanly diffable in git); `assets/` records the prompts + attribute defaults so a model can be regenerated/justified from source.

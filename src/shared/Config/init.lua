@@ -13,7 +13,7 @@ Config.DataStoreName = "PlayerData_v1"
 Config.ProfileTemplate = {
 	Followers = 0,
 	Reputation = 50,
-	UnlockedPlaces = { "Home", "Airport" },
+	UnlockedPlaces = { "Home", "Airport", "Beach" },
 	UnlockedNpcs = {},
 	Stats = {
 		PhotosTaken = 0,
@@ -25,9 +25,24 @@ Config.ProfileTemplate = {
 } :: Types.ProfileData
 
 -- World zone origins. MVP keeps Home/Airport/Beach as zones in one place; "travel"
--- repositions the player between these origins (Airport/Beach added in step 1.4).
+-- repositions the player between these origins (Airport is the transit waypoint where the
+-- boarding minigame runs).
 Config.Zones = {
 	Home = Vector3.new(0, 0, 0),
+	Airport = Vector3.new(0, 0, 200),
+	Beach = Vector3.new(0, 0, 400),
+} :: { [string]: Vector3 }
+
+-- Travel destinations selectable from the Cab picker. A place is travelable only if it is in
+-- the player's UnlockedPlaces. Arrival is the follower reward for arriving there.
+Config.Places = {
+	Home = { Zone = Config.Zones.Home, Arrival = 0 },
+	Beach = { Zone = Config.Zones.Beach, Arrival = 50 },
+} :: { [string]: { Zone: Vector3, Arrival: number } }
+
+Config.Travel = {
+	CarbonFootprintLoss = 20, -- followers lost when traveling back Home
+	MinigameWindow = 5, -- seconds the player has to board the plane at the Airport
 }
 
 return Config

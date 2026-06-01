@@ -41,18 +41,27 @@ local function addPrompt(part: BasePart, name: string, actionText: string, objec
 	prompt.Parent = part
 end
 
+local ZONE_FLOOR_COLOR = {
+	Home = Color3.fromRGB(120, 120, 130),
+	Airport = Color3.fromRGB(90, 110, 140),
+	Beach = Color3.fromRGB(220, 200, 150),
+}
+
 function WorldService:Start()
 	local world = Instance.new("Folder")
 	world.Name = "World"
 
-	local home = Instance.new("Model")
-	home.Name = "Home"
-	home.Parent = world
+	-- A floor per zone so players have ground when travel teleports them.
+	for zoneName, zoneOrigin in Config.Zones do
+		local zone = Instance.new("Model")
+		zone.Name = zoneName
+		zone.Parent = world
+		local color = ZONE_FLOOR_COLOR[zoneName] or Color3.fromRGB(120, 120, 130)
+		makePart("Floor", Vector3.new(80, 1, 80), zoneOrigin + Vector3.new(0, -0.5, 0), color, zone)
+	end
 
+	local home = world:FindFirstChild("Home") :: Model
 	local origin = Config.Zones.Home
-
-	-- Floor (top surface at the zone origin's Y).
-	makePart("Floor", Vector3.new(80, 1, 80), origin + Vector3.new(0, -0.5, 0), Color3.fromRGB(120, 120, 130), home)
 
 	-- Spawn players in Home.
 	local spawn = Instance.new("SpawnLocation")

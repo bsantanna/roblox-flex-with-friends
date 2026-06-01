@@ -1,0 +1,83 @@
+--!strict
+-- FollowerService: the single writer of Profile.Data.Followers. Other code asks it to
+-- Award/Deduct; it clamps at >= 0, mirrors the value into leaderstats.Followers (the native
+-- scoreboard), and fires the FollowerChanged remote for live HUD updates.
+-- See references/architecture.md (Follower / reputation economy).
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DataService = require(script.Parent.DataService)
+local Net = require(ReplicatedStorage.Shared.Net)
+
+local FollowerService = {}
+
+local followerChanged: RemoteEvent
+
+local function getLeaderstatValue(player: Player): IntValue?
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
+		return nil
+	end
+	local value = leaderstats:FindFirstChild("Followers")
+	return if value and value:IsA("IntValue") then value else nil
+end
+
+-- Writes the clamped balance to the profile, the leaderstat, and the client.
+local function set(player: Player, value: number)
+	local profile = DataService:GetProfile(player)
+	if not profile then
+		return
+	end
+
+	value = math.max(0, math.floor(value))
+	profile.Data.Followers = value
+
+	local stat = getLeaderstatValue(player)
+	if stat then
+		stat.Value = value
+	end
+
+	followerChanged:FireClient(player, value)
+end
+
+function FollowerService:Init()
+	followerChanged = Net.Event("FollowerChanged")
+end
+
+function FollowerService:Start()
+	-- Build the native scoreboard entry as each profile loads, seeded from saved data.
+	DataService:OnProfileLoaded(function(player: Player, profile)
+		local leaderstats = Instance.new("Folder")
+		leaderstats.Name = "leaderstats"
+
+		local followers = Instance.new("IntValue")
+		followers.Name = "Followers"
+		followers.Value = profile.Data.Followers
+		followers.Parent = leaderstats
+
+		leaderstats.Parent = player
+	end)
+end
+
+function FollowerService:Award(player: Player, amount: number, _reason: string?)
+	local profile = DataService:GetProfile(player)
+	if not profile then
+		return
+	end
+	set(player, profile.Data.Followers + math.max(0, amount))
+end
+
+function FollowerService:Deduct(player: Player, amount: number, _reason: string?)
+	local profile = DataService:GetProfile(player)
+	if not profile then
+		return
+	end
+	set(player, profile.Data.Followers - math.max(0, amount))
+end
+
+function FollowerService:Get(player: Player): number
+	local profile = DataService:GetProfile(player)
+	return if profile then profile.Data.Followers else 0
+end
+
+return FollowerService

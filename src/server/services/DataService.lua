@@ -17,6 +17,7 @@ local DataService = {}
 
 local store: any
 local profiles: { [Player]: Profile } = {}
+local profileLoadedCallbacks: { (Player, Profile) -> () } = {}
 
 local function onPlayerAdded(player: Player)
 	local profile = store:StartSessionAsync(`player_{player.UserId}`, {}) :: Profile?
@@ -37,6 +38,9 @@ local function onPlayerAdded(player: Player)
 
 	if player.Parent == Players then
 		profiles[player] = profile
+		for _, callback in profileLoadedCallbacks do
+			task.spawn(callback, player, profile)
+		end
 	else
 		-- Player left while the profile was loading; don't leak the session lock.
 		profile:EndSession()
@@ -64,6 +68,15 @@ end
 
 function DataService:GetProfile(player: Player): Profile?
 	return profiles[player]
+end
+
+-- Register a callback run with (player, profile) once a profile is loaded. Also fired
+-- immediately for any player whose profile is already loaded, so registration order is safe.
+function DataService:OnProfileLoaded(callback: (Player, Profile) -> ())
+	table.insert(profileLoadedCallbacks, callback)
+	for player, profile in profiles do
+		task.spawn(callback, player, profile)
+	end
 end
 
 return DataService

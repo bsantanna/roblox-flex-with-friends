@@ -17,6 +17,8 @@ export type ProfileData = {
 	Stats: Stats,
 	LastSeen: number, -- os.time(), for offline decay
 	CompanionNpc: string?, -- NPC currently traveling with the player
+	InvitedFriends: { number }, -- userIds this player has already been rewarded for inviting
+	ClaimedReferral: boolean, -- whether this player has claimed their one-time invited-join bonus
 }
 
 -- Minimal shim over ProfileStore's Profile<T>. The Wally wrapper module re-exports

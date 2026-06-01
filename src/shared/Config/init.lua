@@ -22,6 +22,8 @@ Config.ProfileTemplate = {
 	},
 	LastSeen = 0,
 	-- CompanionNpc defaults to nil (no companion).
+	InvitedFriends = {},
+	ClaimedReferral = false,
 } :: Types.ProfileData
 
 -- World zone origins. MVP keeps Home/Airport/Beach as zones in one place; "travel"
@@ -61,6 +63,10 @@ type NpcDef = {
 	SpawnOffset: Vector3, -- relative to the Home zone origin
 	RewardPerCorrect: number,
 	Questions: { Question },
+}
+
+Config.Invite = {
+	Bonus = 75, -- followers granted to both the inviter and the invited friend (once per friend)
 }
 
 Config.Npc = {

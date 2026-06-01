@@ -50,6 +50,8 @@ end
 local function onPlayerRemoving(player: Player)
 	local profile = profiles[player]
 	if profile then
+		-- Stamp last-active time so offline decay can measure the gap on the next join.
+		profile.Data.LastSeen = os.time()
 		profile:EndSession()
 	end
 end

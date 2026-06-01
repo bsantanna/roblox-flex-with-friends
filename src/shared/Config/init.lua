@@ -69,6 +69,13 @@ Config.Invite = {
 	Bonus = 75, -- followers granted to both the inviter and the invited friend (once per friend)
 }
 
+-- Offline follower decay applied on join. Off by default until balanced with real playtest data.
+Config.Decay = {
+	Enabled = false,
+	PerDay = 10, -- followers lost per full day offline
+	MaxLoss = 50, -- cap on a single return's loss
+}
+
 Config.Npc = {
 	PersonalTrainer = {
 		UnlockFollowers = 100,

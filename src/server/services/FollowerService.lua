@@ -6,6 +6,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Net = require(ReplicatedStorage.Shared.Net)
 
@@ -49,6 +50,25 @@ function FollowerService:Init()
 	followerChanged = Net.Event("FollowerChanged")
 end
 
+-- Pure offline-decay amount: followers lost for being away, prorated per day and capped. Returns
+-- 0 when disabled, for a brand-new profile (LastSeen 0), or no elapsed time. Exposed for testing.
+function FollowerService.computeOfflineDecay(
+	enabled: boolean,
+	perDay: number,
+	maxLoss: number,
+	lastSeen: number,
+	now: number
+): number
+	if not enabled or lastSeen <= 0 then
+		return 0
+	end
+	local elapsed = now - lastSeen
+	if elapsed <= 0 then
+		return 0
+	end
+	return math.min(maxLoss, math.floor((elapsed / 86400) * perDay))
+end
+
 function FollowerService:Start()
 	-- Build the native scoreboard entry as each profile loads, seeded from saved data.
 	DataService:OnProfileLoaded(function(player: Player, profile)
@@ -61,6 +81,18 @@ function FollowerService:Start()
 		followers.Parent = leaderstats
 
 		leaderstats.Parent = player
+
+		local decay = Config.Decay
+		local loss = FollowerService.computeOfflineDecay(
+			decay.Enabled,
+			decay.PerDay,
+			decay.MaxLoss,
+			profile.Data.LastSeen,
+			os.time()
+		)
+		if loss > 0 then
+			FollowerService:Deduct(player, loss, "offline-decay")
+		end
 	end)
 end
 

@@ -11,7 +11,7 @@ DEFS      := globalTypes.d.luau
 # Roblox type definitions for luau-lsp, pinned to the installed luau-lsp
 # version. Keep LUAU_LSP_VERSION in sync with the luau-lsp pin in rokit.toml.
 LUAU_LSP_VERSION := 1.68.0
-DEFS_URL := https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/$(LUAU_LSP_VERSION)/scripts/globalTypes.None.d.luau
+DEFS_URL := https://raw.githubusercontent.com/bsantanna/luau-lsp/$(LUAU_LSP_VERSION)/scripts/globalTypes.None.d.luau
 
 .DEFAULT_GOAL := help
 

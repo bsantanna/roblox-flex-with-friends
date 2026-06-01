@@ -1,0 +1,5 @@
+# Rokit toolchain manifest — pins the tools used to build this project.
+# Install with: rokit install
+[tools]
+rojo = "rojo-rbx/rojo@7.5.1"
+wally = "upliftgames/wally@0.3.2"

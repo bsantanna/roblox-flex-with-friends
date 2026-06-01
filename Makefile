@@ -8,10 +8,9 @@ BUILD     := build.rbxl
 SOURCEMAP := sourcemap.json
 DEFS      := globalTypes.d.luau
 
-# Roblox type definitions for luau-lsp, pinned to the installed luau-lsp
-# version. Keep LUAU_LSP_VERSION in sync with the luau-lsp pin in rokit.toml.
-LUAU_LSP_VERSION := 1.68.0
-DEFS_URL := https://raw.githubusercontent.com/bsantanna/luau-lsp/$(LUAU_LSP_VERSION)/scripts/globalTypes.None.d.luau
+# Roblox type definitions for luau-lsp, fetched from the project's fork.
+# The `None` security variant matches the security context of in-game scripts.
+DEFS_URL := https://raw.githubusercontent.com/bsantanna/luau-lsp/main/scripts/globalTypes.None.d.luau
 
 .DEFAULT_GOAL := help
 

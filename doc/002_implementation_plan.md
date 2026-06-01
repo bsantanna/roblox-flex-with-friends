@@ -10,7 +10,7 @@ verifiable **Verify** success criterion.
 |---|---|
 | Code workflow | **Rojo + git** — Luau in `src/`, synced to Studio. Studio MCP used only for asset/model generation. |
 | MVP scope | **Core loop + 1 NPC** (Personal Trainer + one minigame). **Co-op included in MVP.** |
-| Assets | **Procedural generation + free Creator Store**. Grey-box only as temporary placeholder. |
+| Assets | **GenAI ProceduralModels first** (Studio Assistant / MCP `generate_procedural_model`), then `generate_mesh` / `generate_material`, then free Creator Store. Grey-box only as temporary placeholder. |
 | Co-op | **In MVP**: co-op photos + friend-invite follower bonus. |
 
 ## Guiding Principles (from CLAUDE.md)
@@ -63,7 +63,7 @@ src/
       MinigameController.lua    # minigame UI
       TravelController.lua      # destination picker UI
     ui/                     # UI component modules
-assets/                     # generated model metadata / notes (binary models stay in Studio/Creator Store)
+assets/                     # ProceduralModel specs (prompts + attribute defaults) and asset notes; the generated instances live in the .rbxl
 ```
 
 `init.server.lua` / `init.client.lua` are a ~20-line loop that `require`s each module,
@@ -158,7 +158,7 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
   - **Verify:** Awarding 100 updates HUD and native leaderboard instantly; value survives rejoin.
 
 ### 1.3 Home lobby
-- **Build:** Procedurally generate / Creator-Store a simple Home interior; set as spawn; place ProximityPrompts for Phone, Computer, Cab (Cab opens the travel picker).
+- **Build:** Generate a simple Home interior as ProceduralModels (`generate_procedural_model`), falling back to Creator Store; set as spawn; place ProximityPrompts for Phone, Computer, Cab (Cab opens the travel picker).
   - **Verify:** Player spawns in Home; prompts appear and fire their client events.
 
 ### 1.4 Travel: Airport minigame → Beach
@@ -236,4 +236,4 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
 - **Multi-place vs single-place** is a real fork at Phase 2 — confirm reserved-server party model before building it.
 - **Educational-question theme/source** (Phase 3/4) — needs a content decision (topics, age range).
 - **Decay aggressiveness** (1.8) — left off-by-default until playtested; tune with real data.
-- **Asset pipeline** — procedural/Creator-Store models live in Studio; `assets/` holds notes/metadata only, since binary models aren't cleanly diffable in git.
+- **Asset pipeline** — 3D assets are **GenAI ProceduralModels** (`generate_procedural_model`): scripted models built from primitives with user-editable attributes, so they're parametric, AI-(re)generatable, and tweakable without regenerating. Use `generate_mesh` / `generate_material` only when primitives can't express the shape; Creator Store as a fallback. The generated instances live in the `.rbxl` (not cleanly diffable in git); `assets/` records the prompts + attribute defaults so a model can be regenerated/justified from source.

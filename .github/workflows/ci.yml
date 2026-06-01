@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Installs Rokit and the pinned toolchain (rojo, wally, StyLua, selene,
+      # luau-lsp) and puts them on PATH; runs `rokit install --no-trust-check`.
+      - name: Install toolchain (Rokit)
+        uses: CompeyDev/setup-rokit@v0.2.1
+
+      - name: Install dependencies (Wally)
+        run: wally install
+
+      - name: Lint, type-check, build
+        run: make ci

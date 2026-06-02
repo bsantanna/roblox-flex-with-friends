@@ -1,7 +1,7 @@
 --!strict
 -- WorldService: constructs the static world in code so the place is reproducible from src
 -- (Rojo doesn't manage Workspace; make build produces an empty Workspace). Phase 1 builds the
--- Home zone: a floor, a SpawnLocation, and the Phone / Computer / Cab interaction anchors, each
+-- Home zone: a floor, a SpawnLocation, and the Phone / Computer interaction anchors, each
 -- carrying a named ProximityPrompt. Grey-box geometry for now; visual ProceduralModels can
 -- replace these parts later without changing the interaction contract (the prompt names).
 
@@ -16,7 +16,6 @@ local WorldService = {}
 local HOME_INTERACTIONS = {
 	{ name = "Phone", offset = Vector3.new(-15, 2, -15), action = "Use", object = "Phone" },
 	{ name = "Computer", offset = Vector3.new(15, 2, -15), action = "Use", object = "Computer" },
-	{ name = "Cab", offset = Vector3.new(0, 2, 25), action = "Travel", object = "Cab" },
 }
 
 local function makePart(name: string, size: Vector3, position: Vector3, color: Color3, parent: Instance): Part

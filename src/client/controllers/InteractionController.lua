@@ -1,8 +1,8 @@
 --!strict
--- InteractionController: routes ProximityPrompt triggers (Phone / Computer / Cab) to client
--- handlers. Other controllers register via OnInteract(name, fn) — e.g. TravelController hooks
--- "Cab" to open the travel picker. Also records the last interaction as a LocalPlayer attribute
--- so the wiring is observable.
+-- InteractionController: routes ProximityPrompt triggers (Phone / Computer) to client handlers.
+-- Other controllers register via OnInteract(name, fn) — e.g. PhoneController hooks "Phone" (whose
+-- "Call a Cab" opens the travel picker). Also records the last interaction as a LocalPlayer
+-- attribute so the wiring is observable.
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")

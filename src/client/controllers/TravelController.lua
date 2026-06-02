@@ -10,7 +10,6 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
-local InteractionController = require(script.Parent.InteractionController)
 
 local TravelController = {}
 
@@ -67,6 +66,11 @@ local function openPicker()
 	end
 
 	setPickerVisible(true)
+end
+
+-- Opened by the phone ("Call a Cab"); the cab is no longer a standalone world prompt.
+function TravelController:OpenPicker()
+	openPicker()
 end
 
 local function tweenFade(transparency: number)
@@ -195,8 +199,6 @@ function TravelController:Init()
 end
 
 function TravelController:Start()
-	InteractionController:OnInteract("Cab", openPicker)
-
 	boardButton.Activated:Connect(function()
 		minigameFrame.Visible = false
 		minigameInput:FireServer()

@@ -11,8 +11,9 @@ make install   # provisions the pinned toolchain (Rokit) + deps (Wally)
 git lfs install && git lfs pull   # fetch binary 3D sources (Blender/FBX under assets/source)
 ```
 
-The Rokit bin dir (`~/.rokit/bin`) must be on `PATH`. The 3D mesh pipeline (Blender → Open Cloud →
-in-game) is documented in `assets/PIPELINE.md`; upload meshes with `make assets-upload`.
+The Rokit bin dir (`~/.rokit/bin`) must be on `PATH`. The 3D mesh pipeline (GLB → Open Cloud →
+in-game) is documented in `assets/PIPELINE.md` and `doc/003_binary_asset_management.md`; upload
+meshes with `make assets-upload`.
 
 ## Development loop
 

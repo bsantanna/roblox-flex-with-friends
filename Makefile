@@ -56,6 +56,10 @@ analyze: sourcemap $(DEFS) ## Type-check Luau sources (luau-lsp)
 		--ignore="**/Packages/**" \
 		src
 
+.PHONY: test
+test: ## Run unit tests (Lune, headless — pure Logic modules)
+	lune run tests/run.luau
+
 .PHONY: build
 build: ## Build the place file
 	rojo build $(PROJECT) -o $(BUILD)
@@ -65,7 +69,7 @@ serve: ## Start the Rojo live-sync server (development)
 	rojo serve $(PROJECT)
 
 .PHONY: ci
-ci: fmt-check lint analyze build ## Run the full CI pipeline
+ci: fmt-check lint analyze test build ## Run the full CI pipeline
 
 .PHONY: clean
 clean: ## Remove generated build artifacts

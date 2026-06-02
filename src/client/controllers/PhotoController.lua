@@ -1,6 +1,6 @@
 --!strict
 -- PhotoController: a shutter button that takes a real screen capture (CaptureService) and shows
--- it as a polaroid preview with Save/Share, while requesting the follower reward from the server.
+-- it as a polaroid preview with Save/Cancel, while requesting the follower reward from the server.
 -- The server (PhotoService) decides the reward; the capture is purely client-side visual feedback.
 
 local Players = game:GetService("Players")
@@ -165,28 +165,16 @@ function PhotoController:Init()
 	saveButton.Text = "Save"
 	saveButton.Parent = previewFrame
 
-	local shareButton = Instance.new("TextButton")
-	shareButton.AnchorPoint = Vector2.new(1, 1)
-	shareButton.Position = UDim2.new(1, -10, 1, -10)
-	shareButton.Size = UDim2.fromOffset(115, 38)
-	shareButton.BackgroundColor3 = Color3.fromRGB(90, 130, 200)
-	shareButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	shareButton.Font = Enum.Font.GothamBold
-	shareButton.TextScaled = true
-	shareButton.Text = "Share"
-	shareButton.Parent = previewFrame
-
-	local closeButton = Instance.new("TextButton")
-	closeButton.AnchorPoint = Vector2.new(1, 0)
-	closeButton.Position = UDim2.new(1, -4, 0, 4)
-	closeButton.Size = UDim2.fromOffset(24, 24)
-	closeButton.BackgroundColor3 = Color3.fromRGB(200, 70, 70)
-	closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	closeButton.Font = Enum.Font.GothamBold
-	closeButton.TextScaled = true
-	closeButton.Text = "X"
-	closeButton.ZIndex = 2
-	closeButton.Parent = previewFrame
+	local cancelButton = Instance.new("TextButton")
+	cancelButton.AnchorPoint = Vector2.new(1, 1)
+	cancelButton.Position = UDim2.new(1, -10, 1, -10)
+	cancelButton.Size = UDim2.fromOffset(115, 38)
+	cancelButton.BackgroundColor3 = Color3.fromRGB(90, 90, 100)
+	cancelButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	cancelButton.Font = Enum.Font.GothamBold
+	cancelButton.TextScaled = true
+	cancelButton.Text = "Cancel"
+	cancelButton.Parent = previewFrame
 
 	shutter.Activated:Connect(takePhoto)
 	saveButton.Activated:Connect(function()
@@ -194,12 +182,7 @@ function PhotoController:Init()
 			CaptureService:PromptSaveCapturesToGallery({ lastCapture }, function() end)
 		end
 	end)
-	shareButton.Activated:Connect(function()
-		if lastCapture then
-			CaptureService:PromptShareCapture(lastCapture, "", function() end)
-		end
-	end)
-	closeButton.Activated:Connect(function()
+	cancelButton.Activated:Connect(function()
 		previewFrame.Visible = false
 	end)
 

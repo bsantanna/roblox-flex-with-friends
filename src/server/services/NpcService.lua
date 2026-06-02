@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
+local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 
 local NpcService = {}
 
@@ -62,6 +63,7 @@ local function checkUnlock(player: Player, followers: number)
 		table.insert(profile.Data.UnlockedNpcs, "PersonalTrainer")
 		unlockNpc:FireClient(player, "PersonalTrainer")
 		spawnTrainer()
+		Analytics.event(player, "NpcUnlocked", nil, "PersonalTrainer")
 	end
 end
 

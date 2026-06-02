@@ -11,6 +11,7 @@ local DataService = require(script.Parent.DataService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Followers = require(ReplicatedStorage.Shared.Logic.Followers)
 local Decay = require(ReplicatedStorage.Shared.Logic.Decay)
+local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 
 local FollowerService = {}
 
@@ -73,20 +74,22 @@ function FollowerService:Start()
 	end)
 end
 
-function FollowerService:Award(player: Player, amount: number, _reason: string?)
+function FollowerService:Award(player: Player, amount: number, reason: string?)
 	local profile = DataService:GetProfile(player)
 	if not profile then
 		return
 	end
 	set(player, Followers.afterAward(profile.Data.Followers, amount))
+	Analytics.event(player, "FollowerAward", amount, reason)
 end
 
-function FollowerService:Deduct(player: Player, amount: number, _reason: string?)
+function FollowerService:Deduct(player: Player, amount: number, reason: string?)
 	local profile = DataService:GetProfile(player)
 	if not profile then
 		return
 	end
 	set(player, Followers.afterDeduct(profile.Data.Followers, amount))
+	Analytics.event(player, "FollowerDeduct", amount, reason)
 end
 
 function FollowerService:Get(player: Player): number

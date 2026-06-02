@@ -7,8 +7,9 @@
 /ServerPackages
 /DevPackages
 
-# Rojo build artifacts
-build.rbxl
+# Rojo build artifacts and any local Studio-saved place
+# (source of truth is src/ + default.project.json, not a binary .rbxl)
+*.rbxl
 build.rbxlx
 
 # CI-generated analysis inputs

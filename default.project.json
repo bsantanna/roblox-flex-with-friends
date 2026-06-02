@@ -4,7 +4,13 @@
     "$className": "DataModel",
     "ReplicatedStorage": {
       "Shared": {
-        "$path": "src/shared"
+        "$path": "src/shared",
+        "SceneryManifest": {
+          "$path": "assets/manifest.json"
+        },
+        "SceneryAssetIds": {
+          "$path": "assets/asset-ids.json"
+        }
       }
     },
     "ServerScriptService": {

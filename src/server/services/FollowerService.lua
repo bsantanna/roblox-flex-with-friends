@@ -9,6 +9,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local Net = require(ReplicatedStorage.Shared.Net)
+local Followers = require(ReplicatedStorage.Shared.Logic.Followers)
+local Decay = require(ReplicatedStorage.Shared.Logic.Decay)
 
 local FollowerService = {}
 
@@ -31,7 +33,7 @@ local function set(player: Player, value: number)
 		return
 	end
 
-	value = math.max(0, math.floor(value))
+	value = Followers.clamp(value)
 	profile.Data.Followers = value
 
 	local stat = getLeaderstatValue(player)
@@ -50,25 +52,6 @@ function FollowerService:Init()
 	followerChanged = Net.Event("FollowerChanged")
 end
 
--- Pure offline-decay amount: followers lost for being away, prorated per day and capped. Returns
--- 0 when disabled, for a brand-new profile (LastSeen 0), or no elapsed time. Exposed for testing.
-function FollowerService.computeOfflineDecay(
-	enabled: boolean,
-	perDay: number,
-	maxLoss: number,
-	lastSeen: number,
-	now: number
-): number
-	if not enabled or lastSeen <= 0 then
-		return 0
-	end
-	local elapsed = now - lastSeen
-	if elapsed <= 0 then
-		return 0
-	end
-	return math.min(maxLoss, math.floor((elapsed / 86400) * perDay))
-end
-
 function FollowerService:Start()
 	-- Build the native scoreboard entry as each profile loads, seeded from saved data.
 	DataService:OnProfileLoaded(function(player: Player, profile)
@@ -83,13 +66,7 @@ function FollowerService:Start()
 		leaderstats.Parent = player
 
 		local decay = Config.Decay
-		local loss = FollowerService.computeOfflineDecay(
-			decay.Enabled,
-			decay.PerDay,
-			decay.MaxLoss,
-			profile.Data.LastSeen,
-			os.time()
-		)
+		local loss = Decay.compute(decay.Enabled, decay.PerDay, decay.MaxLoss, profile.Data.LastSeen, os.time())
 		if loss > 0 then
 			FollowerService:Deduct(player, loss, "offline-decay")
 		end
@@ -101,7 +78,7 @@ function FollowerService:Award(player: Player, amount: number, _reason: string?)
 	if not profile then
 		return
 	end
-	set(player, profile.Data.Followers + math.max(0, amount))
+	set(player, Followers.afterAward(profile.Data.Followers, amount))
 end
 
 function FollowerService:Deduct(player: Player, amount: number, _reason: string?)
@@ -109,7 +86,7 @@ function FollowerService:Deduct(player: Player, amount: number, _reason: string?
 	if not profile then
 		return
 	end
-	set(player, profile.Data.Followers - math.max(0, amount))
+	set(player, Followers.afterDeduct(profile.Data.Followers, amount))
 end
 
 function FollowerService:Get(player: Player): number

@@ -60,6 +60,10 @@ analyze: sourcemap $(DEFS) ## Type-check Luau sources (luau-lsp)
 test: ## Run unit tests (Lune, headless — pure Logic modules)
 	lune run tests/run.luau
 
+.PHONY: assets-upload
+assets-upload: ## Upload pending mesh FBX assets via Open Cloud (see assets/PIPELINE.md). ARGS=--force re-uploads all
+	lune run tools/upload-assets.luau $(ARGS)
+
 .PHONY: build
 build: ## Build the place file
 	rojo build $(PROJECT) -o $(BUILD)

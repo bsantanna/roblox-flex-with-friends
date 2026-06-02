@@ -2,8 +2,10 @@
 
 Studio-grade mesh pipeline: source files live in git (LFS), geometry is uploaded to Roblox via
 Open Cloud and referenced by **asset ID** (never a binary blob committed to the place), and the game
-loads it at runtime. `assets/manifest.json` is the single source of truth; `make assets-upload`
-fills in asset IDs; `MeshSceneryService` renders them.
+loads it at runtime. `assets/manifest.json` is the hand-authored spec (placement, source, names);
+`make assets-upload` writes the resulting ids into the generated `assets/asset-ids.json`
+(`id → assetId`) so the spec file is never machine-rewritten; `MeshSceneryService` merges the two
+and renders them.
 
 This complements the code-built primitives in `SceneryService` (those need no upload). A mesh
 *supersedes* a primitive: when you ship a mesh for an id that `SceneryService` also builds, remove
@@ -36,7 +38,6 @@ Then register/lock the entry in `assets/manifest.json`:
   "id": "House",
   "kind": "mesh",                       // "mesh" = uploaded FBX (this pipeline)
   "source": "source/House/House.fbx",   // relative to assets/
-  "assetId": null,                      // filled by `make assets-upload`; do not hand-edit
   "zone": "Home",                       // resolves origin from Config.Zones
   "offset": [30, 0, -26],               // studs from the zone origin
   "rotationY": 0,
@@ -46,6 +47,7 @@ Then register/lock the entry in `assets/manifest.json`:
 }
 ```
 
+The asset id is **not** in the manifest — `make assets-upload` records it in `assets/asset-ids.json`.
 Commit the `.blend` + `.fbx` (they go to LFS automatically via `.gitattributes`).
 
 ## Uploading
@@ -59,18 +61,19 @@ make assets-upload ARGS=--force    # re-upload all mesh entries (new asset versi
 ```
 
 `make assets-upload` reads the manifest, uploads each pending FBX via `rbxcloud assets create
---asset-type model-fbx`, polls the operation to completion, writes the returned `assetId` back into
-`manifest.json`, and prints a summary. Commit the updated manifest.
+--asset-type model-fbx`, polls the operation to completion, writes the returned ids into
+`assets/asset-ids.json`, and prints a summary. Commit that file.
 
 Without the env vars it does nothing destructive — it reports the pending uploads and how to
 configure, then exits.
 
 ## Runtime
 
-`MeshSceneryService` reads `ReplicatedStorage.Shared.SceneryManifest` (Rojo maps `manifest.json`
-into the tree) and, for each `kind:"mesh"` entry with an `assetId`, `InsertService:LoadAsset`s it,
-scales it (`scale`), and pivots it to `Config.Zones[zone] + offset` rotated by `rotationY`. Entries
-without an `assetId` are skipped (not yet uploaded), so the build never breaks on a pending asset.
+`MeshSceneryService` reads `SceneryManifest` + `SceneryAssetIds` (Rojo maps `manifest.json` and
+`asset-ids.json` into the tree) and, for each `kind:"mesh"` entry whose `id` has an uploaded asset,
+`InsertService:LoadAsset`s it, scales it (`scale`), and pivots it to `Config.Zones[zone] + offset`
+rotated by `rotationY`. Entries with no uploaded id are skipped, so the build never breaks on a
+pending asset.
 
 ## First-checkout / contributor setup
 

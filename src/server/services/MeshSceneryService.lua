@@ -1,5 +1,5 @@
 --!strict
--- MeshSceneryService: loads uploaded FBX meshes (the assets/PIPELINE.md track) and places them in
+-- MeshSceneryService: loads uploaded GLB meshes (the assets/PIPELINE.md track) and places them in
 -- the world. It reads the scenery manifest (Rojo maps assets/manifest.json into the tree) for
 -- placement and the generated assets/asset-ids.json (id -> assetId, written by `make assets-upload`)
 -- for the uploaded asset. For each `kind:"mesh"` entry with a known assetId it

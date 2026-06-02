@@ -1,8 +1,13 @@
 --!strict
--- Uploads pending mesh assets to Roblox via Open Cloud (rbxcloud) and records the returned asset
--- ids in assets/asset-ids.json. Run with `make assets-upload` (add ARGS=--force to re-upload all).
--- See assets/PIPELINE.md. Reads RBXCLOUD_API_KEY, ROBLOX_CREATOR_ID, ROBLOX_CREATOR_TYPE from env;
--- without them it reports what is pending and exits without uploading.
+-- Uploads pending GLB mesh assets to Roblox via the Open Cloud Assets API and records the returned
+-- asset ids in assets/asset-ids.json. Run with `make assets-upload` (ARGS=--force re-uploads all).
+-- See doc/003_binary_asset_management.md and assets/PIPELINE.md.
+--
+-- rbxcloud's CLI only exposes model-fbx, so GLB is uploaded by calling the API directly with curl:
+--   POST https://apis.roblox.com/assets/v1/assets  (multipart: request JSON + fileContent glb)
+--   GET  https://apis.roblox.com/assets/v1/operations/{id}  (poll until done -> response.assetId)
+-- Reads ROBLOX_API_KEY (asset:write), ROBLOX_CREATOR_ID, ROBLOX_CREATOR_TYPE (user|group) from env;
+-- without them it lists what is pending and exits without uploading.
 
 local fs = require("@lune/fs")
 local serde = require("@lune/serde")
@@ -11,13 +16,13 @@ local task = require("@lune/task")
 
 local MANIFEST = "assets/manifest.json"
 local IDS = "assets/asset-ids.json"
+local API = "https://apis.roblox.com/assets/v1"
 
 local force = table.find(process.args, "--force") ~= nil
 
 local manifest = serde.decode("json", fs.readFile(MANIFEST))
 local ids = serde.decode("json", fs.readFile(IDS))
 
--- Mesh entries that still need an id (or all, with --force).
 local pending = {}
 for _, entry in manifest.assets do
 	if entry.kind == "mesh" and (force or not ids[entry.id]) then
@@ -30,7 +35,7 @@ if #pending == 0 then
 	process.exit(0)
 end
 
-local apiKey = process.env.RBXCLOUD_API_KEY
+local apiKey = process.env.ROBLOX_API_KEY
 local creatorId = process.env.ROBLOX_CREATOR_ID
 local creatorType = process.env.ROBLOX_CREATOR_TYPE
 if not (apiKey and creatorId and creatorType) then
@@ -38,44 +43,52 @@ if not (apiKey and creatorId and creatorType) then
 	for _, entry in pending do
 		print(`  - {entry.id}  ({entry.source})`)
 	end
-	print("\nSet RBXCLOUD_API_KEY, ROBLOX_CREATOR_ID, ROBLOX_CREATOR_TYPE to upload. See assets/PIPELINE.md.")
+	print("\nSet ROBLOX_API_KEY, ROBLOX_CREATOR_ID, ROBLOX_CREATOR_TYPE to upload. See assets/PIPELINE.md.")
 	process.exit(0)
 end
 
--- Run rbxcloud and decode its JSON stdout (raw output shown on failure for debuggability).
-local function rbxcloud(args: { string }): any
-	local result = process.spawn("rbxcloud", args)
+-- curl returning decoded JSON; raw output is surfaced on failure for debuggability.
+local function curlJson(args: { string }): any
+	local result = process.spawn("curl", args)
 	if not result.ok then
-		error(`rbxcloud {args[2]} failed (code {result.code}):\n{result.stderr}\n{result.stdout}`)
+		error(`curl failed (code {result.code}):\n{result.stderr}`)
 	end
 	local ok, decoded = pcall(serde.decode, "json" :: "json", result.stdout)
 	if not ok then
-		error(`could not parse rbxcloud output as JSON:\n{result.stdout}`)
+		error(`non-JSON response from Open Cloud:\n{result.stdout}`)
 	end
 	return decoded
 end
+
+local creatorKey = if creatorType == "group" then "groupId" else "userId"
+local requestPath = (process.env.TMPDIR or "/tmp") .. "/fwf-asset-request.json"
 
 for _, entry in pending do
 	local source = "assets/" .. entry.source
 	print(`Uploading {entry.id} <- {source} ...`)
 
-	local created = rbxcloud({
-		"assets",
-		"create",
-		"--asset-type",
-		"model-fbx",
-		"--filepath",
-		source,
-		"--display-name",
-		entry.displayName or entry.id,
-		"--description",
-		entry.description or entry.id,
-		"--creator-id",
-		creatorId,
-		"--creator-type",
-		creatorType,
-		"--api-key",
-		apiKey,
+	-- The `request` part is JSON; pass it via a temp file so commas/quotes never confuse curl -F.
+	fs.writeFile(
+		requestPath,
+		serde.encode("json", {
+			assetType = "Model",
+			displayName = entry.displayName or entry.id,
+			description = entry.description or entry.id,
+			creationContext = { creator = { [creatorKey] = tonumber(creatorId) or creatorId } },
+		})
+	)
+
+	local created = curlJson({
+		"-s",
+		"-X",
+		"POST",
+		`{API}/assets`,
+		"-H",
+		`x-api-key: {apiKey}`,
+		"-F",
+		`request=<{requestPath};type=application/json`,
+		"-F",
+		`fileContent=@{source};type=model/gltf-binary`,
 	})
 
 	local operationId = created.operationId
@@ -83,14 +96,13 @@ for _, entry in pending do
 		operationId = string.match(created.path, "operations/(.+)")
 	end
 	if not operationId then
-		error(`{entry.id}: no operationId in create response:\n{serde.encode("json", created, true)}`)
+		error(`{entry.id}: no operation id in response:\n{serde.encode("json", created, true)}`)
 	end
 
-	-- Poll the operation until Roblox finishes processing the upload.
 	local assetId
 	for _ = 1, 30 do
 		task.wait(2)
-		local op = rbxcloud({ "assets", "get-operation", "--operation-id", operationId, "--api-key", apiKey })
+		local op = curlJson({ "-s", `{API}/operations/{operationId}`, "-H", `x-api-key: {apiKey}` })
 		if op.done then
 			local response = op.response or {}
 			assetId = response.assetId
@@ -108,5 +120,6 @@ for _, entry in pending do
 	print(`  -> {entry.id} = {ids[entry.id]}`)
 end
 
+pcall(fs.removeFile, requestPath)
 fs.writeFile(IDS, serde.encode("json", ids, true) .. "\n")
 print(`\nWrote {IDS}. Commit it (and the manifest/source).`)

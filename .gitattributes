@@ -1,0 +1,10 @@
+# Binary 3D asset sources are stored with Git LFS (they don't diff/merge as text).
+# Only under assets/source/ — these are the editable sources + FBX upload artifacts.
+assets/source/**/*.blend  filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.blend1 filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.fbx    filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.obj    filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.png    filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.jpg    filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.jpeg   filter=lfs diff=lfs merge=lfs -text
+assets/source/**/*.tga    filter=lfs diff=lfs merge=lfs -text

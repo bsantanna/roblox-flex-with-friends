@@ -58,15 +58,13 @@ local function hideInterfaceForCapture(): () -> ()
 			end)
 		end
 	end
-	if pcall(function()
-		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-	end) then
-		table.insert(restores, function()
-			pcall(function()
-				StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
-			end)
-		end)
-	end
+	-- Restore to the prior state, not hard "true", so we don't undo a permanent core-UI hide
+	-- (CoreUiController disables it for the whole session).
+	local coreWasEnabled = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.All)
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+	table.insert(restores, function()
+		StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, coreWasEnabled)
+	end)
 	return function()
 		for _, restore in restores do
 			restore()

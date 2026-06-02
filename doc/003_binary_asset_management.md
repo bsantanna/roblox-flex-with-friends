@@ -96,10 +96,10 @@ reviewable.
 
 **Known, deferred (tracked here):**
 
-- `manifest.json` still carries legacy procedural-schema fields (`prompt`, `attributes`, `status`,
-  `category`, `justification`) on the code-built entries. These are **design notes** — `SceneryService`
-  does not read the manifest; its placements are hardcoded and **diverge** from the manifest offsets.
-  *Future:* make `SceneryService` manifest-driven so procedural + mesh placement share one source.
+- `SceneryService`'s primitive placements are **hardcoded**, not manifest-driven — the manifest is
+  now the **mesh registry only** (the legacy procedural entries were removed). *Future:* if it's
+  worth unifying, make `SceneryService` read `kind:"procedural"` manifest entries so primitive and
+  mesh placement share one source.
 - `make assets-upload`'s Open Cloud request/response parsing is written defensively but **unverified
   without a real API key + GLB**; confirm field names on the first live upload.
 - The CD key (`ROBLOX_API_KEY`, `universe-places:write`) and the asset key (`asset:write`) are the

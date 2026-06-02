@@ -29,11 +29,11 @@ This is the professional, git-native path for real art. Full details in
 ## manifest.json — the scenery registry
 
 `manifest.json` is mapped into the tree (`ReplicatedStorage.Shared.SceneryManifest`)
-and **read at runtime** by `MeshSceneryService`. Entries marked `kind:"mesh"`
-drive the mesh pipeline (with `source`, `zone`, `offset`, `rotationY`, `scale`,
-`displayName`, `description`); the asset id lives in the generated
-`asset-ids.json`, not here. Other entries are design notes for the code-built /
-planned models (their placement currently lives in `SceneryService`).
+and **read at runtime** by `MeshSceneryService`. It is the **mesh registry**: each
+`kind:"mesh"` entry (`source`, `zone`, `offset`, `rotationY`, `scale`,
+`displayName`, `description`) drives the GLB pipeline; the asset id lives in the
+generated `asset-ids.json`, not here. Code-built primitive scenery is **not** in
+the manifest — its placement lives in `SceneryService`.
 
 ## Terrain
 

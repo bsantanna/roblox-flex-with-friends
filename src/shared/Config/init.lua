@@ -47,6 +47,30 @@ Config.Travel = {
 	MinigameWindow = 5, -- seconds the player has to board the plane at the Airport
 }
 
+-- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't
+-- round-trip through Rojo, so the *generating values* live here and the world stays reproducible
+-- from src. Size is kept below the 200-stud zone spacing so zones don't become walkable-connected
+-- (which would bypass the travel system); the top of each slab sits at the zone floor level (Y=0).
+Config.Terrain = {
+	Thickness = 8, -- vertical depth of each painted ground slab
+	Home = {
+		Size = 120, -- grassy lot, with a crossroad for the suburban-village feel
+		Ground = Enum.Material.Grass,
+		Road = Enum.Material.Asphalt,
+		RoadWidth = 16,
+	},
+	Airport = {
+		Size = 120, -- tarmac apron
+		Ground = Enum.Material.Asphalt,
+	},
+	Beach = {
+		Size = 120, -- sand, with ocean water painted just beyond the far (+Z) edge
+		Ground = Enum.Material.Sand,
+		Water = Enum.Material.Water,
+		WaterDepth = 60,
+	},
+}
+
 Config.Photo = {
 	BaseReward = 25, -- followers per photo
 	CoopBonus = 40, -- extra followers per participant when >= 2 players pose together

@@ -47,7 +47,36 @@ local ZONE_FLOOR_COLOR = {
 	Beach = Color3.fromRGB(220, 200, 150),
 }
 
+local Terrain = Workspace.Terrain
+
+-- Paint a flat ground slab whose top sits at origin.Y, centered on origin's X/Z.
+local function fillSlab(origin: Vector3, sizeX: number, sizeZ: number, material: Enum.Material)
+	local t = Config.Terrain.Thickness
+	Terrain:FillBlock(CFrame.new(origin.X, origin.Y - t / 2, origin.Z), Vector3.new(sizeX, t, sizeZ), material)
+end
+
+-- Landscaping ground per zone (Config.Terrain). Complements the greybox floors; buildings/props
+-- are layered on top later. Roads/water overwrite the ground voxels where they overlap.
+local function paintTerrain()
+	local T = Config.Terrain
+
+	local home = Config.Zones.Home
+	fillSlab(home, T.Home.Size, T.Home.Size, T.Home.Ground)
+	fillSlab(home, T.Home.Size, T.Home.RoadWidth, T.Home.Road) -- crossroad along X
+	fillSlab(home, T.Home.RoadWidth, T.Home.Size, T.Home.Road) -- crossroad along Z
+
+	local airport = Config.Zones.Airport
+	fillSlab(airport, T.Airport.Size, T.Airport.Size, T.Airport.Ground)
+
+	local beach = Config.Zones.Beach
+	fillSlab(beach, T.Beach.Size, T.Beach.Size, T.Beach.Ground)
+	local waterCenter = beach + Vector3.new(0, 0, T.Beach.Size / 2 + T.Beach.WaterDepth / 2)
+	fillSlab(waterCenter, T.Beach.Size, T.Beach.WaterDepth, T.Beach.Water)
+end
+
 function WorldService:Start()
+	paintTerrain()
+
 	local world = Instance.new("Folder")
 	world.Name = "World"
 

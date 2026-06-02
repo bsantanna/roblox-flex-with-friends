@@ -27,11 +27,6 @@
           "$path": "src/client"
         }
       }
-    },
-    "Workspace": {
-      "Scenery": {
-        "$path": "assets/scenery"
-      }
     }
   }
 }

@@ -54,7 +54,7 @@ GitHub Actions runs `make ci` on every PR (`.github/workflows/ci.yml`).
 
 ## Deployment (Open Cloud, staging)
 
-`.github/workflows/deploy.yml` publishes `build.rbxl` to a **staging** universe on merge to `main`.
+`.github/workflows/cd.yml` publishes `build.rbxl` to a **staging** universe on merge to `main`.
 It is **inert until configured**. To enable it:
 
 1. Create the staging universe/place in Roblox.

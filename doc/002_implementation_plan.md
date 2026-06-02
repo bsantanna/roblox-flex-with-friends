@@ -195,7 +195,7 @@ Flamework/typed-networking added):
 - **Automated tests** — headless **Lune** harness (`tests/`, `make test`, in `make ci` + GitHub
   Actions). Phase 1 pure logic extracted to `src/shared/Logic/` (`Followers`, `Decay`, `Referral`)
   and unit-tested (functional core / imperative shell).
-- **CD** — `deploy.yml` publishes to a **staging** Open Cloud universe on merge to `main` via
+- **CD** — `cd.yml` publishes to a **staging** Open Cloud universe on merge to `main` via
   `rbxcloud` (inert until the owner sets `ROBLOX_API_KEY` + `ROBLOX_UNIVERSE_ID`/`PLACE_ID`).
 - **Observability** — `Util/Log` (structured logs) + `Util/Analytics` (AnalyticsService wrapper);
   the follower economy and NPC unlocks emit funnel events.
@@ -257,7 +257,7 @@ Flamework/typed-networking added):
   manual Studio checks for what genuinely needs a running place (UI, remotes, CaptureService).
 - Player-affecting events emit through the observability seam (`Util/Log`, `Util/Analytics`).
 - `make ci` (fmt-check → lint → typecheck → **test** → build) is the gate; GitHub Actions runs it on
-  every PR, and merges to `main` publish to a staging universe via Open Cloud (`deploy.yml`).
+  every PR, and merges to `main` publish to a staging universe via Open Cloud (`cd.yml`).
 
 ## Open questions / assumptions to revisit
 

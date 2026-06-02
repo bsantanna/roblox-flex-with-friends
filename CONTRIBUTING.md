@@ -8,9 +8,11 @@ for the roadmap and `.claude/skills/flex-with-friends-dev` for the engineering c
 
 ```sh
 make install   # provisions the pinned toolchain (Rokit) + deps (Wally)
+git lfs install && git lfs pull   # fetch binary 3D sources (Blender/FBX under assets/source)
 ```
 
-The Rokit bin dir (`~/.rokit/bin`) must be on `PATH`.
+The Rokit bin dir (`~/.rokit/bin`) must be on `PATH`. The 3D mesh pipeline (Blender → Open Cloud →
+in-game) is documented in `assets/PIPELINE.md`; upload meshes with `make assets-upload`.
 
 ## Development loop
 

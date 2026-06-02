@@ -31,7 +31,10 @@ verifiable **Verify** success criterion.
   - A small networking helper is **not** added up front — a hand-written `Net` wrapper over `RemoteEvent`/`RemoteFunction` is enough until profiling says otherwise.
   - Exact package versions are pinned in Phase 0 (verify latest at install time).
 - **Luau** with `--!strict` on new modules where practical.
-- Optional dev tooling (Phase 0, nice-to-have): `stylua` (format), `selene` (lint).
+- Dev tooling (pinned in `rokit.toml`): `stylua` (format), `selene` (lint), `luau-lsp` (typecheck).
+- **Lune** — headless Luau runtime for unit tests (`make test`, part of `make ci`). Pure domain
+  logic lives in `src/shared/Logic/` (Roblox-free) so it runs under Lune with no Studio.
+- **rbxcloud** — Open Cloud publishing for CD (staging deploy on merge to `main`; see `CONTRIBUTING.md`).
 
 ### Repository layout
 
@@ -183,6 +186,24 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
 
 **MVP gate:** Phase 1 reviewed (3 code-reviewer passes: simplicity/DRY, correctness/exploits, conventions) and playable end-to-end in one server with two test clients.
 
+### Post-Phase-1: professional-workflow hardening — ✅ (2026-06-02)
+
+Adapted the workflow toward Roblox-studio practice for long-term maintainability (the architecture
+was kept as-is — a thin bootstrapper over a framework is a deliberate, valid choice; no Knit/
+Flamework/typed-networking added):
+
+- **Automated tests** — headless **Lune** harness (`tests/`, `make test`, in `make ci` + GitHub
+  Actions). Phase 1 pure logic extracted to `src/shared/Logic/` (`Followers`, `Decay`, `Referral`)
+  and unit-tested (functional core / imperative shell).
+- **CD** — `deploy.yml` publishes to a **staging** Open Cloud universe on merge to `main` via
+  `rbxcloud` (inert until the owner sets `ROBLOX_API_KEY` + `ROBLOX_UNIVERSE_ID`/`PLACE_ID`).
+- **Observability** — `Util/Log` (structured logs) + `Util/Analytics` (AnalyticsService wrapper);
+  the follower economy and NPC unlocks emit funnel events.
+- **Scenery as code** — while the GenAI `generate_procedural_model` backend was unavailable,
+  scenery moved to code-built primitive models (`SceneryService`), driven by `assets/manifest.json`;
+  AI models can replace them later without changing placement.
+- **Docs** — `CONTRIBUTING.md`, `TESTING.md`, and ADRs under `docs/adr/`.
+
 ---
 
 ## Phase 2 — Breadth: places & real travel
@@ -230,6 +251,13 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
 - Every new remote is registered in `Net.lua` and validated server-side.
 - New tunable numbers live in `src/shared/Config` — never hard-coded in services.
 - One phase-step per commit, each independently verifiable per its Verify line.
+- **Functional core / imperative shell:** pure domain logic goes in `src/shared/Logic/`
+  (no Roblox globals) and is unit-tested under Lune; services/controllers stay thin shells.
+- **Verify-as-test:** when a plan **Verify** line covers pure logic, add a Lune spec for it; reserve
+  manual Studio checks for what genuinely needs a running place (UI, remotes, CaptureService).
+- Player-affecting events emit through the observability seam (`Util/Log`, `Util/Analytics`).
+- `make ci` (fmt-check → lint → typecheck → **test** → build) is the gate; GitHub Actions runs it on
+  every PR, and merges to `main` publish to a staging universe via Open Cloud (`deploy.yml`).
 
 ## Open questions / assumptions to revisit
 

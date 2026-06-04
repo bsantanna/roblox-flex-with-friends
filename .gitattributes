@@ -1,5 +1,6 @@
 # Binary 3D asset sources are stored with Git LFS (they don't diff/merge as text).
-# Only under assets/source/ — GLB is the primary upload artifact (FBX kept for back-compat).
+# Only under assets/source/. GLB is the upload artifact; OBJ sources are converted to GLB at
+# upload time (see assets/PIPELINE.md). The .mtl that pairs an .obj is plain text — left out of LFS.
 assets/source/**/*.glb    filter=lfs diff=lfs merge=lfs -text
 assets/source/**/*.gltf   filter=lfs diff=lfs merge=lfs -text
 assets/source/**/*.bin    filter=lfs diff=lfs merge=lfs -text

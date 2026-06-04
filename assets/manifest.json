@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Mesh scenery registry for the GLB -> Open Cloud -> in-game pipeline. Each kind:'mesh' entry is uploaded by `make assets-upload` (asset id recorded in asset-ids.json) and placed at runtime by MeshSceneryService. See assets/PIPELINE.md and doc/003_binary_asset_management.md. Code-built primitive scenery lives in SceneryService, not here.",
+  "description": "Mesh scenery registry for the GLB/OBJ -> Open Cloud -> in-game pipeline. Each kind:'mesh' entry's `source` points at a .glb or .obj (OBJ is converted to GLB at upload); `make assets-upload` records the asset id in asset-ids.json and MeshSceneryService places it at runtime. See assets/PIPELINE.md and doc/003_binary_asset_management.md. Code-built primitive scenery lives in SceneryService, not here.",
   "zones": {
     "Home": { "origin": [0, 0, 0] },
     "Airport": { "origin": [0, 0, 200] },

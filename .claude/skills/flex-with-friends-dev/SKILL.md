@@ -126,8 +126,16 @@ let you loop without re-asking.
 
 ## Make targets (quick reference)
 
-Run `make help` for the live list. Tools must be on `PATH` (`make install` provisions them via
-Rokit). Full details and gotchas in `references/makefile.md`.
+Run `make help` for the live list. The pinned tools live in `~/.rokit/bin`, which a fresh
+non-interactive shell (e.g. an agent `Bash` call) usually does **not** have on `PATH` — so `make`,
+`stylua`, `rojo`, `lune`, `rbxcloud` fail with *command not found*. Put it on `PATH` first, in the
+same command (the `$HOME` form needs no `cd`, so it won't trip a permission prompt):
+
+```sh
+export PATH="$HOME/.rokit/bin:$PATH" && make ci
+```
+
+`make install` provisions the tools via Rokit. Full details and gotchas in `references/makefile.md`.
 
 | Command | Use it when |
 |---|---|

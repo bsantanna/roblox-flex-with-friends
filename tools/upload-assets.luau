@@ -1,7 +1,10 @@
 --!strict
--- Uploads pending GLB mesh assets to Roblox via the Open Cloud Assets API and records the returned
+-- Uploads pending mesh assets to Roblox via the Open Cloud Assets API and records the returned
 -- asset ids in assets/asset-ids.json. Run with `make assets-upload` (ARGS=--force re-uploads all).
 -- See doc/003_binary_asset_management.md and assets/PIPELINE.md.
+--
+-- The API accepts glb/gltf/fbx for Models but NOT obj, so an .obj source is converted to a
+-- self-contained GLB with obj2gltf (npm; `npx --yes` fetches it on first use) before upload.
 --
 -- rbxcloud's CLI only exposes model-fbx, so GLB is uploaded by calling the API directly with curl:
 --   POST https://apis.roblox.com/assets/v1/assets  (multipart: request JSON + fileContent glb)
@@ -60,12 +63,32 @@ local function curlJson(args: { string }): any
 	return decoded
 end
 
+-- Open Cloud rejects OBJ, so convert an .obj (+.mtl + textures) to a self-contained GLB via
+-- obj2gltf before upload. Returns the temp GLB path (caller removes it after uploading).
+local function objToGlb(id: string, objPath: string): string
+	local out = (process.env.TMPDIR or "/tmp") .. "/fwf-glb-" .. id .. ".glb"
+	print(`  converting OBJ -> GLB ({objPath})`)
+	local result = process.spawn("npx", { "--yes", "obj2gltf", "-i", objPath, "-o", out })
+	if not result.ok then
+		error(`obj2gltf failed for {objPath} (code {result.code}):\n{result.stderr}`)
+	end
+	return out
+end
+
 local creatorKey = if creatorType == "group" then "groupId" else "userId"
 local requestPath = (process.env.TMPDIR or "/tmp") .. "/fwf-asset-request.json"
 
 for _, entry in pending do
 	local source = "assets/" .. entry.source
 	print(`Uploading {entry.id} <- {source} ...`)
+
+	-- .obj is not a valid Open Cloud upload format; convert it to a GLB and upload that instead.
+	local uploadPath = source
+	local tempGlb: string? = nil
+	if string.match(source, "%.obj$") then
+		uploadPath = objToGlb(entry.id, source)
+		tempGlb = uploadPath
+	end
 
 	-- The `request` part is JSON; pass it via a temp file so commas/quotes never confuse curl -F.
 	fs.writeFile(
@@ -88,7 +111,7 @@ for _, entry in pending do
 		"-F",
 		`request=<{requestPath};type=application/json`,
 		"-F",
-		`fileContent=@{source};type=model/gltf-binary`,
+		`fileContent=@{uploadPath};type=model/gltf-binary`,
 	})
 
 	local operationId = created.operationId
@@ -118,6 +141,10 @@ for _, entry in pending do
 
 	ids[entry.id] = tonumber(assetId) or assetId
 	print(`  -> {entry.id} = {ids[entry.id]}`)
+
+	if tempGlb then
+		pcall(fs.removeFile, tempGlb)
+	end
 end
 
 pcall(fs.removeFile, requestPath)

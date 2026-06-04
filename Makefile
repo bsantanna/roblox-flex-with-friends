@@ -61,7 +61,7 @@ test: ## Run unit tests (Lune, headless — pure Logic modules)
 	lune run tests/run.luau
 
 .PHONY: assets-upload
-assets-upload: ## Upload pending mesh FBX assets via Open Cloud (see assets/PIPELINE.md). ARGS=--force re-uploads all
+assets-upload: ## Upload pending mesh assets (GLB, or OBJ auto-converted) via Open Cloud (see assets/PIPELINE.md). ARGS=--force re-uploads all
 	lune run tools/upload-assets.luau $(ARGS)
 
 .PHONY: build

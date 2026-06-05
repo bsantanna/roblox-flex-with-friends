@@ -49,20 +49,21 @@ Config.Travel = {
 
 -- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't
 -- round-trip through Rojo, so the *generating values* live here and the world stays reproducible
--- from src. Size is kept below the 200-stud zone spacing so zones don't become walkable-connected
--- (which would bypass the travel system); the top of each slab sits at the zone floor level (Y=0).
+-- from src. Lots stay apart so zones don't become walkable-connected (which would bypass the travel
+-- system): Home spans +/-100 from its origin and Airport (200 away) +/-60, leaving a ~40-stud void
+-- gap between them. The rendered top of each slab sits at the zone floor level (Y=0).
 Config.Terrain = {
 	Thickness = 8, -- vertical depth of each painted ground slab
 	Home = {
-		Size = 120, -- grassy lot, with a street the houses face
+		Size = 200, -- grassy lot, sized so the full-scale houses line a real street
 		Ground = Enum.Material.Grass,
 		Road = Enum.Material.Asphalt,
-		RoadWidth = 16, -- the north-south spur (toward the taxi / travel)
-		MainRoadWidth = 24, -- the east-west street the neighborhood lines
+		RoadWidth = 24, -- the north-south spur (toward the taxi / travel)
+		MainRoadWidth = 40, -- the east-west street the neighborhood lines
 		Sidewalk = Enum.Material.Concrete,
-		SidewalkWidth = 6,
+		SidewalkWidth = 10,
 		Driveway = Enum.Material.Concrete,
-		DrivewayWidth = 10,
+		DrivewayWidth = 16,
 	},
 	Airport = {
 		Size = 120, -- tarmac apron

@@ -14,8 +14,8 @@ local WorldService = {}
 
 -- Interaction anchors: name -> { offset from zone origin, prompt action/object text }.
 local HOME_INTERACTIONS = {
-	{ name = "Phone", offset = Vector3.new(-15, 2, -15), action = "Use", object = "Phone" },
-	{ name = "Computer", offset = Vector3.new(15, 2, -15), action = "Use", object = "Computer" },
+	{ name = "Phone", offset = Vector3.new(-25, 2, -30), action = "Use", object = "Phone" },
+	{ name = "Computer", offset = Vector3.new(25, 2, -30), action = "Use", object = "Computer" },
 }
 
 local function makePart(name: string, size: Vector3, position: Vector3, color: Color3, parent: Instance): Part
@@ -99,11 +99,11 @@ local function buildHomeStreet(home: Model, origin: Vector3)
 	end
 
 	local rows = {
-		{ sign = -1, xs = { -45, -18, 30 } }, -- north row (incl. the player's primitive home at x=30)
-		{ sign = 1, xs = { -45, -18, 18, 45 } }, -- south row
+		{ sign = -1, xs = { -75, -25, 50 } }, -- north row (incl. the player's primitive home at x=50)
+		{ sign = 1, xs = { -75, -25, 25, 75 } }, -- south row
 	}
 	for _, row in rows do
-		local inner, outer = row.sign * mainHalf, row.sign * 20
+		local inner, outer = row.sign * mainHalf, row.sign * 35
 		for _, x in row.xs do
 			local drive = makePart(
 				"Driveway",

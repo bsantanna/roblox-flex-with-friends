@@ -54,10 +54,15 @@ Config.Travel = {
 Config.Terrain = {
 	Thickness = 8, -- vertical depth of each painted ground slab
 	Home = {
-		Size = 120, -- grassy lot, with a crossroad for the suburban-village feel
+		Size = 120, -- grassy lot, with a street the houses face
 		Ground = Enum.Material.Grass,
 		Road = Enum.Material.Asphalt,
-		RoadWidth = 16,
+		RoadWidth = 16, -- the north-south spur (toward the taxi / travel)
+		MainRoadWidth = 24, -- the east-west street the neighborhood lines
+		Sidewalk = Enum.Material.Concrete,
+		SidewalkWidth = 6,
+		Driveway = Enum.Material.Concrete,
+		DrivewayWidth = 10,
 	},
 	Airport = {
 		Size = 120, -- tarmac apron

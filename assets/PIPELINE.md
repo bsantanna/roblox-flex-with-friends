@@ -60,10 +60,15 @@ Then register/lock the entry in `assets/manifest.json` (point `source` at the `.
   "offset": [30, 0, -26],               // studs from the zone origin
   "rotationY": 0,
   "scale": 1,
+  "color": [222, 205, 170],             // optional flat rgb tint for a geometry-only mesh
   "displayName": "Influencer Mansion",
   "description": "Home lobby exterior."
 }
 ```
+
+`color` is optional — set it for meshes with **no embedded material/texture** (e.g. OBJ exports
+without an `.mtl`); `MeshSceneryService` tints every part of the loaded model with it. Omit it for
+textured GLBs so their materials show through.
 
 The asset id is **not** in the manifest — `make assets-upload` records it in `assets/asset-ids.json`.
 Commit the source (`.glb`, or `.obj` + `.mtl` + textures); binaries go to LFS automatically via

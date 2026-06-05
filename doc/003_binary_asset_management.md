@@ -66,7 +66,7 @@ generate OBJ ──▶ assets/source/<Id>/<Id>.obj (+ .mtl + textures)   (Git LF
 | Piece | Role |
 |---|---|
 | `assets/source/<Id>/<Id>.glb` (or `<Id>.obj` + `.mtl` + textures) | Editable mesh source, **Git LFS** (`.gitattributes`; the `.mtl` is plain text, not LFS). |
-| `assets/manifest.json` | Hand-authored registry; mapped to `ReplicatedStorage.Shared.SceneryManifest` and read at runtime. Mesh entries: `kind:"mesh"`, `source`, `zone`, `offset`, `rotationY`, `scale`, `displayName`, `description`. |
+| `assets/manifest.json` | Hand-authored registry; mapped to `ReplicatedStorage.Shared.SceneryManifest` and read at runtime. Mesh entries: `kind:"mesh"`, `source`, `zone`, `offset`, `rotationY`, `scale`, optional `color` (flat rgb tint for geometry-only meshes), `displayName`, `description`. |
 | `assets/asset-ids.json` | **Generated** `id → assetId`; mapped to `SceneryAssetIds`. Written by the uploader so the hand-authored manifest is never machine-reformatted. |
 | `tools/upload-assets.luau` (`make assets-upload`) | Uploads pending meshes to Open Cloud via `curl` (rbxcloud's CLI is FBX-only), polls the operation, records ids. `.obj` sources are converted to a temp GLB with `obj2gltf` (npm) first. Inert without `ROBLOX_API_KEY` / `ROBLOX_CREATOR_ID` / `ROBLOX_CREATOR_TYPE`. |
 | `MeshSceneryService` | Loads `kind:"mesh"` entries with a known asset id; skips pending ones so the build never breaks. |
@@ -111,6 +111,9 @@ reviewable.
   GLB→assetId→runtime-load saves no `.rbxmx`. Removed; the services create the folder themselves.
 - The uploader/manifest were **FBX-based**; switched to **GLB** via the Open Cloud API directly,
   since rbxcloud's CLI is FBX-only.
+- `process.spawn` (the uploader's only subprocess call) **does not exist in Lune 0.10.4** — it's
+  `process.exec`. The original was never hit (the no-op path exits first); fixed when the first live
+  upload exercised it.
 
 **Known, deferred (tracked here):**
 
@@ -118,19 +121,21 @@ reviewable.
   now the **mesh registry only** (the legacy procedural entries were removed). *Future:* if it's
   worth unifying, make `SceneryService` read `kind:"procedural"` manifest entries so primitive and
   mesh placement share one source.
-- `make assets-upload`'s Open Cloud request/response parsing is written defensively but **unverified
-  without a real API key + GLB**; confirm field names on the first live upload.
+- `make assets-upload`'s Open Cloud request/response parsing is **verified** — a live upload of 8
+  OBJ-sourced meshes returned asset ids via the `operations/{id}` poll → `response.assetId` path.
 - The CD key (`ROBLOX_API_KEY`, `universe-places:write`) and the asset key (`asset:write`) are the
   same env name; use one key with both scopes, or split the names if you prefer separate keys.
 - Uploads are **manual** (`make assets-upload`), by design. Revisit CI-driven upload only if asset
   churn makes it worth the added key exposure and per-merge asset versions.
 - **OBJ→GLB conversion** shells out to `obj2gltf` via `npx` (Node), the one non-Rokit/non-curl tool
-  in the upload path. It's unverified without a real `.obj`; confirm material/texture fidelity on the
-  first OBJ upload, and prefer authoring GLB directly when the tool can emit it (no conversion, no
-  Node). If OBJ churn grows, consider pinning `obj2gltf` (`npm i -g`, or a committed `package.json`).
+  in the upload path. **Verified** on 8 real OBJs (convert → upload → asset id). Prefer authoring GLB
+  directly when the tool can emit it (no conversion, no Node). If OBJ churn grows, consider pinning
+  `obj2gltf` (`npm i -g`, or a committed `package.json`).
 
 ## Verification status
 
-`make ci` (incl. Lune tests + build) is green. The upload tool's no-op and pending-but-unconfigured
-paths are exercised; the live Open Cloud upload needs a key + a real GLB to confirm end-to-end, and
-the OBJ→GLB conversion needs a real `.obj` + Node to confirm `obj2gltf` output.
+`make ci` (incl. Lune tests + build) is green. The full upload path is **verified end-to-end**: a
+live `make assets-upload` converted 8 OBJ sources to GLB and uploaded them to Open Cloud, recording
+their asset ids in `asset-ids.json`. What remains visual-only is in-world **placement** (scale,
+vertical seating, facing) — confirm in a running place and tune the manifest `scale`/`offset.y`/
+`rotationY` as needed.

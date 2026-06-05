@@ -52,7 +52,7 @@ end
 
 -- curl returning decoded JSON; raw output is surfaced on failure for debuggability.
 local function curlJson(args: { string }): any
-	local result = process.spawn("curl", args)
+	local result = process.exec("curl", args)
 	if not result.ok then
 		error(`curl failed (code {result.code}):\n{result.stderr}`)
 	end
@@ -68,7 +68,7 @@ end
 local function objToGlb(id: string, objPath: string): string
 	local out = (process.env.TMPDIR or "/tmp") .. "/fwf-glb-" .. id .. ".glb"
 	print(`  converting OBJ -> GLB ({objPath})`)
-	local result = process.spawn("npx", { "--yes", "obj2gltf", "-i", objPath, "-o", out })
+	local result = process.exec("npx", { "--yes", "obj2gltf", "-i", objPath, "-o", out })
 	if not result.ok then
 		error(`obj2gltf failed for {objPath} (code {result.code}):\n{result.stderr}`)
 	end

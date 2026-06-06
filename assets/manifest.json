@@ -1,10 +1,107 @@
 {
   "version": 1,
-  "description": "Mesh scenery registry for the GLB -> Open Cloud -> in-game pipeline. Each kind:'mesh' entry is uploaded by `make assets-upload` (asset id recorded in asset-ids.json) and placed at runtime by MeshSceneryService. See assets/PIPELINE.md and doc/003_binary_asset_management.md. Code-built primitive scenery lives in SceneryService, not here.",
+  "description": "Mesh scenery registry for the GLB/OBJ -> Open Cloud -> in-game pipeline. Each kind:'mesh' entry's `source` points at a .glb or .obj (OBJ is converted to GLB at upload); `make assets-upload` records the asset id in asset-ids.json and MeshSceneryService places it at runtime. See assets/PIPELINE.md and doc/003_binary_asset_management.md. Code-built primitive scenery lives in SceneryService, not here.",
   "zones": {
     "Home": { "origin": [0, 0, 0] },
     "Airport": { "origin": [0, 0, 200] },
     "Beach": { "origin": [0, 0, 400] }
   },
-  "assets": []
+  "assets": [
+    {
+      "id": "Neighbor01",
+      "kind": "mesh",
+      "source": "source/Neighbor01/Neighbor01.obj",
+      "zone": "Home",
+      "offset": [-92, 0, -92],
+      "rotationY": 0,
+      "scale": 22,
+      "color": [222, 205, 170],
+      "displayName": "Neighbor House 1",
+      "description": "Suburban neighbor home (NW square, faces the plaza)."
+    },
+    {
+      "id": "Neighbor02",
+      "kind": "mesh",
+      "source": "source/Neighbor02/Neighbor02.obj",
+      "zone": "Home",
+      "offset": [92, 0, -92],
+      "rotationY": 0,
+      "scale": 22,
+      "color": [180, 196, 210],
+      "displayName": "Neighbor House 2",
+      "description": "Suburban neighbor home (NE square, faces the plaza)."
+    },
+    {
+      "id": "Neighbor03",
+      "kind": "mesh",
+      "source": "source/Neighbor03/Neighbor03.obj",
+      "zone": "Home",
+      "offset": [-92, 0, 0],
+      "rotationY": 90,
+      "scale": 22,
+      "color": [200, 150, 120],
+      "displayName": "Neighbor House 3",
+      "description": "Suburban neighbor home (W square, faces the plaza)."
+    },
+    {
+      "id": "Neighbor04",
+      "kind": "mesh",
+      "source": "source/Neighbor04/Neighbor04.obj",
+      "zone": "Home",
+      "offset": [92, 0, 0],
+      "rotationY": 270,
+      "scale": 22,
+      "color": [180, 196, 160],
+      "displayName": "Neighbor House 4",
+      "description": "Suburban neighbor home (E square, faces the plaza)."
+    },
+    {
+      "id": "Neighbor05",
+      "kind": "mesh",
+      "source": "source/Neighbor05/Neighbor05.obj",
+      "zone": "Home",
+      "offset": [-92, 0, 92],
+      "rotationY": 180,
+      "scale": 22,
+      "color": [235, 228, 205],
+      "displayName": "Neighbor House 5",
+      "description": "Suburban neighbor home (SW square, faces the plaza)."
+    },
+    {
+      "id": "Neighbor06",
+      "kind": "mesh",
+      "source": "source/Neighbor06/Neighbor06.obj",
+      "zone": "Home",
+      "offset": [92, 0, 92],
+      "rotationY": 180,
+      "scale": 22,
+      "color": [205, 175, 180],
+      "displayName": "Neighbor House 6",
+      "description": "Suburban neighbor home (SE square, faces the plaza)."
+    },
+    {
+      "id": "Car01",
+      "kind": "mesh",
+      "source": "source/Car01/Car01.obj",
+      "zone": "Home",
+      "offset": [52, 0, 8],
+      "rotationY": 0,
+      "scale": 12,
+      "color": [180, 40, 40],
+      "displayName": "Parked Car",
+      "description": "Car in the east-road's outer lane, by the plaza."
+    },
+    {
+      "id": "Cab01",
+      "kind": "mesh",
+      "source": "source/Cab01/Cab01.obj",
+      "zone": "Home",
+      "offset": [-52, 0, -8],
+      "rotationY": 0,
+      "scale": 12,
+      "color": [240, 200, 40],
+      "displayName": "Taxi Cab",
+      "description": "Taxi waiting in the west-road's outer lane, by the plaza."
+    }
+  ]
 }

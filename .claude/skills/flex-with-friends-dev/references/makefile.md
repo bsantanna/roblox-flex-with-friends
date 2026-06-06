@@ -45,6 +45,18 @@ for reproducible installs.
 The Makefile does **not** munge `PATH`. It relies on the Rokit bin dir (`~/.rokit/bin`) already
 being on `PATH` — the Rokit installer adds it locally, and a `setup-rokit` action does it in CI.
 
+**In an agent session, put it on `PATH` yourself.** The Rokit installer only edits the user's
+interactive shell profile, so a fresh non-interactive shell (each agent `Bash` call) starts without
+`~/.rokit/bin`, and every tool — `make`, `stylua`, `rojo`, `lune`, `rbxcloud` — reports *command not
+found*. Prefix the command on the same line:
+
+```sh
+export PATH="$HOME/.rokit/bin:$PATH" && make ci
+```
+
+Use `$HOME` (not a `cd`) so the call doesn't trip a sandbox permission prompt. Shell state doesn't
+persist between calls, so include the export each time (repeating it is harmless).
+
 Why not just export it in the Makefile? GNU Make 3.81 (macOS default) execs simple, single-command
 recipe lines **directly via `execvp`, bypassing the shell**, and that direct exec ignores a
 makefile-level `export PATH := ...`. So `stylua` would be "not found" despite the export. Recipes

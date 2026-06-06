@@ -17,8 +17,6 @@ local WALL = Color3.fromRGB(236, 228, 214)
 local GLASS = Color3.fromRGB(174, 198, 207)
 local ROOF = Color3.fromRGB(70, 70, 82)
 local DARKWOOD = Color3.fromRGB(80, 55, 35)
-local BLACK = Color3.fromRGB(24, 24, 28)
-local TAXI = Color3.fromRGB(240, 200, 40)
 local METAL = Color3.fromRGB(221, 227, 234)
 local THATCH = Color3.fromRGB(169, 116, 79)
 local WHITE = Color3.fromRGB(245, 245, 245)
@@ -98,26 +96,6 @@ local function buildHouse(model: Model, base: CFrame)
 			)
 		end
 	end
-end
-
-local function buildCab(model: Model, base: CFrame)
-	add(model, base * CFrame.new(0, 2, 0), Vector3.new(10, 3, 5), BLACK) -- body
-	add(model, base * CFrame.new(-0.5, 4.2, 0), Vector3.new(6, 2.4, 4.6), BLACK) -- cabin
-	add(
-		model,
-		base * CFrame.new(-0.5, 4.4, 0),
-		Vector3.new(6.1, 1.5, 4.7),
-		GLASS,
-		{ material = Enum.Material.Glass, transparency = 0.45 }
-	) -- windows
-	add(model, base * CFrame.new(0, 5.9, 0), Vector3.new(2.4, 0.9, 1.2), TAXI) -- taxi sign
-	for _, sx in { -3.4, 3.4 } do
-		for _, sz in { -2.4, 2.4 } do
-			add(model, base * CFrame.new(sx, 1, sz), Vector3.new(0.8, 2, 2), BLACK, { shape = Enum.PartType.Cylinder })
-		end
-	end
-	add(model, base * CFrame.new(5.05, 2, -1.4), Vector3.new(0.4, 0.9, 0.9), TAXI, { shape = Enum.PartType.Ball }) -- headlight
-	add(model, base * CFrame.new(5.05, 2, 1.4), Vector3.new(0.4, 0.9, 0.9), TAXI, { shape = Enum.PartType.Ball })
 end
 
 local function buildTerminal(model: Model, base: CFrame)
@@ -235,12 +213,19 @@ local function buildSunLounger(model: Model, base: CFrame)
 	) -- drink
 end
 
-type Placement = { id: string, zone: string, offset: Vector3, rotationY: number, build: (Model, CFrame) -> () }
+type Placement = {
+	id: string,
+	zone: string,
+	offset: Vector3,
+	rotationY: number,
+	scale: number?,
+	build: (Model, CFrame) -> (),
+}
 
--- Offsets mirror assets/manifest.json, nudged so the House/Cab clear the Home spawn and crossroad.
+-- The player's Home sits in the north-center square of the neighborhood grid (faces the plaza), at
+-- a scale that fits a CellSize (60) square. The taxi is the Cab01 mesh now (assets/manifest.json).
 local PLACEMENTS: { Placement } = {
-	{ id = "House", zone = "Home", offset = Vector3.new(30, 0, -26), rotationY = 0, build = buildHouse },
-	{ id = "Cab", zone = "Home", offset = Vector3.new(0, 0, 38), rotationY = 0, build = buildCab },
+	{ id = "House", zone = "Home", offset = Vector3.new(0, 0, -92), rotationY = 0, scale = 1.0, build = buildHouse },
 	{ id = "Terminal", zone = "Airport", offset = Vector3.new(0, 0, -20), rotationY = 0, build = buildTerminal },
 	{ id = "BoardingGate", zone = "Airport", offset = Vector3.new(0, 0, 10), rotationY = 0, build = buildBoardingGate },
 	{ id = "Airplane", zone = "Airport", offset = Vector3.new(18, 0, 30), rotationY = 90, build = buildAirplane },
@@ -263,6 +248,12 @@ function SceneryService:Start()
 		local model = Instance.new("Model")
 		model.Name = placement.id
 		placement.build(model, base)
+		if placement.scale then
+			model:ScaleTo(placement.scale)
+			-- ScaleTo grows about the pivot, dropping the base below the floor; reseat it to Y=origin.Y.
+			local cf, size = model:GetBoundingBox()
+			model:PivotTo(model:GetPivot() + Vector3.new(0, origin.Y - (cf.Y - size.Y / 2), 0))
+		end
 		model.Parent = scenery
 	end
 end

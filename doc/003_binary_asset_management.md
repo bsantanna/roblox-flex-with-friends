@@ -19,28 +19,41 @@ document covers the **binary pillar**: how mesh geometry gets in and stays versi
 
 1. **No binary blobs in the place.** Geometry is **uploaded to Roblox and referenced by asset id**;
    the `.rbxl` is a build artifact, never committed.
-2. **Source of truth in git.** The editable mesh source (a **GLB**) lives in git via **Git LFS**;
-   the placement/registry lives in text (`manifest.json`, `asset-ids.json`).
+2. **Source of truth in git.** The editable mesh source (a **GLB**, or an **OBJ** + its `.mtl` and
+   textures) lives in git via **Git LFS**; the placement/registry lives in text (`manifest.json`,
+   `asset-ids.json`).
 3. **Reproducible & automated.** Uploads run through one command against the Open Cloud API; the
    result (asset id) is committed, so a fresh checkout renders the same world.
 4. **Data-driven runtime.** A service reads the registry and instantiates meshes at runtime — no
    hand-placed instances saved in a binary.
 
-## Why GLB
+## Source formats: GLB and OBJ
 
-GLB (binary glTF) is the source/upload format: it is **self-contained** (mesh + textures + materials
-in one file), the **standard output of AI mesh generators and DCC tools**, an open spec, and
-**natively accepted by the Open Cloud Assets API**. Meshes are generated out-of-band (a separate
-model/session) and dropped into `assets/source/<Id>/<Id>.glb`.
+The Open Cloud Assets API accepts `glb`/`gltf`/`fbx` for Models but **not `obj`**. Two source formats
+are supported here, both ending up as a GLB on the wire:
+
+- **GLB** (binary glTF) — the preferred format and what gets uploaded. It is **self-contained** (mesh
+  + textures + materials in one file), the **standard output of AI mesh generators and DCC tools**,
+  an open spec, and **natively accepted by Open Cloud**. Uploaded as-is.
+- **OBJ** (Wavefront) — geometry `.obj` + materials `.mtl` + separate texture images. Common DCC/AI
+  output, but **not a valid Open Cloud upload format and not self-contained**, so `make assets-upload`
+  **converts it to a self-contained GLB** ([obj2gltf](https://github.com/CesiumGS/obj2gltf), npm)
+  before upload. The OBJ remains the editable source in git; the GLB is a throwaway upload artifact.
+
+Meshes are generated out-of-band (a separate model/session) and dropped into
+`assets/source/<Id>/` as `<Id>.glb`, or `<Id>.obj` (+ `.mtl` + textures).
 
 ## The pipeline
 
 ```
 generate GLB ──▶ assets/source/<Id>/<Id>.glb        (Git LFS)
+   — or —
+generate OBJ ──▶ assets/source/<Id>/<Id>.obj (+ .mtl + textures)   (Git LFS)
                  register entry in assets/manifest.json (kind:"mesh", placement)
                           │
-   make assets-upload ────┤  POST /assets/v1/assets   (assetType Model, MIME model/gltf-binary)
-   (Open Cloud, via curl) │  poll  /assets/v1/operations/{id} ──▶ response.assetId
+   make assets-upload ────┤  .obj? ──▶ obj2gltf ──▶ temp GLB   (npm; discarded after upload)
+   (Open Cloud, via curl) │  POST /assets/v1/assets   (assetType Model, MIME model/gltf-binary)
+                          │  poll  /assets/v1/operations/{id} ──▶ response.assetId
                           ▼
                  assets/asset-ids.json   (generated: id → assetId, committed)
                           │
@@ -52,14 +65,16 @@ generate GLB ──▶ assets/source/<Id>/<Id>.glb        (Git LFS)
 
 | Piece | Role |
 |---|---|
-| `assets/source/<Id>/<Id>.glb` | Editable mesh source, **Git LFS** (`.gitattributes`). |
-| `assets/manifest.json` | Hand-authored registry; mapped to `ReplicatedStorage.Shared.SceneryManifest` and read at runtime. Mesh entries: `kind:"mesh"`, `source`, `zone`, `offset`, `rotationY`, `scale`, `displayName`, `description`. |
+| `assets/source/<Id>/<Id>.glb` (or `<Id>.obj` + `.mtl` + textures) | Editable mesh source, **Git LFS** (`.gitattributes`; the `.mtl` is plain text, not LFS). |
+| `assets/manifest.json` | Hand-authored registry; mapped to `ReplicatedStorage.Shared.SceneryManifest` and read at runtime. Mesh entries: `kind:"mesh"`, `source`, `zone`, `offset`, `rotationY`, `scale`, optional `color` (flat rgb tint for geometry-only meshes), `displayName`, `description`. |
 | `assets/asset-ids.json` | **Generated** `id → assetId`; mapped to `SceneryAssetIds`. Written by the uploader so the hand-authored manifest is never machine-reformatted. |
-| `tools/upload-assets.luau` (`make assets-upload`) | Uploads pending GLBs to Open Cloud via `curl` (rbxcloud's CLI is FBX-only), polls the operation, records ids. Inert without `ROBLOX_API_KEY` / `ROBLOX_CREATOR_ID` / `ROBLOX_CREATOR_TYPE`. |
+| `tools/upload-assets.luau` (`make assets-upload`) | Uploads pending meshes to Open Cloud via `curl` (rbxcloud's CLI is FBX-only), polls the operation, records ids. `.obj` sources are converted to a temp GLB with `obj2gltf` (npm) first. Inert without `ROBLOX_API_KEY` / `ROBLOX_CREATOR_ID` / `ROBLOX_CREATOR_TYPE`. |
 | `MeshSceneryService` | Loads `kind:"mesh"` entries with a known asset id; skips pending ones so the build never breaks. |
 
 ### Upload mechanics (Open Cloud Assets API)
 
+- A `.obj` source is converted to a temp GLB first (`npx --yes obj2gltf -i in.obj -o out.glb`); the
+  upload is always a GLB. This is the only step that needs **Node/npm** on `PATH`.
 - `POST https://apis.roblox.com/assets/v1/assets` — multipart: a JSON `request`
   (`assetType:"Model"`, `displayName`, `description`, `creationContext.creator.{userId|groupId}`)
   plus `fileContent` (the GLB, MIME `model/gltf-binary`). Header `x-api-key`.
@@ -69,10 +84,13 @@ generate GLB ──▶ assets/source/<Id>/<Id>.glb        (Git LFS)
 
 ## Contract for the mesh-generating session
 
-Produce a **Roblox-ready GLB** and register it (see `assets/PIPELINE.md` for the canonical version):
+Produce a **Roblox-ready GLB or OBJ** and register it (see `assets/PIPELINE.md` for the canonical
+version):
 
-- Y-up, Z-forward; **1 unit = 1 stud**; **origin at the base center**; textures embedded.
-- Save to `assets/source/<Id>/<Id>.glb` (LFS) and add a `kind:"mesh"` entry to `manifest.json`.
+- Y-up, Z-forward; **1 unit = 1 stud**; **origin at the base center**; textures embedded in the GLB,
+  or (for OBJ) referenced by the `.mtl` with the image files committed alongside.
+- Save to `assets/source/<Id>/<Id>.glb`, or `<Id>.obj` (+ `.mtl` + textures), under LFS; add a
+  `kind:"mesh"` entry to `manifest.json` with `source` pointing at that file.
 - Do **not** put the asset id in the manifest — `make assets-upload` records it in `asset-ids.json`.
 
 ## Place in the studio workflow
@@ -93,6 +111,9 @@ reviewable.
   GLB→assetId→runtime-load saves no `.rbxmx`. Removed; the services create the folder themselves.
 - The uploader/manifest were **FBX-based**; switched to **GLB** via the Open Cloud API directly,
   since rbxcloud's CLI is FBX-only.
+- `process.spawn` (the uploader's only subprocess call) **does not exist in Lune 0.10.4** — it's
+  `process.exec`. The original was never hit (the no-op path exits first); fixed when the first live
+  upload exercised it.
 
 **Known, deferred (tracked here):**
 
@@ -100,14 +121,21 @@ reviewable.
   now the **mesh registry only** (the legacy procedural entries were removed). *Future:* if it's
   worth unifying, make `SceneryService` read `kind:"procedural"` manifest entries so primitive and
   mesh placement share one source.
-- `make assets-upload`'s Open Cloud request/response parsing is written defensively but **unverified
-  without a real API key + GLB**; confirm field names on the first live upload.
+- `make assets-upload`'s Open Cloud request/response parsing is **verified** — a live upload of 8
+  OBJ-sourced meshes returned asset ids via the `operations/{id}` poll → `response.assetId` path.
 - The CD key (`ROBLOX_API_KEY`, `universe-places:write`) and the asset key (`asset:write`) are the
   same env name; use one key with both scopes, or split the names if you prefer separate keys.
 - Uploads are **manual** (`make assets-upload`), by design. Revisit CI-driven upload only if asset
   churn makes it worth the added key exposure and per-merge asset versions.
+- **OBJ→GLB conversion** shells out to `obj2gltf` via `npx` (Node), the one non-Rokit/non-curl tool
+  in the upload path. **Verified** on 8 real OBJs (convert → upload → asset id). Prefer authoring GLB
+  directly when the tool can emit it (no conversion, no Node). If OBJ churn grows, consider pinning
+  `obj2gltf` (`npm i -g`, or a committed `package.json`).
 
 ## Verification status
 
-`make ci` (incl. Lune tests + build) is green. The upload tool's no-op and pending-but-unconfigured
-paths are exercised; the live Open Cloud upload needs a key + a real GLB to confirm end-to-end.
+`make ci` (incl. Lune tests + build) is green. The full upload path is **verified end-to-end**: a
+live `make assets-upload` converted 8 OBJ sources to GLB and uploaded them to Open Cloud, recording
+their asset ids in `asset-ids.json`. What remains visual-only is in-world **placement** (scale,
+vertical seating, facing) — confirm in a running place and tune the manifest `scale`/`offset.y`/
+`rotationY` as needed.

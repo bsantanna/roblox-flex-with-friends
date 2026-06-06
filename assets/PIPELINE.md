@@ -1,4 +1,4 @@
-# 3D asset pipeline (GLB → Open Cloud → in-game)
+# 3D asset pipeline (GLB/OBJ → Open Cloud → in-game)
 
 > Quick reference for adding a mesh. The full rationale, schema, and tech-debt notes live in
 > [`doc/003_binary_asset_management.md`](../doc/003_binary_asset_management.md).
@@ -10,6 +10,11 @@ loads it at runtime. `assets/manifest.json` is the hand-authored spec (placement
 (`id → assetId`) so the spec file is never machine-rewritten; `MeshSceneryService` merges the two
 and renders them.
 
+**Source formats.** The Open Cloud Assets API accepts `glb`/`gltf`/`fbx` for Models but **not
+`obj`**. So a `.glb` source is uploaded as-is, and a `.obj` source is **converted to a self-contained
+GLB** ([obj2gltf](https://github.com/CesiumGS/obj2gltf), npm) by `make assets-upload` before upload —
+the OBJ stays the editable source in git, the GLB is a throwaway upload artifact.
+
 This complements the code-built primitives in `SceneryService` (those need no upload). A mesh
 *supersedes* a primitive: when you ship a mesh for an id that `SceneryService` also builds, remove
 that id from `SceneryService` so the world isn't doubled up.
@@ -18,41 +23,56 @@ that id from `SceneryService` so the world isn't doubled up.
 
 ```
 assets/source/<AssetId>/
-  <AssetId>.glb       textured GLB, the source + upload artifact (Git LFS)
-  textures/*          only if textures aren't embedded in the GLB (Git LFS)
+  <AssetId>.glb       a GLB source (textured, self-contained) + upload artifact (Git LFS)
+   — or —
+  <AssetId>.obj       a Wavefront OBJ source, converted to GLB at upload (Git LFS)
+  <AssetId>.mtl       its material file (plain text, normal git — not LFS)
+  textures/*          OBJ texture maps, or GLB textures if not embedded (Git LFS)
 ```
 
-`<AssetId>` is the manifest `id` (PascalCase, e.g. `House`, `Airplane`). **GLB** is the format: it's
-self-contained (mesh + textures + materials in one binary), the standard output of most AI mesh
-tools, and natively accepted by the Open Cloud Assets API.
+`<AssetId>` is the manifest `id` (PascalCase, e.g. `House`, `Airplane`). Pick the format that matches
+your tool's output:
+
+- **GLB** — self-contained (mesh + textures + materials in one binary), the standard output of most
+  AI mesh tools, natively accepted by Open Cloud. Uploaded as-is.
+- **OBJ** — geometry `.obj` + materials `.mtl` + separate texture images. **Not** accepted by Open
+  Cloud, so `make assets-upload` converts it to a GLB first (`obj2gltf`). Keep the `.obj`, `.mtl`,
+  and textures together so the conversion resolves them.
 
 ## Authoring contract (for whoever generates the mesh, incl. another model/session)
 
-Produce a **Roblox-ready GLB**:
+Produce a **Roblox-ready** mesh (GLB or OBJ):
 
 - **Up axis Y, forward Z**; **1 unit = 1 stud** (apply scale/transforms before export).
 - **Origin at the model's base center** (so placement `offset` puts its feet on the ground).
-- **Textures embedded** in the GLB (or placed under `textures/`).
+- **Textures embedded** in the GLB, or — for OBJ — referenced by the `.mtl` with the image files
+  committed alongside (under the asset dir or `textures/`).
 - Reasonable tri budget; one logical object per asset.
 
-Then register/lock the entry in `assets/manifest.json`:
+Then register/lock the entry in `assets/manifest.json` (point `source` at the `.glb` or the `.obj`):
 
 ```jsonc
 {
   "id": "House",
-  "kind": "mesh",                       // "mesh" = uploaded GLB (this pipeline)
-  "source": "source/House/House.glb",   // relative to assets/
+  "kind": "mesh",                       // "mesh" = uploaded mesh (this pipeline)
+  "source": "source/House/House.glb",   // or "source/House/House.obj" — relative to assets/
   "zone": "Home",                       // resolves origin from Config.Zones
   "offset": [30, 0, -26],               // studs from the zone origin
   "rotationY": 0,
   "scale": 1,
+  "color": [222, 205, 170],             // optional flat rgb tint for a geometry-only mesh
   "displayName": "Influencer Mansion",
   "description": "Home lobby exterior."
 }
 ```
 
+`color` is optional — set it for meshes with **no embedded material/texture** (e.g. OBJ exports
+without an `.mtl`); `MeshSceneryService` tints every part of the loaded model with it. Omit it for
+textured GLBs so their materials show through.
+
 The asset id is **not** in the manifest — `make assets-upload` records it in `assets/asset-ids.json`.
-Commit the `.glb` (it goes to LFS automatically via `.gitattributes`).
+Commit the source (`.glb`, or `.obj` + `.mtl` + textures); binaries go to LFS automatically via
+`.gitattributes`.
 
 ## Uploading
 
@@ -64,10 +84,15 @@ make assets-upload                 # uploads mesh entries with no recorded asset
 make assets-upload ARGS=--force    # re-upload all mesh entries (new asset versions)
 ```
 
-`make assets-upload` reads the manifest and uploads each pending GLB directly to the **Open Cloud
-Assets API** (`POST /assets/v1/assets`, `assetType:"Model"`, MIME `model/gltf-binary`, via `curl` —
-rbxcloud's CLI is FBX-only), polls the operation to completion, writes the returned ids into
-`assets/asset-ids.json`, and prints a summary. Commit that file.
+`make assets-upload` reads the manifest and, for each pending entry, uploads the mesh directly to the
+**Open Cloud Assets API** (`POST /assets/v1/assets`, `assetType:"Model"`, MIME `model/gltf-binary`,
+via `curl` — rbxcloud's CLI is FBX-only), polls the operation to completion, writes the returned ids
+into `assets/asset-ids.json`, and prints a summary. Commit that file.
+
+A `.obj` source is **converted to a temporary GLB** with `npx --yes obj2gltf` first (so the upload is
+always a self-contained GLB); the temp file is discarded after upload. This needs **Node/npm** on
+`PATH` — `npx` fetches `obj2gltf` on first use (or `npm i -g obj2gltf` to pin it). GLB sources upload
+with no conversion and no Node requirement.
 
 Without the env vars it does nothing destructive — it reports the pending uploads and how to
 configure, then exits.
@@ -86,3 +111,5 @@ pending asset.
 git lfs install        # once per machine
 git lfs pull           # fetch the binary sources
 ```
+
+Uploading an OBJ source additionally needs **Node/npm** (for `obj2gltf`); GLB-only uploads don't.

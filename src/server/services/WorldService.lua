@@ -12,10 +12,11 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local WorldService = {}
 
--- Interaction anchors: name -> { offset from zone origin, prompt action/object text }.
+-- Interaction anchors: name -> { offset from zone origin, prompt action/object text }. Placed in
+-- the central plaza, just clear of the spawn, so they're reachable the moment the player lands.
 local HOME_INTERACTIONS = {
-	{ name = "Phone", offset = Vector3.new(-25, 2, -30), action = "Use", object = "Phone" },
-	{ name = "Computer", offset = Vector3.new(25, 2, -30), action = "Use", object = "Computer" },
+	{ name = "Phone", offset = Vector3.new(-12, 2, 8), action = "Use", object = "Phone" },
+	{ name = "Computer", offset = Vector3.new(12, 2, 8), action = "Use", object = "Computer" },
 }
 
 local function makePart(name: string, size: Vector3, position: Vector3, color: Color3, parent: Instance): Part
@@ -66,9 +67,15 @@ local function paintTerrain()
 	local T = Config.Terrain
 
 	local home = Config.Zones.Home
-	fillSlab(home, T.Home.Size, T.Home.Size, T.Home.Ground)
-	fillSlab(home, T.Home.Size, T.Home.MainRoadWidth, T.Home.Road) -- main street along X (E-W)
-	fillSlab(home, T.Home.RoadWidth, T.Home.Size, T.Home.Road) -- spur along Z (to the taxi)
+	local H = T.Home
+	-- Grass lot, then the grid's internal roads: an asphalt strip down each gap between squares
+	-- (two lines per axis at +/-RoadLine), spanning the full 3x3 grid.
+	fillSlab(home, H.Size, H.Size, H.Ground)
+	local gridLen = 2 * H.Pitch + H.CellSize -- outer edge to outer edge of the grid
+	for _, g in { -H.RoadLine, H.RoadLine } do
+		fillSlab(home + Vector3.new(g, 0, 0), H.RoadWidth, gridLen, H.Road) -- roads along Z
+		fillSlab(home + Vector3.new(0, 0, g), gridLen, H.RoadWidth, H.Road) -- roads along X
+	end
 
 	local airport = Config.Zones.Airport
 	fillSlab(airport, T.Airport.Size, T.Airport.Size, T.Airport.Ground)
@@ -79,39 +86,74 @@ local function paintTerrain()
 	fillSlab(waterCenter, T.Beach.Size, T.Beach.WaterDepth, T.Beach.Water)
 end
 
--- Concrete sidewalks flanking the main street and a driveway up to each house. House x-columns
--- mirror the mesh layout in assets/manifest.json (north row, south row) plus the primitive home.
-local function buildHomeStreet(home: Model, origin: Vector3)
+-- The grid's hardscape: concrete walkways flanking every internal road, the central plaza floor,
+-- and a driveway from each house out to the road it faces. Squares are addressed by their center
+-- (cx, cz) in {-Pitch, 0, Pitch}: (0,0) is the plaza, ParkCell stays grass, the other seven hold a
+-- house (the meshes in assets/manifest.json plus the primitive home in SceneryService).
+local PAVING = Color3.fromRGB(200, 200, 205)
+
+local function buildHomeGrid(home: Model, origin: Vector3)
 	local T = Config.Terrain.Home
-	local mainHalf = T.MainRoadWidth / 2
-	local color = Color3.fromRGB(200, 200, 205)
+	local gridLen = 2 * T.Pitch + T.CellSize
 
-	for _, sz in { -1, 1 } do
-		local z = sz * (mainHalf + T.SidewalkWidth / 2)
-		local walk = makePart(
-			"Sidewalk",
-			Vector3.new(T.Size, 0.3, T.SidewalkWidth),
-			origin + Vector3.new(0, 0.15, z),
-			color,
-			home
-		)
-		walk.Material = T.Sidewalk
-	end
-
-	local rows = {
-		{ sign = -1, xs = { -75, -25, 50 } }, -- north row (incl. the player's primitive home at x=50)
-		{ sign = 1, xs = { -75, -25, 25, 75 } }, -- south row
-	}
-	for _, row in rows do
-		local inner, outer = row.sign * mainHalf, row.sign * 35
-		for _, x in row.xs do
-			local drive = makePart(
-				"Driveway",
-				Vector3.new(T.DrivewayWidth, 0.3, math.abs(outer - inner)),
-				origin + Vector3.new(x, 0.12, (inner + outer) / 2),
-				color,
+	-- Walkways: a thin concrete strip on each side of every internal road.
+	local walkOffset = T.RoadWidth / 2 + T.WalkwayWidth / 2
+	for _, g in { -T.RoadLine, T.RoadLine } do
+		for _, side in { -1, 1 } do
+			local w = makePart(
+				"Walkway",
+				Vector3.new(T.WalkwayWidth, 0.3, gridLen),
+				origin + Vector3.new(g + side * walkOffset, 0.15, 0),
+				PAVING,
 				home
 			)
+			w.Material = T.Sidewalk
+			local h = makePart(
+				"Walkway",
+				Vector3.new(gridLen, 0.3, T.WalkwayWidth),
+				origin + Vector3.new(0, 0.15, g + side * walkOffset),
+				PAVING,
+				home
+			)
+			h.Material = T.Sidewalk
+		end
+	end
+
+	-- Plaza floor over the center square.
+	local plaza =
+		makePart("Plaza", Vector3.new(T.CellSize, 0.3, T.CellSize), origin + Vector3.new(0, 0.16, 0), PAVING, home)
+	plaza.Material = T.Sidewalk
+
+	-- One driveway per house square, running from the house out to its facing road. A square faces
+	-- along Z toward the plaza unless it is a side-column square (cz == 0), which faces along X.
+	local cells = { -T.Pitch, 0, T.Pitch }
+	for _, cx in cells do
+		for _, cz in cells do
+			local isCenter = cx == 0 and cz == 0
+			local isPark = cx == T.ParkCell.X and cz == T.ParkCell.Z
+			if isCenter or isPark then
+				continue
+			end
+			local drive
+			if cz ~= 0 then
+				local dir = if cz < 0 then 1 else -1 -- toward the plaza along Z
+				drive = makePart(
+					"Driveway",
+					Vector3.new(T.DrivewayWidth, 0.3, T.CellSize / 2),
+					origin + Vector3.new(cx, 0.12, cz + dir * T.CellSize / 4),
+					PAVING,
+					home
+				)
+			else
+				local dir = if cx < 0 then 1 else -1 -- toward the plaza along X
+				drive = makePart(
+					"Driveway",
+					Vector3.new(T.CellSize / 2, 0.3, T.DrivewayWidth),
+					origin + Vector3.new(cx + dir * T.CellSize / 4, 0.12, cz),
+					PAVING,
+					home
+				)
+			end
 			drive.Material = T.Driveway
 		end
 	end
@@ -159,7 +201,7 @@ function WorldService:Start()
 		addPrompt(part, def.name, def.action, def.object)
 	end
 
-	buildHomeStreet(home, origin)
+	buildHomeGrid(home, origin)
 
 	world.Parent = Workspace
 end

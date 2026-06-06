@@ -31,8 +31,8 @@ Config.ProfileTemplate = {
 -- boarding minigame runs).
 Config.Zones = {
 	Home = Vector3.new(0, 0, 0),
-	Airport = Vector3.new(0, 0, 200),
-	Beach = Vector3.new(0, 0, 400),
+	Airport = Vector3.new(0, 0, 240),
+	Beach = Vector3.new(0, 0, 440),
 } :: { [string]: Vector3 }
 
 -- Travel destinations selectable from the Cab picker. A place is travelable only if it is in
@@ -50,20 +50,29 @@ Config.Travel = {
 -- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't
 -- round-trip through Rojo, so the *generating values* live here and the world stays reproducible
 -- from src. Lots stay apart so zones don't become walkable-connected (which would bypass the travel
--- system): Home spans +/-100 from its origin and Airport (200 away) +/-60, leaving a ~40-stud void
+-- system): Home spans +/-125 from its origin and Airport (240 away) +/-60, leaving a ~55-stud void
 -- gap between them. The rendered top of each slab sits at the zone floor level (Y=0).
+--
+-- Home is a 3x3 neighborhood grid: nine CellSize squares on a Pitch (cell + road) lattice, so cell
+-- centers sit at (i-1)*Pitch for i in {0,1,2} = {-Pitch, 0, Pitch}. The center square is the spawn
+-- plaza; the eight surrounding squares hold one house each (one is left as a park, see ParkCell).
+-- Internal roads run along the gaps between squares (lines at +/-RoadLine on both axes); each house
+-- gets a driveway to its facing road and the rest of its square stays grass (the garden).
 Config.Terrain = {
 	Thickness = 8, -- vertical depth of each painted ground slab
 	Home = {
-		Size = 200, -- grassy lot, sized so the full-scale houses line a real street
+		Size = 250, -- grassy lot enclosing the 3x3 grid (+/-125) with a small margin
 		Ground = Enum.Material.Grass,
 		Road = Enum.Material.Asphalt,
-		RoadWidth = 24, -- the north-south spur (toward the taxi / travel)
-		MainRoadWidth = 40, -- the east-west street the neighborhood lines
 		Sidewalk = Enum.Material.Concrete,
-		SidewalkWidth = 10,
 		Driveway = Enum.Material.Concrete,
-		DrivewayWidth = 16,
+		CellSize = 60, -- side of each square lot
+		Pitch = 92, -- cell-center spacing (CellSize + the gap occupied by road + walkways)
+		RoadLine = 46, -- |coord| of the two internal roads per axis (the gaps between squares)
+		RoadWidth = 24, -- two-lane asphalt down the middle of each gap (cars pass both ways)
+		WalkwayWidth = 4, -- concrete walkway flanking each side of a road
+		DrivewayWidth = 10, -- carway from a house to its facing road
+		ParkCell = Vector3.new(0, 0, 92), -- the one perimeter square left as grass (no house)
 	},
 	Airport = {
 		Size = 120, -- tarmac apron

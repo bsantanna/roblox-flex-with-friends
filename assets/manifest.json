@@ -12,96 +12,96 @@
       "kind": "mesh",
       "source": "source/Neighbor01/Neighbor01.obj",
       "zone": "Home",
-      "offset": [-75, 0, -55],
+      "offset": [-92, 0, -92],
       "rotationY": 0,
       "scale": 22,
       "color": [222, 205, 170],
       "displayName": "Neighbor House 1",
-      "description": "Suburban neighbor home (north row, west)."
+      "description": "Suburban neighbor home (NW square, faces the plaza)."
     },
     {
       "id": "Neighbor02",
       "kind": "mesh",
       "source": "source/Neighbor02/Neighbor02.obj",
       "zone": "Home",
-      "offset": [-25, 0, -55],
+      "offset": [92, 0, -92],
       "rotationY": 0,
       "scale": 22,
       "color": [180, 196, 210],
       "displayName": "Neighbor House 2",
-      "description": "Suburban neighbor home (north row, center)."
+      "description": "Suburban neighbor home (NE square, faces the plaza)."
     },
     {
       "id": "Neighbor03",
       "kind": "mesh",
       "source": "source/Neighbor03/Neighbor03.obj",
       "zone": "Home",
-      "offset": [-75, 0, 55],
-      "rotationY": 180,
+      "offset": [-92, 0, 0],
+      "rotationY": 90,
       "scale": 22,
       "color": [200, 150, 120],
       "displayName": "Neighbor House 3",
-      "description": "Suburban neighbor home (south row, west)."
+      "description": "Suburban neighbor home (W square, faces the plaza)."
     },
     {
       "id": "Neighbor04",
       "kind": "mesh",
       "source": "source/Neighbor04/Neighbor04.obj",
       "zone": "Home",
-      "offset": [-25, 0, 55],
-      "rotationY": 180,
+      "offset": [92, 0, 0],
+      "rotationY": 270,
       "scale": 22,
       "color": [180, 196, 160],
       "displayName": "Neighbor House 4",
-      "description": "Suburban neighbor home (south row, center-west)."
+      "description": "Suburban neighbor home (E square, faces the plaza)."
     },
     {
       "id": "Neighbor05",
       "kind": "mesh",
       "source": "source/Neighbor05/Neighbor05.obj",
       "zone": "Home",
-      "offset": [25, 0, 55],
+      "offset": [-92, 0, 92],
       "rotationY": 180,
       "scale": 22,
       "color": [235, 228, 205],
       "displayName": "Neighbor House 5",
-      "description": "Suburban neighbor home (south row, center-east)."
+      "description": "Suburban neighbor home (SW square, faces the plaza)."
     },
     {
       "id": "Neighbor06",
       "kind": "mesh",
       "source": "source/Neighbor06/Neighbor06.obj",
       "zone": "Home",
-      "offset": [75, 0, 55],
+      "offset": [92, 0, 92],
       "rotationY": 180,
       "scale": 22,
       "color": [205, 175, 180],
       "displayName": "Neighbor House 6",
-      "description": "Suburban neighbor home (south row, east)."
+      "description": "Suburban neighbor home (SE square, faces the plaza)."
     },
     {
       "id": "Car01",
       "kind": "mesh",
       "source": "source/Car01/Car01.obj",
       "zone": "Home",
-      "offset": [-50, 0, 8],
-      "rotationY": 90,
+      "offset": [52, 0, 8],
+      "rotationY": 0,
       "scale": 12,
       "color": [180, 40, 40],
       "displayName": "Parked Car",
-      "description": "Car on the Home main (east-west) road."
+      "description": "Car in the east-road's outer lane, by the plaza."
     },
     {
       "id": "Cab01",
       "kind": "mesh",
       "source": "source/Cab01/Cab01.obj",
       "zone": "Home",
-      "offset": [8, 0, -45],
+      "offset": [-52, 0, -8],
       "rotationY": 0,
       "scale": 12,
       "color": [240, 200, 40],
       "displayName": "Taxi Cab",
-      "description": "Taxi on the Home cross (north-south) road."
+      "description": "Taxi waiting in the west-road's outer lane, by the plaza."
     }
   ]
 }

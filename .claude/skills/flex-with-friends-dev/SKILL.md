@@ -7,17 +7,37 @@ description: >-
   wiring RemoteEvents, persisting player data, awarding or deducting followers/reputation,
   unlocking places or NPCs, generating 3D models/environments/props, running the quality gates
   (make ci/fmt/lint/analyze/build), starting a new phase or goal, or deciding where a file belongs.
+  Critically, use it for any work that places, moves, sizes, rotates, or arranges things in the 3D
+  world — building roads/decks/ramps/structures, positioning props or spawns, generating models,
+  laying out a scene — where correctness is spatial and must be verified by simulating in Roblox
+  Studio (screen captures, camera framing, walking the character), never judged from the code alone.
   Apply it even when the user doesn't name it, e.g. "add a photo system", "implement the travel
   minigame", "why won't analyze pass", "add a new place", "persist this value", "run the checks",
-  "generate a model for the lobby".
+  "generate a model for the lobby", "the road looks off", "this part is floating", "fix the
+  placement", "why is the ramp clipping".
 ---
 
 # Flex-with-Friends — engineering conventions
 
 Flex-with-Friends is a multiplayer Roblox "influencer simulator". The codebase is authored on
 disk in **Luau** and synced to Studio with **Rojo**; dependencies are managed by **Wally**; the
-toolchain is pinned by **Rokit**. Studio is used for assets and runtime testing, not as the source
-of truth — the source of truth is `src/` + `default.project.json` in git.
+toolchain is pinned by **Rokit**. The source of truth is `src/` + `default.project.json` in git —
+not the Studio place file.
+
+But this is a **3D game**, and that changes what "correct" means. Two different things have to be
+true, and they're verified in two different ways:
+
+- **Logic correctness** — does the service award the right followers, persist the right data, gate
+  the right unlock? You verify this by reading code, `make analyze`, and `execute_luau`.
+- **Spatial correctness** — does the road actually rest on the terrain, do the guardrails line up,
+  is the ramp walkable, does the view deck overlook the water instead of clipping a mountain, is
+  anything floating, sunk, rotated, or overlapping? **Code cannot tell you this.** A CFrame, an
+  offset, a size — they all type-check perfectly while producing geometry that's visibly wrong in
+  3D. The only way to know is to *look*: open Studio, position the camera, and capture the scene.
+
+So Studio is not just "where assets and runtime tests happen" — for anything you place in the
+world, it is the instrument you verify with. **Never sign off on spatial work from code alone.**
+See [Seeing the scene](#seeing-the-scene-spatial-verification) below.
 
 This skill is the fast path. For depth, read the reference files when the task calls for it:
 
@@ -48,7 +68,13 @@ they're not bureaucracy, they prevent specific failure modes.
 5. **Surgical, simple changes.** Match the surrounding style; touch only what the task needs; no
    speculative abstractions or config that wasn't asked for. This repo follows the guidelines in
    `.claude/CLAUDE.md` — read them once if you haven't. When a 200-line approach could be 50, write 50.
-6. **One phase-step per commit, each independently verifiable.** Branch off `main` before
+6. **Verify spatial work by looking, never by reasoning about the numbers.** Anything you place,
+   move, size, or rotate in the 3D world is unverified until you've seen it in Studio. The math can
+   be "obviously right" and the result still floats, clips, or faces the wrong way — offsets compound,
+   CFrame rotations apply in an order you didn't expect, the terrain isn't where you assumed. Don't
+   talk yourself into "this should be correct"; capture the scene and check. This is the rule people
+   skip because reading code feels faster — and it's why placement bugs ship.
+7. **One phase-step per commit, each independently verifiable.** Branch off `main` before
    committing (e.g. `phase-1-data-persistence`). Commit messages end with the project's
    `Co-Authored-By` trailer.
 
@@ -115,7 +141,7 @@ server events — they never decide rewards.
 1. Branch off main                          (phase-N-... or a task name)
 2. Implement the smallest verifiable step   (one service / one feature slice)
 3. make ci                                  -> fmt-check, lint, analyze, build all green
-4. Runtime-verify in Studio                 (see below — a green build does NOT prove it runs)
+4. Verify in Studio                         (logic: does it run? spatial: does it look right? — see below)
 5. Commit (one step, Co-Authored-By trailer)
 6. Repeat for the next step
 ```
@@ -147,7 +173,7 @@ export PATH="$HOME/.rokit/bin:$PATH" && make ci
 | `make serve` | Live-sync to Studio during development (`rojo serve`). |
 | `make clean` | Remove generated artifacts. |
 
-## Verifying that code actually runs
+## Verifying that logic actually runs
 
 **Rojo only packages Luau — it does not compile it**, so `make build` passing does *not* prove your
 scripts run or even parse at runtime. Two complementary checks:
@@ -160,6 +186,47 @@ scripts run or even parse at runtime. Two complementary checks:
   the executed code *return* its evidence. See `references/lifecycle.md` for the pattern used to
   verify the bootstrapper.
 
+That covers *logic*. Anything that occupies space in the world also needs spatial verification:
+
+## Seeing the scene: spatial verification
+
+When you build or move geometry — roads, decks, ramps, guardrails, NPC spawns, props, a whole
+island ring like `IslandService` — the question "is it right?" is a question about a 3D scene, and
+you answer it by **looking at the scene**, not by re-reading the CFrame math. Treat this as a tight
+visual loop, the same way you'd treat a failing test:
+
+```
+1. Run the placement (execute_luau: require the service, call its build fn)
+2. Point the camera at what you changed, capture it (screen_capture)
+3. Compare against the intent — alignment, scale, gaps, clipping, orientation
+4. Adjust the tunable in Config (offsets/sizes live there, rule 3), re-run
+5. Repeat until the picture matches the intent
+```
+
+The Studio MCP gives you everything this loop needs:
+
+- **`screen_capture`** — the core instrument. It returns an actual image of the viewport, so you
+  *see* the result instead of imagining it. One angle is never enough — geometry that floats or
+  clips often hides behind other parts. Take at least: a **top-down** shot (judges layout,
+  alignment, spacing, symmetry) and an **eye-level** shot (judges scale, sightlines, whether a
+  human-sized player reads the space as intended). Add **close-ups at the seams** — where a ramp
+  meets the road, a guardrail meets a deck, a slip-road merges — because that's where offset errors
+  show up first.
+- **Camera control** — set `workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable` then
+  its `.CFrame = CFrame.lookAt(eye, target)` via `execute_luau`, *then* `screen_capture`. Frame the
+  exact thing you changed; don't capture whatever the camera happened to be showing.
+- **`character_navigation`** — walk the player character through the space to check it from the
+  player's point of view and to test that ramps are actually walkable, gaps aren't fall-throughs,
+  and decks are reachable. Spatial correctness includes *traversability*, which a screenshot alone
+  won't prove.
+- **`inspect_instance` / `search_game_tree`** — read back the real positions and sizes as a
+  numeric cross-check when a screenshot is ambiguous (e.g. confirm two parts share an edge). Use it
+  to *confirm* what you see, not as a substitute for seeing.
+
+If the studio isn't connected, `list_roblox_studios` / `set_active_studio` get you a session. Don't
+report spatial work as done on the strength of the code — report it with the screenshot that shows
+it's right.
+
 ## 3D assets
 
 Default to **GenAI ProceduralModels** for any 3D asset (environments, props, characters, vehicles).
@@ -170,6 +237,11 @@ than an opaque binary blob. Reach for `generate_mesh` only when primitives can't
 `generate_material` for surfacing, and the Creator Store as a fallback. Record each model's prompt +
 attribute defaults under `assets/` (code/place stays the source of truth; assets are referenced by
 name/id). Detail in `references/architecture.md`.
+
+Generation is *where spatial correctness bites hardest* — a model can come back the wrong scale,
+mis-proportioned, or oriented oddly, and the attribute values won't tell you. After generating (and
+after tuning attributes), capture it in Studio per [Seeing the scene](#seeing-the-scene-spatial-verification)
+before considering it placed.
 
 ## Common gotcha: analyze fails on a dynamic `require`
 

@@ -31,8 +31,8 @@ Config.ProfileTemplate = {
 -- boarding minigame runs).
 Config.Zones = {
 	Home = Vector3.new(0, 0, 0),
-	Airport = Vector3.new(0, 0, 240),
-	Beach = Vector3.new(0, 0, 440),
+	Airport = Vector3.new(0, 0, 560),
+	Beach = Vector3.new(0, 0, 760),
 } :: { [string]: Vector3 }
 
 -- Travel destinations selectable from the Cab picker. A place is travelable only if it is in
@@ -50,18 +50,23 @@ Config.Travel = {
 -- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't
 -- round-trip through Rojo, so the *generating values* live here and the world stays reproducible
 -- from src. Lots stay apart so zones don't become walkable-connected (which would bypass the travel
--- system): Home spans +/-125 from its origin and Airport (240 away) +/-60, leaving a ~55-stud void
--- gap between them. The rendered top of each slab sits at the zone floor level (Y=0).
+-- system): the Home neighborhood (streets at +/-155) sits on a grass island ringed by a water moat
+-- and then a sheer ~100-stud rock mountain (Ring, below) that reaches out to ~+/-420 and walls the
+-- town in. Airport (560 away) +/-60 clears the mountain. The rendered top of each slab sits at the
+-- zone floor level (Y=0).
 --
 -- Home is a 3x3 neighborhood grid: nine CellSize squares on a Pitch (cell + road) lattice, so cell
 -- centers sit at (i-1)*Pitch for i in {0,1,2} = {-Pitch, 0, Pitch}. The center square is the spawn
 -- plaza; the eight surrounding squares hold one house each (one is left as a park, see ParkCell).
--- Internal roads run along the gaps between squares (lines at +/-RoadLine on both axes); each house
--- gets a driveway to its facing road and the rest of its square stays grass (the garden).
+-- Roads run along the gaps between squares (lines at +/-RoadLine on both axes) and around the
+-- outside (lines at +/-PerimeterLine), so the streets form a closed grid with no dead ends and cars
+-- can drive a full loop. Each house gets a driveway to its facing inner road and the rest of its
+-- square stays grass (the garden). Ring describes the island/moat/mountain and the elevated oval
+-- highway that circles the town (built by WorldService terrain + IslandService parts).
 Config.Terrain = {
 	Thickness = 8, -- vertical depth of each painted ground slab
 	Home = {
-		Size = 250, -- grassy lot enclosing the 3x3 grid (+/-125) with a small margin
+		Size = 310, -- grassy lot enclosing the grid + perimeter loop (+/-155) with a small margin
 		Ground = Enum.Material.Grass,
 		Road = Enum.Material.Asphalt,
 		Sidewalk = Enum.Material.Concrete,
@@ -69,10 +74,36 @@ Config.Terrain = {
 		CellSize = 60, -- side of each square lot
 		Pitch = 92, -- cell-center spacing (CellSize + the gap occupied by road + walkways)
 		RoadLine = 46, -- |coord| of the two internal roads per axis (the gaps between squares)
+		PerimeterLine = 138, -- |coord| of the outer loop road that closes the grid (no dead ends)
 		RoadWidth = 24, -- two-lane asphalt down the middle of each gap (cars pass both ways)
 		WalkwayWidth = 4, -- concrete walkway flanking each side of a road
 		DrivewayWidth = 10, -- carway from a house to its facing road
 		ParkCell = Vector3.new(0, 0, 92), -- the one perimeter square left as grass (no house)
+		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z):
+		-- grass Plateau -> water Moat -> sheer rock Mountain, with an elevated Oval highway looping
+		-- over the moat and joined to the perimeter loop by ramps. Moat inner = Plateau; Moat outer
+		-- = Plateau + Moat.Width; Mountain inner = Moat outer; Oval sits mid-moat. Sizes in studs.
+		Ring = {
+			Plateau = { Ax = 250, Az = 225 }, -- grass island bounding ellipse (contains the town)
+			Moat = { Width = 90, Depth = 45, Material = Enum.Material.Water },
+			Mountain = { Width = 90, Height = 100, Material = Enum.Material.Rock }, -- sheer = unclimbable
+			Oval = {
+				Ax = 295, -- elevated highway ellipse (mid-moat)
+				Az = 270,
+				Y = 20, -- elevation above ground
+				Width = 24, -- two-lane road, matches the streets
+				Thickness = 1,
+				Segments = 72, -- chord segments approximating the ellipse
+				PillarEvery = 6, -- a support pillar every Nth segment
+				PillarDiameter = 6,
+				Ramps = 8, -- ground-to-oval links: 4 sides + 4 corners
+				WalkwayWidth = 8, -- wood-deck pedestrian walkway flanking each side of the road
+				GuardrailHeight = 9, -- taller than a player + jump apex, so nobody jumps off the deck
+				GuardrailThickness = 0.5,
+				ViewDeckEvery = 9, -- a panoramic view deck every Nth segment (9 -> one per 45 degrees)
+				ViewDeckDepth = 16, -- how far each view deck juts out past the outer guardrail
+			},
+		},
 	},
 	Airport = {
 		Size = 120, -- tarmac apron

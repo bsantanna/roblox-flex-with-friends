@@ -61,6 +61,31 @@ local function fillSlab(origin: Vector3, sizeX: number, sizeZ: number, material:
 	Terrain:FillBlock(CFrame.new(origin.X, top - t / 2, origin.Z), Vector3.new(sizeX, t, sizeZ), material)
 end
 
+-- Paint an elliptical band by sweeping overlapping rotated boxes around the ellipse (a=X, b=Z
+-- semi-axes of the band's mid-line). `radialLen` is each box's thickness across the band (use a bit
+-- more than the band width so neighbours overlap and there are no gaps; overshoot is overwritten by
+-- later fills). The band's rendered surface sits at `surfaceTop`, filled `height` studs downward.
+local RING_STEPS = 90
+local function fillEllipseRing(
+	center: Vector3,
+	a: number,
+	b: number,
+	radialLen: number,
+	surfaceTop: number,
+	height: number,
+	material: Enum.Material
+)
+	local fillTop = surfaceTop - SURFACE_SKIN
+	local tangential = (2 * math.pi * math.max(a, b)) / RING_STEPS + 24 -- arc chord + overlap
+	for i = 0, RING_STEPS - 1 do
+		local t = (i / RING_STEPS) * 2 * math.pi
+		local cx, cz = a * math.cos(t), b * math.sin(t)
+		local ang = math.atan2(cz, cx)
+		local cf = CFrame.new(center.X + cx, fillTop - height / 2, center.Z + cz) * CFrame.Angles(0, -ang, 0)
+		Terrain:FillBlock(cf, Vector3.new(radialLen, height, tangential), material)
+	end
+end
+
 -- Landscaping ground per zone (Config.Terrain). Complements the greybox floors; buildings/props
 -- are layered on top later. Roads/water overwrite the ground voxels where they overlap.
 local function paintTerrain()
@@ -68,14 +93,41 @@ local function paintTerrain()
 
 	local home = Config.Zones.Home
 	local H = T.Home
-	-- Grass lot, then the grid's internal roads: an asphalt strip down each gap between squares
-	-- (two lines per axis at +/-RoadLine), spanning the full 3x3 grid.
-	fillSlab(home, H.Size, H.Size, H.Ground)
-	local gridLen = 2 * H.Pitch + H.CellSize -- outer edge to outer edge of the grid
-	for _, g in { -H.RoadLine, H.RoadLine } do
-		fillSlab(home + Vector3.new(g, 0, 0), H.RoadWidth, gridLen, H.Road) -- roads along Z
-		fillSlab(home + Vector3.new(0, 0, g), gridLen, H.RoadWidth, H.Road) -- roads along X
+	local R = H.Ring
+	-- The grass island (plateau), then the street grid on top, then the surrounding moat and
+	-- mountain. Order matters: each layer overwrites grass where it overlaps.
+	-- 1) Grass plateau, sized to the plateau ellipse's bounding box (the moat carves it elliptical).
+	fillSlab(home, 2 * R.Plateau.Ax, 2 * R.Plateau.Az, H.Ground)
+	-- 2) Street grid: an asphalt strip down each gap between squares (lines at +/-RoadLine) plus the
+	-- outer loop (lines at +/-PerimeterLine). Each strip spans the full grid so they meet at every
+	-- crossing -> a closed loop with no dead ends.
+	local span = 2 * H.PerimeterLine + H.RoadWidth -- reaches corner to corner of the perimeter loop
+	for _, g in { -H.PerimeterLine, -H.RoadLine, H.RoadLine, H.PerimeterLine } do
+		fillSlab(home + Vector3.new(g, 0, 0), H.RoadWidth, span, H.Road) -- roads along Z
+		fillSlab(home + Vector3.new(0, 0, g), span, H.RoadWidth, H.Road) -- roads along X
 	end
+	-- 3) Water moat: an elliptical ring just outside the plateau (surface at ground level).
+	local moatAx, moatAz = R.Plateau.Ax + R.Moat.Width, R.Plateau.Az + R.Moat.Width
+	fillEllipseRing(
+		home,
+		(R.Plateau.Ax + moatAx) / 2,
+		(R.Plateau.Az + moatAz) / 2,
+		R.Moat.Width + 40,
+		0,
+		R.Moat.Depth,
+		R.Moat.Material
+	)
+	-- 4) Mountain: a sheer rock ring outside the moat, rising Mountain.Height studs (vertical = unclimbable).
+	local mtnAx, mtnAz = moatAx + R.Mountain.Width, moatAz + R.Mountain.Width
+	fillEllipseRing(
+		home,
+		(moatAx + mtnAx) / 2,
+		(moatAz + mtnAz) / 2,
+		R.Mountain.Width + 40,
+		R.Mountain.Height,
+		R.Mountain.Height,
+		R.Mountain.Material
+	)
 
 	local airport = Config.Zones.Airport
 	fillSlab(airport, T.Airport.Size, T.Airport.Size, T.Airport.Ground)
@@ -86,23 +138,23 @@ local function paintTerrain()
 	fillSlab(waterCenter, T.Beach.Size, T.Beach.WaterDepth, T.Beach.Water)
 end
 
--- The grid's hardscape: concrete walkways flanking every internal road, the central plaza floor,
--- and a driveway from each house out to the road it faces. Squares are addressed by their center
+-- The grid's hardscape: concrete walkways flanking every road (inner gaps + the perimeter loop),
+-- the central plaza floor, and a driveway from each house to the road it faces. Squares are by center
 -- (cx, cz) in {-Pitch, 0, Pitch}: (0,0) is the plaza, ParkCell stays grass, the other seven hold a
 -- house (the meshes in assets/manifest.json plus the primitive home in SceneryService).
 local PAVING = Color3.fromRGB(200, 200, 205)
 
 local function buildHomeGrid(home: Model, origin: Vector3)
 	local T = Config.Terrain.Home
-	local gridLen = 2 * T.Pitch + T.CellSize
+	local span = 2 * T.PerimeterLine + T.RoadWidth
 
-	-- Walkways: a thin concrete strip on each side of every internal road.
+	-- Walkways: a thin concrete strip on each side of every road (inner gaps + the perimeter loop).
 	local walkOffset = T.RoadWidth / 2 + T.WalkwayWidth / 2
-	for _, g in { -T.RoadLine, T.RoadLine } do
+	for _, g in { -T.PerimeterLine, -T.RoadLine, T.RoadLine, T.PerimeterLine } do
 		for _, side in { -1, 1 } do
 			local w = makePart(
 				"Walkway",
-				Vector3.new(T.WalkwayWidth, 0.3, gridLen),
+				Vector3.new(T.WalkwayWidth, 0.3, span),
 				origin + Vector3.new(g + side * walkOffset, 0.15, 0),
 				PAVING,
 				home
@@ -110,7 +162,7 @@ local function buildHomeGrid(home: Model, origin: Vector3)
 			w.Material = T.Sidewalk
 			local h = makePart(
 				"Walkway",
-				Vector3.new(gridLen, 0.3, T.WalkwayWidth),
+				Vector3.new(span, 0.3, T.WalkwayWidth),
 				origin + Vector3.new(0, 0.15, g + side * walkOffset),
 				PAVING,
 				home

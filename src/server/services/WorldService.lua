@@ -94,11 +94,12 @@ local function paintTerrain()
 	local home = Config.Zones.Home
 	local H = T.Home
 	local R = H.Ring
-	-- The grass island (plateau), then the surrounding moat and mountain. RoadService lays the street
-	-- grid as parts on top. Order matters: each layer overwrites grass where it overlaps.
-	-- 1) Grass plateau, sized to the plateau ellipse's bounding box (the moat carves it elliptical).
+	-- The grass island (plateau), then the surrounding lake. RoadService lays the street grid as parts
+	-- on top. Order matters: each layer overwrites grass where it overlaps.
+	-- 1) Grass plateau, sized to the plateau ellipse's bounding box (the lake carves it elliptical).
 	fillSlab(home, 2 * R.Plateau.Ax, 2 * R.Plateau.Az, H.Ground)
-	-- 2) Water moat: an elliptical ring just outside the plateau (surface at ground level).
+	-- 2) Lake: a wide elliptical water ring around the plateau (surface at ground level). Airport and
+	-- Beach sit in it as their own islands (their slabs, painted below, overwrite the water locally).
 	local moatAx, moatAz = R.Plateau.Ax + R.Moat.Width, R.Plateau.Az + R.Moat.Width
 	fillEllipseRing(
 		home,
@@ -108,17 +109,6 @@ local function paintTerrain()
 		0,
 		R.Moat.Depth,
 		R.Moat.Material
-	)
-	-- 3) Mountain: a sheer rock ring outside the moat, rising Mountain.Height studs (vertical = unclimbable).
-	local mtnAx, mtnAz = moatAx + R.Mountain.Width, moatAz + R.Mountain.Width
-	fillEllipseRing(
-		home,
-		(moatAx + mtnAx) / 2,
-		(moatAz + mtnAz) / 2,
-		R.Mountain.Width + 40,
-		R.Mountain.Height,
-		R.Mountain.Height,
-		R.Mountain.Material
 	)
 
 	local airport = Config.Zones.Airport

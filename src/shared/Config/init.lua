@@ -77,14 +77,13 @@ Config.Terrain = {
 		RoadWidth = 24, -- two-lane asphalt down the middle of each gap (cars pass both ways)
 		DrivewayWidth = 10, -- carway from a house to its facing road
 		ParkCell = Vector3.new(0, 0, 92), -- the one perimeter square left as grass (no house)
-		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z):
-		-- grass Plateau -> water Moat -> sheer rock Mountain, with an elevated Oval highway looping
-		-- over the moat and joined to the perimeter loop by ramps. Moat inner = Plateau; Moat outer
-		-- = Plateau + Moat.Width; Mountain inner = Moat outer; Oval sits mid-moat. Sizes in studs.
+		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z): a grass
+		-- Plateau in a wide water lake, with an elevated Oval highway hugging the island and joined to
+		-- the perimeter loop by ramps. Lake inner = Plateau, outer = Plateau + Moat.Width; Airport and
+		-- Beach sit in the lake as their own islands. Sizes in studs.
 		Ring = {
 			Plateau = { Ax = 250, Az = 225 }, -- grass island bounding ellipse (contains the town)
-			Moat = { Width = 1000, Depth = 45, Material = Enum.Material.Water }, -- ~1km lake to the mountains
-			Mountain = { Width = 90, Height = 100, Material = Enum.Material.Rock }, -- sheer = unclimbable
+			Moat = { Width = 2000, Depth = 45, Material = Enum.Material.Water }, -- ~2km lake (room for future islands)
 			Oval = {
 				Ax = 315, -- elevated highway ellipse (hugs the island, clearing the wide decks)
 				Az = 290,

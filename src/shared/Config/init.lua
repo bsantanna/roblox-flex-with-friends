@@ -83,11 +83,11 @@ Config.Terrain = {
 		-- = Plateau + Moat.Width; Mountain inner = Moat outer; Oval sits mid-moat. Sizes in studs.
 		Ring = {
 			Plateau = { Ax = 250, Az = 225 }, -- grass island bounding ellipse (contains the town)
-			Moat = { Width = 90, Depth = 45, Material = Enum.Material.Water },
+			Moat = { Width = 1000, Depth = 45, Material = Enum.Material.Water }, -- ~1km lake to the mountains
 			Mountain = { Width = 90, Height = 100, Material = Enum.Material.Rock }, -- sheer = unclimbable
 			Oval = {
-				Ax = 295, -- elevated highway ellipse (mid-moat)
-				Az = 270,
+				Ax = 315, -- elevated highway ellipse (hugs the island, clearing the wide decks)
+				Az = 290,
 				Y = 20, -- elevation above ground
 				Width = 24, -- two-lane road, matches the streets
 				Thickness = 1,
@@ -95,7 +95,7 @@ Config.Terrain = {
 				PillarEvery = 6, -- a support pillar every Nth segment
 				PillarDiameter = 6,
 				Ramps = 8, -- ground-to-oval links: 4 sides + 4 corners
-				WalkwayWidth = 8, -- wood-deck pedestrian walkway flanking each side of the road
+				WalkwayWidth = 30, -- wide wood-deck promenade flanking each side (room for buildings)
 				GuardrailHeight = 9, -- taller than a player + jump apex, so nobody jumps off the deck
 				GuardrailThickness = 0.5,
 				ViewDeckEvery = 9, -- a panoramic view deck every Nth segment (9 -> one per 45 degrees)

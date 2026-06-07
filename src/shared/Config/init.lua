@@ -68,7 +68,6 @@ Config.Terrain = {
 	Home = {
 		Size = 310, -- grassy lot enclosing the grid + perimeter loop (+/-155) with a small margin
 		Ground = Enum.Material.Grass,
-		Road = Enum.Material.Asphalt,
 		Sidewalk = Enum.Material.Concrete,
 		Driveway = Enum.Material.Concrete,
 		CellSize = 60, -- side of each square lot
@@ -76,7 +75,6 @@ Config.Terrain = {
 		RoadLine = 46, -- |coord| of the two internal roads per axis (the gaps between squares)
 		PerimeterLine = 138, -- |coord| of the outer loop road that closes the grid (no dead ends)
 		RoadWidth = 24, -- two-lane asphalt down the middle of each gap (cars pass both ways)
-		WalkwayWidth = 4, -- concrete walkway flanking each side of a road
 		DrivewayWidth = 10, -- carway from a house to its facing road
 		ParkCell = Vector3.new(0, 0, 92), -- the one perimeter square left as grass (no house)
 		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z):
@@ -115,6 +113,20 @@ Config.Terrain = {
 		Water = Enum.Material.Water,
 		WaterDepth = 60,
 	},
+}
+
+-- Ground road network (RoadService lays these parts over the grass). The lane geometry derives from
+-- the grid lines in Config.Terrain.Home (RoadLine / PerimeterLine / RoadWidth); these are the visual
+-- tunables: how thick the asphalt sits over the grass, how much each junction rounds its corners, and
+-- the lane-marking / curb dimensions.
+Config.Roads = {
+	Thickness = 0.4, -- asphalt slab height above the grass surface (Y=0)
+	Fillet = 4, -- extra radius at each junction so corners curve instead of meeting square
+	LaneLineWidth = 0.7, -- width of the dashed centre line
+	DashLength = 9, -- length of each centre-line dash
+	DashGap = 9, -- gap between dashes
+	CurbWidth = 3, -- concrete curb flanking each road edge
+	CurbHeight = 0.6, -- low enough to step/drive over, high enough to read as a curb
 }
 
 Config.Photo = {

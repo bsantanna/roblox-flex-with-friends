@@ -126,6 +126,15 @@ local function buildViewDeck(parent: Instance, seg: CFrame, length: number, O: a
 	)
 end
 
+-- A segment whose inner edge a ramp merges onto: the inner guardrail must open there so cars can
+-- drive off the ramp onto the highway. Ramp k lands at the vertex starting segment k*ratio, so the
+-- gap straddles that vertex -> open the landing segment and the one before it.
+local function isRampGap(i: number, O: any): boolean
+	local ratio = O.Segments / O.Ramps
+	local m = i % ratio
+	return m == 0 or m == ratio - 1
+end
+
 -- The high-line deck: per chord segment, a road + dashed lane line + wood walkways + edge guardrails,
 -- with view decks replacing the outer guardrail every ViewDeckEvery segments, and periodic pillars.
 local function buildOval(parent: Instance, origin: Vector3, O: any)
@@ -155,8 +164,12 @@ local function buildOval(parent: Instance, origin: Vector3, O: any)
 			)
 		end
 
-		-- Wood-deck walkways on both sides.
+		-- Wood-deck walkways on both sides; the inner one opens where a ramp merges (like the inner
+		-- guardrail) so it doesn't cut across the driveable landing.
 		for _, sx in { -1, 1 } do
+			if sx == -1 and isRampGap(i, O) then
+				continue
+			end
 			addPart(
 				parent,
 				"Walkway",
@@ -167,8 +180,11 @@ local function buildOval(parent: Instance, origin: Vector3, O: any)
 			)
 		end
 
-		-- Inner guardrail always; outer guardrail unless this is a view-deck segment.
-		guardrail(parent, seg, -edge, length, O, diag)
+		-- Inner guardrail except where a ramp merges on (there it must open); outer guardrail unless
+		-- this is a view-deck segment.
+		if not isRampGap(i, O) then
+			guardrail(parent, seg, -edge, length, O, diag)
+		end
 		if i % O.ViewDeckEvery == 0 then
 			buildViewDeck(parent, seg, length, O, edge)
 		else
@@ -203,20 +219,75 @@ local function buildRamps(parent: Instance, origin: Vector3, O: any, perimeterEd
 		-- Exit point where the ray hits the square perimeter, at ground level.
 		local rEdge = perimeterEdge / math.max(math.abs(c), math.abs(s))
 		local p0 = origin + Vector3.new(rEdge * c, 0, rEdge * s)
-		-- Landing point on the oval ellipse in the same direction, at deck height.
+		-- Road-centre landing point on the oval ellipse in the same direction, at deck height.
 		local rOval = 1 / math.sqrt((c / O.Ax) ^ 2 + (s / O.Az) ^ 2)
-		local p1 = origin + Vector3.new(rOval * c, O.Y, rOval * s)
-		local len = (p1 - p0).Magnitude
-		-- lookAt puts the local -Z (and so the length axis) along the slope from p0 to p1.
-		local rampCF = CFrame.lookAt((p0 + p1) / 2, p1)
-		addPart(parent, "Ramp", rampCF, Vector3.new(width, O.Thickness, len), ROAD, Enum.Material.Asphalt)
+		local pLand = origin + Vector3.new(rOval * c, O.Y, rOval * s)
+		-- The sloped ramp climbs only to pTop -- one landing-radius short of the road centre but already
+		-- at deck height -- and a flat landing carries the rest of the turn onto the highway. Because the
+		-- slope ends exactly where the flat landing begins (both at O.Y), the surfaces meet flush: the
+		-- old design ran the slope to the centre and dropped a flat disc on top of the still-rising ramp,
+		-- leaving a ledge a car couldn't climb.
+		local landingRadius = width / 2 + 6
+		local inward = Vector3.new(c, 0, s) * landingRadius
+		local pTop = pLand - inward
+		local rampLen = (pTop - p0).Magnitude
+		-- lookAt puts the local -Z (and so the length axis) along the slope from p0 to pTop.
+		local rampCF = CFrame.lookAt((p0 + pTop) / 2, pTop)
+		addPart(parent, "Ramp", rampCF, Vector3.new(width, O.Thickness, rampLen), ROAD, Enum.Material.Asphalt)
+		-- Flat landing, flush with the oval road (same Y + thickness): a radial connector the width of
+		-- the ramp from pTop to the road centre, plus a disc that rounds the turn onto the curving road.
+		addPart(
+			parent,
+			"RampLanding",
+			CFrame.lookAt((pTop + pLand) / 2, pLand),
+			Vector3.new(width, O.Thickness, landingRadius),
+			ROAD,
+			Enum.Material.Asphalt
+		)
+		addPart(
+			parent,
+			"RampMerge",
+			CFrame.new(pLand) * CFrame.Angles(0, 0, math.rad(90)),
+			Vector3.new(O.Thickness, 2 * landingRadius, 2 * landingRadius),
+			ROAD,
+			Enum.Material.Asphalt,
+			nil,
+			Enum.PartType.Cylinder
+		)
+		-- Glass guardrails down the sloped ramp's sides.
 		for _, sx in { -1, 1 } do
 			addGlass(
 				parent,
 				"Guardrail",
 				rampCF * CFrame.new(sx * width / 2, O.GuardrailHeight / 2, 0),
-				Vector3.new(O.GuardrailThickness, O.GuardrailHeight, len)
+				Vector3.new(O.GuardrailThickness, O.GuardrailHeight, rampLen)
 			)
+		end
+		-- Tie each ramp side rail to the oval's inner rail (which resumes just past the 2-segment gap)
+		-- so the barrier funnels into the ramp with no open sliver or doubled pane. Approximate the
+		-- inner rail's gap-edge point by stepping `edge` inward along the radial at the boundary vertex.
+		local function innerEdge(ti: number): Vector3
+			local cp = origin + ovalPoint(O.Ax, O.Az, (ti / O.Segments) * 2 * math.pi)
+			local radial = Vector3.new(cp.X - origin.X, 0, cp.Z - origin.Z).Unit
+			return Vector3.new(cp.X, origin.Y + O.Y, cp.Z) - radial * (width / 2 + O.WalkwayWidth)
+		end
+		local i0 = k * (O.Segments / O.Ramps)
+		local edgePlus, edgeMinus = innerEdge(i0 + 1), innerEdge(i0 - 1)
+		for _, sx in { -1, 1 } do
+			local railEnd = (rampCF * CFrame.new(sx * width / 2, 0, -rampLen / 2)).Position
+			local ovalEdge = if (edgePlus - railEnd).Magnitude < (edgeMinus - railEnd).Magnitude
+				then edgePlus
+				else edgeMinus
+			local d = ovalEdge - railEnd
+			if d.Magnitude > 0.5 then
+				local mid = (railEnd + ovalEdge) / 2 + Vector3.new(0, O.GuardrailHeight / 2, 0)
+				addGlass(
+					parent,
+					"Guardrail",
+					CFrame.lookAt(mid, mid + d.Unit),
+					Vector3.new(O.GuardrailThickness, O.GuardrailHeight, d.Magnitude)
+				)
+			end
 		end
 	end
 end
@@ -237,7 +308,7 @@ function IslandService:Start()
 	local origin = Config.Zones.Home
 	local O = H.Ring.Oval
 	-- Ground exits sit at the outer edge of the perimeter loop road.
-	local perimeterEdge = H.PerimeterLine + H.RoadWidth / 2 + H.WalkwayWidth
+	local perimeterEdge = H.PerimeterLine + H.RoadWidth / 2
 
 	buildOval(ring, origin, O)
 	buildRamps(ring, origin, O, perimeterEdge, O.Width)

@@ -94,19 +94,11 @@ local function paintTerrain()
 	local home = Config.Zones.Home
 	local H = T.Home
 	local R = H.Ring
-	-- The grass island (plateau), then the street grid on top, then the surrounding moat and
-	-- mountain. Order matters: each layer overwrites grass where it overlaps.
+	-- The grass island (plateau), then the surrounding moat and mountain. RoadService lays the street
+	-- grid as parts on top. Order matters: each layer overwrites grass where it overlaps.
 	-- 1) Grass plateau, sized to the plateau ellipse's bounding box (the moat carves it elliptical).
 	fillSlab(home, 2 * R.Plateau.Ax, 2 * R.Plateau.Az, H.Ground)
-	-- 2) Street grid: an asphalt strip down each gap between squares (lines at +/-RoadLine) plus the
-	-- outer loop (lines at +/-PerimeterLine). Each strip spans the full grid so they meet at every
-	-- crossing -> a closed loop with no dead ends.
-	local span = 2 * H.PerimeterLine + H.RoadWidth -- reaches corner to corner of the perimeter loop
-	for _, g in { -H.PerimeterLine, -H.RoadLine, H.RoadLine, H.PerimeterLine } do
-		fillSlab(home + Vector3.new(g, 0, 0), H.RoadWidth, span, H.Road) -- roads along Z
-		fillSlab(home + Vector3.new(0, 0, g), span, H.RoadWidth, H.Road) -- roads along X
-	end
-	-- 3) Water moat: an elliptical ring just outside the plateau (surface at ground level).
+	-- 2) Water moat: an elliptical ring just outside the plateau (surface at ground level).
 	local moatAx, moatAz = R.Plateau.Ax + R.Moat.Width, R.Plateau.Az + R.Moat.Width
 	fillEllipseRing(
 		home,
@@ -117,7 +109,7 @@ local function paintTerrain()
 		R.Moat.Depth,
 		R.Moat.Material
 	)
-	-- 4) Mountain: a sheer rock ring outside the moat, rising Mountain.Height studs (vertical = unclimbable).
+	-- 3) Mountain: a sheer rock ring outside the moat, rising Mountain.Height studs (vertical = unclimbable).
 	local mtnAx, mtnAz = moatAx + R.Mountain.Width, moatAz + R.Mountain.Width
 	fillEllipseRing(
 		home,
@@ -138,42 +130,21 @@ local function paintTerrain()
 	fillSlab(waterCenter, T.Beach.Size, T.Beach.WaterDepth, T.Beach.Water)
 end
 
--- The grid's hardscape: concrete walkways flanking every road (inner gaps + the perimeter loop),
--- the central plaza floor, and a driveway from each house to the road it faces. Squares are by center
+-- The grid's hardscape: the circular central plaza floor and a driveway from each house to the road
+-- it faces (RoadService lays the streets and their curbs). Squares are by center
 -- (cx, cz) in {-Pitch, 0, Pitch}: (0,0) is the plaza, ParkCell stays grass, the other seven hold a
 -- house (the meshes in assets/manifest.json plus the primitive home in SceneryService).
 local PAVING = Color3.fromRGB(200, 200, 205)
 
 local function buildHomeGrid(home: Model, origin: Vector3)
 	local T = Config.Terrain.Home
-	local span = 2 * T.PerimeterLine + T.RoadWidth
 
-	-- Walkways: a thin concrete strip on each side of every road (inner gaps + the perimeter loop).
-	local walkOffset = T.RoadWidth / 2 + T.WalkwayWidth / 2
-	for _, g in { -T.PerimeterLine, -T.RoadLine, T.RoadLine, T.PerimeterLine } do
-		for _, side in { -1, 1 } do
-			local w = makePart(
-				"Walkway",
-				Vector3.new(T.WalkwayWidth, 0.3, span),
-				origin + Vector3.new(g + side * walkOffset, 0.15, 0),
-				PAVING,
-				home
-			)
-			w.Material = T.Sidewalk
-			local h = makePart(
-				"Walkway",
-				Vector3.new(span, 0.3, T.WalkwayWidth),
-				origin + Vector3.new(0, 0.15, g + side * walkOffset),
-				PAVING,
-				home
-			)
-			h.Material = T.Sidewalk
-		end
-	end
-
-	-- Plaza floor over the center square.
+	-- Circular plaza (town-centre roundabout) over the center square: the ring of inner roads curves
+	-- around it. Cylinder length is local X, rotate X->Y so the disc lies flat.
 	local plaza =
-		makePart("Plaza", Vector3.new(T.CellSize, 0.3, T.CellSize), origin + Vector3.new(0, 0.16, 0), PAVING, home)
+		makePart("Plaza", Vector3.new(0.3, T.CellSize, T.CellSize), origin + Vector3.new(0, 0.16, 0), PAVING, home)
+	plaza.Shape = Enum.PartType.Cylinder
+	plaza.CFrame = CFrame.new(origin + Vector3.new(0, 0.16, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	plaza.Material = T.Sidewalk
 
 	-- One driveway per house square, running from the house out to its facing road. A square faces

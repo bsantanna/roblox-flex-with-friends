@@ -90,6 +90,7 @@ Config.Terrain = {
 				Y = 20, -- elevation above ground
 				Width = 24, -- two-lane road, matches the streets
 				Thickness = 1,
+				DeckOverlap = 16, -- studs each deck chord overlaps its neighbours so the curve has no gaps
 				Segments = 72, -- chord segments approximating the ellipse
 				PillarEvery = 6, -- a support pillar every Nth segment
 				PillarDiameter = 6,

@@ -151,8 +151,17 @@ local function buildOval(parent: Instance, origin: Vector3, O: any)
 			* CFrame.Angles(0, math.atan2(d.X, d.Z), 0)
 		local diag = if i % 2 == 0 then 1 else -1
 
-		-- Road, then a dashed centre line on alternate segments.
-		addPart(parent, "OvalRoad", seg, Vector3.new(O.Width, O.Thickness, length + 1), ROAD, Enum.Material.Asphalt)
+		-- Road, then a dashed centre line on alternate segments. The deck pieces overlap their
+		-- neighbours generously (DeckOverlap) so the straight chords leave no gap on the curve -- at the
+		-- wide deck's outer edge a 1-stud overlap splays open into a fall-through sliver.
+		addPart(
+			parent,
+			"OvalRoad",
+			seg,
+			Vector3.new(O.Width, O.Thickness, length + O.DeckOverlap),
+			ROAD,
+			Enum.Material.Asphalt
+		)
 		if i % 2 == 0 then
 			addPart(
 				parent,
@@ -164,17 +173,14 @@ local function buildOval(parent: Instance, origin: Vector3, O: any)
 			)
 		end
 
-		-- Wood-deck walkways on both sides; the inner one opens where a ramp merges (like the inner
-		-- guardrail) so it doesn't cut across the driveable landing.
+		-- Wood-deck walkways on both sides -- a solid floor all the way round (the ramp climbs to this
+		-- inner edge, so it never passes under the deck, and the merge asphalt covers the driving lane).
 		for _, sx in { -1, 1 } do
-			if sx == -1 and isRampGap(i, O) then
-				continue
-			end
 			addPart(
 				parent,
 				"Walkway",
 				seg * CFrame.new(sx * walkCenter, 0, 0),
-				Vector3.new(O.WalkwayWidth, O.Thickness, length + 1),
+				Vector3.new(O.WalkwayWidth, O.Thickness, length + O.DeckOverlap),
 				DECK,
 				Enum.Material.WoodPlanks
 			)
@@ -222,33 +228,32 @@ local function buildRamps(parent: Instance, origin: Vector3, O: any, perimeterEd
 		-- Road-centre landing point on the oval ellipse in the same direction, at deck height.
 		local rOval = 1 / math.sqrt((c / O.Ax) ^ 2 + (s / O.Az) ^ 2)
 		local pLand = origin + Vector3.new(rOval * c, O.Y, rOval * s)
-		-- The sloped ramp climbs only to pTop -- one landing-radius short of the road centre but already
-		-- at deck height -- and a flat landing carries the rest of the turn onto the highway. Because the
-		-- slope ends exactly where the flat landing begins (both at O.Y), the surfaces meet flush: the
-		-- old design ran the slope to the centre and dropped a flat disc on top of the still-rising ramp,
-		-- leaving a ledge a car couldn't climb.
-		local landingRadius = width / 2 + 6
-		local inward = Vector3.new(c, 0, s) * landingRadius
-		local pTop = pLand - inward
+		-- The sloped ramp climbs all the way to the inner deck edge (pTop), so it meets the solid deck
+		-- flush and never passes under the wood walkway (which would leave it below an overhang, or force
+		-- a hole in the walkway). A flat asphalt landing then runs the lane from there across the deck to
+		-- the road centre -- raised a hair so it reads as the driving lane over the wood -- and a disc
+		-- rounds the turn onto the curving road.
+		local innerInset = width / 2 + O.WalkwayWidth -- inner deck edge, measured from the road centre
+		local mergeRadius = width / 2 + 6
+		local laneRaise = Vector3.new(0, 0.06, 0)
+		local pTop = pLand - Vector3.new(c, 0, s) * innerInset
 		local rampLen = (pTop - p0).Magnitude
 		-- lookAt puts the local -Z (and so the length axis) along the slope from p0 to pTop.
 		local rampCF = CFrame.lookAt((p0 + pTop) / 2, pTop)
 		addPart(parent, "Ramp", rampCF, Vector3.new(width, O.Thickness, rampLen), ROAD, Enum.Material.Asphalt)
-		-- Flat landing, flush with the oval road (same Y + thickness): a radial connector the width of
-		-- the ramp from pTop to the road centre, plus a disc that rounds the turn onto the curving road.
 		addPart(
 			parent,
 			"RampLanding",
-			CFrame.lookAt((pTop + pLand) / 2, pLand),
-			Vector3.new(width, O.Thickness, landingRadius),
+			CFrame.lookAt((pTop + pLand) / 2 + laneRaise, pLand + laneRaise),
+			Vector3.new(width, O.Thickness, innerInset),
 			ROAD,
 			Enum.Material.Asphalt
 		)
 		addPart(
 			parent,
 			"RampMerge",
-			CFrame.new(pLand) * CFrame.Angles(0, 0, math.rad(90)),
-			Vector3.new(O.Thickness, 2 * landingRadius, 2 * landingRadius),
+			CFrame.new(pLand + laneRaise) * CFrame.Angles(0, 0, math.rad(90)),
+			Vector3.new(O.Thickness, 2 * mergeRadius, 2 * mergeRadius),
 			ROAD,
 			Enum.Material.Asphalt,
 			nil,

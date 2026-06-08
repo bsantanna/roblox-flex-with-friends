@@ -13,8 +13,8 @@ description: >-
   Studio (screen captures, camera framing, walking the character), never judged from the code alone.
   Apply it even when the user doesn't name it, e.g. "add a photo system", "implement the travel
   minigame", "why won't analyze pass", "add a new place", "persist this value", "run the checks",
-  "generate a model for the lobby", "the road looks off", "this part is floating", "fix the
-  placement", "why is the ramp clipping".
+  "generate a model for the lobby", "this asset/house looks rough — rebuild and repaint the mesh",
+  "the road looks off", "this part is floating", "fix the placement", "why is the ramp clipping".
 ---
 
 # Flex-with-Friends — engineering conventions
@@ -242,6 +242,57 @@ Generation is *where spatial correctness bites hardest* — a model can come bac
 mis-proportioned, or oriented oddly, and the attribute values won't tell you. After generating (and
 after tuning attributes), capture it in Studio per [Seeing the scene](#seeing-the-scene-spatial-verification)
 before considering it placed.
+
+### Improving an AI-generated mesh asset: interpret → rebuild → repaint
+
+Some assets arrive as **AI-generated OBJ meshes** under `assets/source/<Id>/<Id>.obj` (e.g. the
+`Neighbor*` houses) — the output of an external mesh generator, uploaded to Roblox via the
+`make assets-upload` pipeline (`assets/PIPELINE.md`). These are a trap to "paint": each is a single
+welded shell, tens of thousands of tris, with no separable parts, no UVs, and a blank (all-white)
+vertex-color layer. There are no clean faces to grab — what looks like a window is just a shadowed
+recess — so assigning materials to the raw mesh by region/recess heuristics fights the geometry and
+still looks mushy. (We tried; it doesn't get there.)
+
+Treat the OBJ as a **reference to interpret and rebuild**, not a thing to fix:
+
+1. **Interpret.** Load the OBJ in Blender as reference only. Measure its massing — bounding box plus a
+   height/z-band histogram of the footprint exposes the floors, roof line, and chimney positions — and
+   render clay views from several angles to read what it actually is and where its parts are. (It may
+   not be what its name implies — `Neighbor01` turned out to be a house, not a person; *look* before
+   you model.)
+2. **Rebuild.** Model a clean, part-based copy of that massing, one object per logical part
+   (foundation, walls, columns, roof, windows = frame + glass, door, chimneys, steps…). Follow the
+   **blender-assembly** skill — connection map first, `size=2` cubes, bmesh for sloped/angled pieces
+   like roof planes (never Euler-rotated boxes), verifying each part's bounds and overlaps as you go.
+3. **Repaint.** Give each part its own single material in the chosen palette — no per-face guessing,
+   because every part is already its own clean piece of geometry.
+4. **Bake & export in place.** UV-unwrap, bake the per-part colors into one texture, consolidate to a
+   single textured material, and export over the existing `<Id>.glb` / `<Id>.blend` /
+   `<Id>_BaseColor.png` — Y-up, origin at the base center, and roughly the original's bounding box so
+   the manifest's `scale` and placement still hold. Overwriting the `.glb` changes its hash, so
+   `make assets-upload` re-uploads just that asset, PATCHing the existing id with no manifest edit.
+
+This is the **standard pipeline for every `assets/source/*.obj`** (Neighbor houses, cars, props —
+not a one-off), so don't re-derive the Blender code each time. The skill bundles the whole toolkit in
+`scripts/blender_asset_helpers.py`: `import_reference`, `massing`, `new_collection`, `box`,
+`make_beam`, `poly_roof`, `bounds`/`overlap`, `flat_material`, `paint`, `comic_lighting`,
+`render_views`, and `finalize_and_export` (join → UV → bake → overwrite the `.glb`/`.blend`/`.png` in
+place). Load it once per Blender session and reuse it across `execute_blender_code` calls — the import
+is cached for the life of the process:
+
+```python
+import sys; sys.path.insert(0, "<this skill's dir>/scripts")  # base dir is printed when the skill loads
+import blender_asset_helpers as bah
+```
+
+Its module docstring walks the full loop end to end. Lean on it; only drop to raw `bpy` for geometry
+the helpers don't cover.
+
+Why rebuild instead of paint: clean parts read correctly (crisp windows, trim, door) and the result
+is ~100× lighter — a Neighbor house went from ~43k tris to ~330. And **every stage is a visual
+checkpoint** — massing, then roof, then windows, then paint, then the final bake — rendered and
+eyeballed, never signed off from the code. It's the [Seeing the scene](#seeing-the-scene-spatial-verification)
+loop applied to modeling.
 
 ## Common gotcha: analyze fails on a dynamic `require`
 

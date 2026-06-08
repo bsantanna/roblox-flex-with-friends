@@ -1,0 +1,26 @@
+{
+  "Neighbor01": {
+    "assetId": 134957888385403,
+    "hash": "425314838995e63f6a194f0b7a7479a917940a8c4242a3f227174aef8767b682"
+  },
+  "Neighbor02": {
+    "assetId": 106768882139673,
+    "hash": "755c2a7b3d27a474b846a8f220e5dc31281159e52c434d070bb2e25bc703dbd9"
+  },
+  "Neighbor03": {
+    "assetId": 77573589197826,
+    "hash": "34cf50829107afba391e393449fa151121627c55aa44aa8260fbf37aeaa15541"
+  },
+  "Neighbor04": {
+    "assetId": 132288598243799,
+    "hash": "a440b8d5b00c9ec937113a0cbb8723ce9ee77e0af3444e6bd67e1a39b5d55552"
+  },
+  "Neighbor05": {
+    "assetId": 78057124740014,
+    "hash": "eaba6bfec191cc11ef28b6d8cc9ce7070249e6faa8263b680622d6d276f59f4c"
+  },
+  "Neighbor06": {
+    "assetId": 116287141161587,
+    "hash": "85971ca5bfb9a0a1da159121e3be534f268c000a39c4d15d01244bf06024e2f8"
+  }
+}

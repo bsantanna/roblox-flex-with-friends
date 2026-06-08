@@ -55,13 +55,19 @@ GitHub Actions runs `make ci` on every PR (`.github/workflows/ci.yml`).
 - **Functional core / imperative shell** — pure logic in `src/shared/Logic/` (Roblox-free, unit-tested
   under Lune); services/controllers stay thin.
 
-## Deployment (Open Cloud, staging)
+## Deployment (Open Cloud, manual)
 
-`.github/workflows/cd.yml` publishes `build.rbxl` to a **staging** universe on merge to `main`.
-It is **inert until configured**. To enable it:
+There is **no automated deploy** — publishing to Roblox is done **manually** by the maintainer, so a
+merge to `main` never changes what's live. To publish the built place yourself:
 
-1. Create the staging universe/place in Roblox.
-2. Create an Open Cloud **API key** with `universe-places:write` scoped to that place.
-3. In the repo: add secret `ROBLOX_API_KEY`, and variables `ROBLOX_UNIVERSE_ID`, `ROBLOX_PLACE_ID`.
+1. `make build` to produce `build.rbxl`.
+2. Create an Open Cloud **API key** with `universe-places:write` scoped to the target place.
+3. Publish with the pinned `rbxcloud`:
 
-Until all three exist the deploy job runs, detects the missing config, and skips with a notice.
+   ```sh
+   rbxcloud experience publish --filename build.rbxl \
+     --universe-id <UNIVERSE_ID> --place-id <PLACE_ID> \
+     --version-type published --api-key <API_KEY>
+   ```
+
+Mesh assets are uploaded manually too, via `make assets-upload` (see `assets/PIPELINE.md`).

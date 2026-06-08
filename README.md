@@ -15,3 +15,4 @@
 
 ### AI assisted code
 - [Karpathy-Inspired Claude Code Guidelines](https://github.com/bsantanna/andrej-karpathy-skills)
+- [Blender-MCP-Assembly-Skill](https://github.com/ProfRino/Blender-MCP-Assembly-Skill)

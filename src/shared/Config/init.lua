@@ -129,12 +129,13 @@ Config.Roads = {
 	CurbHeight = 0.6, -- low enough to step/drive over, high enough to read as a curb
 }
 
--- Ambient cruising cars (TrafficService): decorative, server-driven traffic that loops the roads.
+-- Ambient cars (TrafficService): decorative, server-driven traffic that random-walks the road network
+-- (inner grid + perimeter loop + ramps + elevated ring), staying in lane and stopping for players.
 Config.Traffic = {
-	OvalCars = 8, -- cars circling the elevated ring
-	PerimeterCars = 6, -- cars circling the ground perimeter loop
-	Speed = 26, -- studs per second
-	LaneOffset = 6, -- studs from the road centre into the cruising lane
+	Cars = 16, -- cars roaming the whole network
+	Speed = 26, -- cruising studs per second
+	LaneOffset = 6, -- studs from the road centre into the right-hand lane
+	StopDistance = 16, -- decelerate/stop for a player within this distance ahead, in-lane
 }
 
 Config.Photo = {

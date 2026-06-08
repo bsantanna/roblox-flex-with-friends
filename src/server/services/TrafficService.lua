@@ -17,7 +17,18 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local TrafficService = {}
 
 type Graph = { pos: { Vector3 }, adj: { { number } } }
-type Car = { model: Model, n0: number, n1: number, n2: number, n3: number, t: number, seg: number, speed: number }
+type Car = {
+	model: Model,
+	n0: number,
+	n1: number,
+	n2: number,
+	n3: number,
+	t: number,
+	seg: number,
+	speed: number,
+	laned: Vector3, -- last lane position (for car-to-car spacing)
+	fwd: Vector3, -- last horizontal heading
+}
 
 local CAR_COLORS = {
 	Color3.fromRGB(196, 64, 64),
@@ -30,6 +41,8 @@ local CAR_COLORS = {
 
 local ACCEL = 26 -- studs/s^2 speeding up
 local DECEL = 70 -- studs/s^2 braking
+local STOP_GAP = 9 -- fully stop if a car ahead is closer than this (about a car length)
+local FOLLOW_GAP = 22 -- start easing off within this gap, down to STOP_GAP -> smooth car-following
 
 local function addPart(
 	parent: Instance,
@@ -184,14 +197,24 @@ local function pickNext(graph: Graph, n: number, came: number): number
 	return opts[math.random(#opts)]
 end
 
-local function catmull(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: number): Vector3
-	local t2, t3 = t * t, t * t * t
-	return 0.5 * ((2 * p1) + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - 3 * p2 + p3 - p0) * t3)
-end
-
-local function catmullTangent(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: number): Vector3
-	local t2 = t * t
-	return 0.5 * ((p2 - p0) + (2 * p0 - 5 * p1 + 4 * p2 - p3) * (2 * t) + (3 * p1 - 3 * p2 + p3 - p0) * (3 * t2))
+-- Centripetal Catmull-Rom through p1->p2 (p0,p3 are the neighbour nodes). The centripetal (alpha=0.5)
+-- parametrisation keeps the curve tight at sharp turns; a uniform Catmull-Rom overshoots there and
+-- would swing the cars wide off their lane onto the walkways. Returns position and a finite-diff tangent.
+local function spline(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, lt: number): (Vector3, Vector3)
+	local t1 = math.max((p1 - p0).Magnitude, 1e-2) ^ 0.5
+	local t2 = t1 + math.max((p2 - p1).Magnitude, 1e-2) ^ 0.5
+	local t3 = t2 + math.max((p3 - p2).Magnitude, 1e-2) ^ 0.5
+	local function eval(t: number): Vector3
+		local a1 = p0:Lerp(p1, t / t1)
+		local a2 = p1:Lerp(p2, (t - t1) / (t2 - t1))
+		local a3 = p2:Lerp(p3, (t - t2) / (t3 - t2))
+		local b1 = a1:Lerp(a2, t / t2)
+		local b2 = a2:Lerp(a3, (t - t1) / (t3 - t1))
+		return b1:Lerp(b2, (t - t1) / (t2 - t1))
+	end
+	local g = t1 + lt * (t2 - t1)
+	local e = (t2 - t1) * 0.01
+	return eval(g), eval(g + e) - eval(g - e)
 end
 
 local cars: { Car } = {}
@@ -247,6 +270,8 @@ function TrafficService:Start()
 			t = math.random(),
 			seg = math.max(1, (graph.pos[n2] - graph.pos[n1]).Magnitude),
 			speed = Config.Traffic.Speed,
+			laned = graph.pos[n1],
+			fwd = (graph.pos[n2] - graph.pos[n1]).Unit,
 		}
 		car.model.Parent = folder
 		table.insert(cars, car)
@@ -255,20 +280,27 @@ function TrafficService:Start()
 	RunService.Heartbeat:Connect(function(dt)
 		local lane = Config.Traffic.LaneOffset
 		for _, car in cars do
-			local p0, p1, p2, p3 = graph.pos[car.n0], graph.pos[car.n1], graph.pos[car.n2], graph.pos[car.n3]
-			local pos = catmull(p0, p1, p2, p3, car.t)
-			local tan = catmullTangent(p0, p1, p2, p3, car.t)
-			if tan.Magnitude < 1e-3 then
-				tan = p2 - p1
+			-- Car-following: ease toward the speed that keeps a gap to the nearest car ahead in this
+			-- lane (proportional, not a hard stop, so loops keep flowing instead of gridlocking); stop
+			-- dead only for a player. Uses last frame's positions.
+			local lead = math.huge
+			for _, other in cars do
+				if other ~= car then
+					local to = other.laned - car.laned
+					local ahead = to:Dot(car.fwd)
+					if ahead > 0 and ahead < lead and (to - car.fwd * ahead).Magnitude < 4 then
+						lead = ahead
+					end
+				end
 			end
-			tan = tan.Unit
-			local flat = Vector3.new(tan.X, 0, tan.Z)
-			flat = if flat.Magnitude > 1e-3 then flat.Unit else tan
-			local right = Vector3.new(tan.Z, 0, -tan.X)
-			right = if right.Magnitude > 1e-3 then right.Unit else Vector3.zero
-			local laned = pos + right * lane
-
-			local target = if playerAhead(laned, flat) then 0 else Config.Traffic.Speed
+			local target
+			if playerAhead(car.laned, car.fwd) then
+				target = 0
+			elseif lead < FOLLOW_GAP then
+				target = Config.Traffic.Speed * math.clamp((lead - STOP_GAP) / (FOLLOW_GAP - STOP_GAP), 0, 1)
+			else
+				target = Config.Traffic.Speed
+			end
 			local a = if target > car.speed then ACCEL else -DECEL
 			car.speed = math.clamp(car.speed + a * dt, 0, Config.Traffic.Speed)
 
@@ -277,6 +309,19 @@ function TrafficService:Start()
 				car.t -= 1
 				advance(car)
 			end
+
+			local pos, tan = spline(graph.pos[car.n0], graph.pos[car.n1], graph.pos[car.n2], graph.pos[car.n3], car.t)
+			if tan.Magnitude < 1e-3 then
+				tan = graph.pos[car.n2] - graph.pos[car.n1]
+			end
+			tan = tan.Unit
+			local flat = Vector3.new(tan.X, 0, tan.Z)
+			flat = if flat.Magnitude > 1e-3 then flat.Unit else tan
+			local right = Vector3.new(tan.Z, 0, -tan.X)
+			right = if right.Magnitude > 1e-3 then right.Unit else Vector3.zero
+			local laned = pos + right * lane
+			car.laned = laned
+			car.fwd = flat
 			car.model:PivotTo(CFrame.lookAt(laned, laned + tan))
 		end
 	end)

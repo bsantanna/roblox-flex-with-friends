@@ -68,7 +68,6 @@ Config.Terrain = {
 	Home = {
 		Size = 310, -- grassy lot enclosing the grid + perimeter loop (+/-155) with a small margin
 		Ground = Enum.Material.Grass,
-		Road = Enum.Material.Asphalt,
 		Sidewalk = Enum.Material.Concrete,
 		Driveway = Enum.Material.Concrete,
 		CellSize = 60, -- side of each square lot
@@ -76,28 +75,27 @@ Config.Terrain = {
 		RoadLine = 46, -- |coord| of the two internal roads per axis (the gaps between squares)
 		PerimeterLine = 138, -- |coord| of the outer loop road that closes the grid (no dead ends)
 		RoadWidth = 24, -- two-lane asphalt down the middle of each gap (cars pass both ways)
-		WalkwayWidth = 4, -- concrete walkway flanking each side of a road
 		DrivewayWidth = 10, -- carway from a house to its facing road
 		ParkCell = Vector3.new(0, 0, 92), -- the one perimeter square left as grass (no house)
-		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z):
-		-- grass Plateau -> water Moat -> sheer rock Mountain, with an elevated Oval highway looping
-		-- over the moat and joined to the perimeter loop by ramps. Moat inner = Plateau; Moat outer
-		-- = Plateau + Moat.Width; Mountain inner = Moat outer; Oval sits mid-moat. Sizes in studs.
+		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z): a grass
+		-- Plateau in a wide water lake, with an elevated Oval highway hugging the island and joined to
+		-- the perimeter loop by ramps. Lake inner = Plateau, outer = Plateau + Moat.Width; Airport and
+		-- Beach sit in the lake as their own islands. Sizes in studs.
 		Ring = {
 			Plateau = { Ax = 250, Az = 225 }, -- grass island bounding ellipse (contains the town)
-			Moat = { Width = 90, Depth = 45, Material = Enum.Material.Water },
-			Mountain = { Width = 90, Height = 100, Material = Enum.Material.Rock }, -- sheer = unclimbable
+			Moat = { Width = 2000, Depth = 45, Material = Enum.Material.Water }, -- ~2km lake (room for future islands)
 			Oval = {
-				Ax = 295, -- elevated highway ellipse (mid-moat)
-				Az = 270,
+				Ax = 315, -- elevated highway ellipse (hugs the island, clearing the wide decks)
+				Az = 290,
 				Y = 20, -- elevation above ground
 				Width = 24, -- two-lane road, matches the streets
 				Thickness = 1,
+				DeckOverlap = 16, -- studs each deck chord overlaps its neighbours so the curve has no gaps
 				Segments = 72, -- chord segments approximating the ellipse
 				PillarEvery = 6, -- a support pillar every Nth segment
 				PillarDiameter = 6,
 				Ramps = 8, -- ground-to-oval links: 4 sides + 4 corners
-				WalkwayWidth = 8, -- wood-deck pedestrian walkway flanking each side of the road
+				WalkwayWidth = 30, -- wide wood-deck promenade flanking each side (room for buildings)
 				GuardrailHeight = 9, -- taller than a player + jump apex, so nobody jumps off the deck
 				GuardrailThickness = 0.5,
 				ViewDeckEvery = 9, -- a panoramic view deck every Nth segment (9 -> one per 45 degrees)
@@ -115,6 +113,29 @@ Config.Terrain = {
 		Water = Enum.Material.Water,
 		WaterDepth = 60,
 	},
+}
+
+-- Ground road network (RoadService lays these parts over the grass). The lane geometry derives from
+-- the grid lines in Config.Terrain.Home (RoadLine / PerimeterLine / RoadWidth); these are the visual
+-- tunables: how thick the asphalt sits over the grass, how much each junction rounds its corners, and
+-- the lane-marking / curb dimensions.
+Config.Roads = {
+	Thickness = 0.4, -- asphalt slab height above the grass surface (Y=0)
+	Fillet = 4, -- extra radius at each junction so corners curve instead of meeting square
+	LaneLineWidth = 0.7, -- width of the dashed centre line
+	DashLength = 9, -- length of each centre-line dash
+	DashGap = 9, -- gap between dashes
+	CurbWidth = 3, -- concrete curb flanking each road edge
+	CurbHeight = 0.6, -- low enough to step/drive over, high enough to read as a curb
+}
+
+-- Ambient cars (TrafficService): decorative, server-driven traffic that random-walks the road network
+-- (inner grid + perimeter loop + ramps + elevated ring), staying in lane and stopping for players.
+Config.Traffic = {
+	Cars = 16, -- cars roaming the whole network
+	Speed = 26, -- cruising studs per second
+	LaneOffset = 6, -- studs from the road centre into the right-hand lane
+	StopDistance = 16, -- decelerate/stop for a player within this distance ahead, in-lane
 }
 
 Config.Photo = {

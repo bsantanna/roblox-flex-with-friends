@@ -225,7 +225,7 @@ type Placement = {
 -- The player's Home sits in the north-center square of the neighborhood grid (faces the plaza), at
 -- a scale that fits a CellSize (60) square. The taxi is the Cab01 mesh now (assets/manifest.json).
 local PLACEMENTS: { Placement } = {
-	{ id = "House", zone = "Home", offset = Vector3.new(0, 0, -92), rotationY = 0, scale = 1.0, build = buildHouse },
+	{ id = "House", zone = "Home", offset = Vector3.new(0, 0, -144), rotationY = 0, scale = 1.0, build = buildHouse },
 	{ id = "Terminal", zone = "Airport", offset = Vector3.new(0, 0, -20), rotationY = 0, build = buildTerminal },
 	{ id = "BoardingGate", zone = "Airport", offset = Vector3.new(0, 0, 10), rotationY = 0, build = buildBoardingGate },
 	{ id = "Airplane", zone = "Airport", offset = Vector3.new(18, 0, 30), rotationY = 90, build = buildAirplane },

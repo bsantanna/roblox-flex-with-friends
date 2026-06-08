@@ -50,7 +50,7 @@ Config.Travel = {
 -- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't
 -- round-trip through Rojo, so the *generating values* live here and the world stays reproducible
 -- from src. Lots stay apart so zones don't become walkable-connected (which would bypass the travel
--- system): the Home neighborhood (streets at +/-155) sits on a grass island ringed by a water moat
+-- system): the Home neighborhood (streets out to +/-228) sits on a grass island ringed by a water moat
 -- and then a sheer ~100-stud rock mountain (Ring, below) that reaches out to ~+/-420 and walls the
 -- town in. Airport (560 away) +/-60 clears the mountain. The rendered top of each slab sits at the
 -- zone floor level (Y=0).
@@ -66,27 +66,27 @@ Config.Travel = {
 Config.Terrain = {
 	Thickness = 8, -- vertical depth of each painted ground slab
 	Home = {
-		Size = 310, -- grassy lot enclosing the grid + perimeter loop (+/-155) with a small margin
+		Size = 540, -- grassy lot enclosing the grid + perimeter loop (+/-228) with a small margin
 		Ground = Enum.Material.Grass,
 		Sidewalk = Enum.Material.Concrete,
 		Driveway = Enum.Material.Concrete,
 		CellSize = 60, -- side of each square lot
-		Pitch = 92, -- cell-center spacing (CellSize + the gap occupied by road + walkways)
-		RoadLine = 46, -- |coord| of the two internal roads per axis (the gaps between squares)
-		PerimeterLine = 138, -- |coord| of the outer loop road that closes the grid (no dead ends)
+		Pitch = 144, -- cell-center spacing (CellSize + the gap: road 24 + a 30-wide walkway each side)
+		RoadLine = 72, -- |coord| of the two internal roads per axis (= Pitch/2, the gaps between squares)
+		PerimeterLine = 216, -- |coord| of the outer loop road that closes the grid (= Pitch*1.5, no dead ends)
 		RoadWidth = 24, -- two-lane asphalt down the middle of each gap (cars pass both ways)
 		DrivewayWidth = 10, -- carway from a house to its facing road
-		ParkCell = Vector3.new(0, 0, 92), -- the one perimeter square left as grass (no house)
+		ParkCell = Vector3.new(0, 0, 144), -- the one perimeter square left as grass (no house); = (0, Pitch)
 		-- The island and its surroundings (concentric elliptical bands, semi-axes a=X, b=Z): a grass
 		-- Plateau in a wide water lake, with an elevated Oval highway hugging the island and joined to
 		-- the perimeter loop by ramps. Lake inner = Plateau, outer = Plateau + Moat.Width; Airport and
 		-- Beach sit in the lake as their own islands. Sizes in studs.
 		Ring = {
-			Plateau = { Ax = 250, Az = 225 }, -- grass island bounding ellipse (contains the town)
+			Plateau = { Ax = 391, Az = 352 }, -- grass island bounding ellipse (contains the town)
 			Moat = { Width = 2000, Depth = 45, Material = Enum.Material.Water }, -- ~2km lake (room for future islands)
 			Oval = {
-				Ax = 315, -- elevated highway ellipse (hugs the island, clearing the wide decks)
-				Az = 290,
+				Ax = 456, -- elevated highway ellipse (hugs the island: Plateau + ~65, clearing the wide decks)
+				Az = 417,
 				Y = 20, -- elevation above ground
 				Width = 24, -- two-lane road, matches the streets
 				Thickness = 1,
@@ -98,6 +98,8 @@ Config.Terrain = {
 				WalkwayWidth = 30, -- wide wood-deck promenade flanking each side (room for buildings)
 				GuardrailHeight = 9, -- taller than a player + jump apex, so nobody jumps off the deck
 				GuardrailThickness = 0.5,
+				GuardrailOverlap = 8, -- studs each rail panel overlaps its neighbours; like DeckOverlap, closes
+				-- the miter slivers where straight panels offset outward on the curve would otherwise gap (fall-through)
 				ViewDeckEvery = 9, -- a panoramic view deck every Nth segment (9 -> one per 45 degrees)
 				ViewDeckDepth = 16, -- how far each view deck juts out past the outer guardrail
 			},
@@ -125,7 +127,7 @@ Config.Roads = {
 	LaneLineWidth = 0.7, -- width of the dashed centre line
 	DashLength = 9, -- length of each centre-line dash
 	DashGap = 9, -- gap between dashes
-	CurbWidth = 8, -- concrete walkway flanking each road edge
+	CurbWidth = 30, -- wide concrete walkway flanking each road edge (room to walk + place buildings)
 	CurbHeight = 0.6, -- low enough to step/drive over, high enough to read as a curb
 }
 

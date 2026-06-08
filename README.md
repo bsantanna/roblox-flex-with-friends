@@ -1,8 +1,8 @@
 # Flex With Friends Experience
 
 ## Project Documentation
-- [1 - Initial Idea](doc/001_initial_idea.md)
-- [2 - Implementation Plan](doc/002_implementation_plan.md)
+- [1 - Initial Idea](docs/dev/001_initial_idea.md)
+- [2 - Implementation Plan](docs/dev/002_implementation_plan.md)
 
 ## References
 

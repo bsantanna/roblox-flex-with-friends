@@ -66,17 +66,20 @@ end
 -- `seg` is the segment CFrame (local Z = travel direction, local X = lateral, +X outward), `lateral`
 -- the edge offset, `length` the segment length, `diag` the brace slope sign.
 local function guardrail(parent: Instance, seg: CFrame, lateral: number, length: number, O: any, diag: number)
+	-- Overlap each panel onto its neighbours so the straight chords meet with no fall-through sliver at
+	-- the vertices (the rail offset outward on the curve adds arc the +1 of old never spanned).
+	local span = length + O.GuardrailOverlap
 	addGlass(
 		parent,
 		"Guardrail",
 		seg * CFrame.new(lateral, O.GuardrailHeight / 2, 0),
-		Vector3.new(O.GuardrailThickness, O.GuardrailHeight, length + 1)
+		Vector3.new(O.GuardrailThickness, O.GuardrailHeight, span)
 	)
 	addPart(
 		parent,
 		"Handrail",
 		seg * CFrame.new(lateral, O.GuardrailHeight, 0),
-		Vector3.new(1.1, 0.4, length + 1),
+		Vector3.new(1.1, 0.4, span),
 		RAIL,
 		Enum.Material.Wood
 	)

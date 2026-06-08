@@ -139,6 +139,9 @@ local function buildHomeGrid(home: Model, origin: Vector3)
 
 	-- One driveway per house square, running from the house out to its facing road. A square faces
 	-- along Z toward the plaza unless it is a side-column square (cz == 0), which faces along X.
+	-- A driveway runs from the lot centre out to the near edge of its facing road, crossing the wide
+	-- flanking walkway -- derived from the grid so it always reaches the asphalt as the lattice scales.
+	local reach = T.Pitch - T.RoadLine - T.RoadWidth / 2
 	local cells = { -T.Pitch, 0, T.Pitch }
 	for _, cx in cells do
 		for _, cz in cells do
@@ -152,8 +155,8 @@ local function buildHomeGrid(home: Model, origin: Vector3)
 				local dir = if cz < 0 then 1 else -1 -- toward the plaza along Z
 				drive = makePart(
 					"Driveway",
-					Vector3.new(T.DrivewayWidth, 0.3, T.CellSize / 2),
-					origin + Vector3.new(cx, 0.12, cz + dir * T.CellSize / 4),
+					Vector3.new(T.DrivewayWidth, 0.3, reach),
+					origin + Vector3.new(cx, 0.12, cz + dir * reach / 2),
 					PAVING,
 					home
 				)
@@ -161,8 +164,8 @@ local function buildHomeGrid(home: Model, origin: Vector3)
 				local dir = if cx < 0 then 1 else -1 -- toward the plaza along X
 				drive = makePart(
 					"Driveway",
-					Vector3.new(T.CellSize / 2, 0.3, T.DrivewayWidth),
-					origin + Vector3.new(cx + dir * T.CellSize / 4, 0.12, cz),
+					Vector3.new(reach, 0.3, T.DrivewayWidth),
+					origin + Vector3.new(cx + dir * reach / 2, 0.12, cz),
 					PAVING,
 					home
 				)

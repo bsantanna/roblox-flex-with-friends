@@ -168,3 +168,18 @@ Generated instances live in the `.rbxl` (binary, not cleanly diffable in git), s
 source of truth and references assets by name/id**. Record each ProceduralModel's prompt and
 attribute defaults under `assets/` so a model can be regenerated or justified from source rather
 than being an unexplained blob in the place file.
+
+### Inherited AI-mesh assets (OBJ → Open Cloud)
+
+Not every asset is a ProceduralModel. Some are **AI-generated OBJ meshes** committed under
+`assets/source/<Id>/` and uploaded to Roblox via Open Cloud, then referenced by asset id — the
+hand-authored spec is `assets/manifest.json`, `make assets-upload` records ids in
+`assets/asset-ids.json` and re-uploads any source whose content hash changed (PATCHing an existing id
+in place; state in `assets/.upload-state.json`). Full pipeline in `assets/PIPELINE.md` and
+`doc/003_binary_asset_management.md`.
+
+These raw OBJs are a single welded, untextured, ~40k-tri shell, so **painting the mesh fights the
+geometry**. To make one look good, *interpret and rebuild it as clean part-based geometry, then
+repaint and bake*, exporting over the existing `.glb` so the upload picks up the change. The full
+workflow and rationale are in the skill's "3D assets" section (Improving an AI-generated mesh asset);
+the modeling mechanics are the **blender-assembly** skill.

@@ -10,12 +10,11 @@
     {
       "id": "Neighbor01",
       "kind": "mesh",
-      "source": "source/Neighbor01/Neighbor01.obj",
+      "source": "source/Neighbor01/Neighbor01.glb",
       "zone": "Home",
       "offset": [-92, 0, -92],
       "rotationY": 0,
       "scale": 22,
-      "color": [222, 205, 170],
       "displayName": "Neighbor House 1",
       "description": "Suburban neighbor home (NW square, faces the plaza)."
     },

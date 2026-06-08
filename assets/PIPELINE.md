@@ -80,14 +80,19 @@ Commit the source (`.glb`, or `.obj` + `.mtl` + textures); binaries go to LFS au
 export ROBLOX_API_KEY=...          # Open Cloud key with asset:write
 export ROBLOX_CREATOR_ID=...       # your user id, or the group id
 export ROBLOX_CREATOR_TYPE=user    # or "group"
-make assets-upload                 # uploads mesh entries with no recorded asset id
-make assets-upload ARGS=--force    # re-upload all mesh entries (new asset versions)
+make assets-upload                 # uploads new + changed mesh entries (skips unchanged)
+make assets-upload ARGS=--force    # re-upload every mesh entry regardless of change
 ```
 
-`make assets-upload` reads the manifest and, for each pending entry, uploads the mesh directly to the
-**Open Cloud Assets API** (`POST /assets/v1/assets`, `assetType:"Model"`, MIME `model/gltf-binary`,
-via `curl` — rbxcloud's CLI is FBX-only), polls the operation to completion, writes the returned ids
-into `assets/asset-ids.json`, and prints a summary. Commit that file.
+`make assets-upload` reads the manifest and uploads each **new or changed** mesh directly to the
+**Open Cloud Assets API** (via `curl` — rbxcloud's CLI is FBX-only), polls the operation to
+completion, and records the result. Change detection uses `assets/.upload-state.json`
+(`id → {hash, assetId}`): an entry uploads when it has no recorded state, when its source file's
+sha256 differs from the recorded one, or under `--force`; unchanged entries are skipped. A **new**
+asset is **created** (`POST /assets/v1/assets`, `assetType:"Model"`, MIME `model/gltf-binary`); a
+**changed** asset that already has an id is **updated in place** (`PATCH /assets/v1/assets/{assetId}`)
+so its id — the one the game references — stays stable. The returned ids land in
+`assets/asset-ids.json`; commit both that and `.upload-state.json`.
 
 A `.obj` source is **converted to a temporary GLB** with `npx --yes obj2gltf` first (so the upload is
 always a self-contained GLB); the temp file is discarded after upload. This needs **Node/npm** on

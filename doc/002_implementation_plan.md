@@ -34,7 +34,7 @@ verifiable **Verify** success criterion.
 - Dev tooling (pinned in `rokit.toml`): `stylua` (format), `selene` (lint), `luau-lsp` (typecheck).
 - **Lune** — headless Luau runtime for unit tests (`make test`, part of `make ci`). Pure domain
   logic lives in `src/shared/Logic/` (Roblox-free) so it runs under Lune with no Studio.
-- **rbxcloud** — Open Cloud publishing for CD (staging deploy on merge to `main`; see `CONTRIBUTING.md`).
+- **rbxcloud** — Open Cloud CLI for **manual** place publishing (no automated deploy; see `CONTRIBUTING.md`).
 
 ### Repository layout
 
@@ -195,8 +195,8 @@ Flamework/typed-networking added):
 - **Automated tests** — headless **Lune** harness (`tests/`, `make test`, in `make ci` + GitHub
   Actions). Phase 1 pure logic extracted to `src/shared/Logic/` (`Followers`, `Decay`, `Referral`)
   and unit-tested (functional core / imperative shell).
-- **CD** — `cd.yml` publishes to a **staging** Open Cloud universe on merge to `main` via
-  `rbxcloud` (inert until the owner sets `ROBLOX_API_KEY` + `ROBLOX_UNIVERSE_ID`/`PLACE_ID`).
+- **Deployment** — **manual** (no CD workflow): the maintainer publishes the built place with
+  `rbxcloud experience publish` and uploads mesh assets with `make assets-upload`. See `CONTRIBUTING.md`.
 - **Observability** — `Util/Log` (structured logs) + `Util/Analytics` (AnalyticsService wrapper);
   the follower economy and NPC unlocks emit funnel events.
 - **Scenery as code** — while the GenAI `generate_procedural_model` backend was unavailable,
@@ -257,7 +257,7 @@ Flamework/typed-networking added):
   manual Studio checks for what genuinely needs a running place (UI, remotes, CaptureService).
 - Player-affecting events emit through the observability seam (`Util/Log`, `Util/Analytics`).
 - `make ci` (fmt-check → lint → typecheck → **test** → build) is the gate; GitHub Actions runs it on
-  every PR, and merges to `main` publish to a staging universe via Open Cloud (`cd.yml`).
+  every PR. Publishing to Roblox is **manual** (no auto-deploy); see `CONTRIBUTING.md`.
 
 ## Open questions / assumptions to revisit
 

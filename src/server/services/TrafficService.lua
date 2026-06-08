@@ -10,6 +10,7 @@
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -28,6 +29,9 @@ type Car = {
 	speed: number,
 	laned: Vector3, -- last lane position (for car-to-car spacing)
 	fwd: Vector3, -- last horizontal heading
+	stuck: number, -- seconds the car has been roughly stationary (stuck detection)
+	checkPos: Vector3, -- reference position the stuck timer measures movement against
+	balloon: BillboardGui?, -- the active "angry" comic balloon, if one is showing
 }
 
 local CAR_COLORS = {
@@ -43,6 +47,10 @@ local ACCEL = 26 -- studs/s^2 speeding up
 local DECEL = 70 -- studs/s^2 braking
 local STOP_GAP = 9 -- fully stop if a car ahead is closer than this (about a car length)
 local FOLLOW_GAP = 22 -- start easing off within this gap, down to STOP_GAP -> smooth car-following
+local STUCK_MOVE = 2 -- studs; the car must shift at least this much or the stuck timer keeps counting
+local BALLOON_FADE = 0.45 -- fade-in / fade-out seconds for the comic balloon
+local BUBBLE_BG = Color3.fromRGB(255, 255, 255)
+local BUBBLE_INK = Color3.fromRGB(24, 24, 28)
 
 local function addPart(
 	parent: Instance,
@@ -244,6 +252,130 @@ local function playerAhead(pos: Vector3, fwd: Vector3): boolean
 	return false
 end
 
+-- A comic speech balloon (rounded white bubble + downward tail + the angry emoji), built fully
+-- transparent so it can be faded in. Returns the gui plus the {inst, prop} list of things to tween.
+local function makeBalloon(): (BillboardGui, { { inst: Instance, prop: string } })
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "StuckBalloon"
+	gui.Size = UDim2.fromOffset(130, 130)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 6.5, 0)
+	gui.AlwaysOnTop = true -- render over the car/world so it stays clearly readable
+	gui.LightInfluence = 0 -- not dimmed by lighting
+	gui.MaxDistance = 240
+
+	-- Tail: a rotated square poking out the bottom; the bubble (higher ZIndex) covers its top, so
+	-- only the downward point shows -- a comic speech-bubble pointer aimed at the car.
+	local tail = Instance.new("Frame")
+	tail.Name = "Tail"
+	tail.AnchorPoint = Vector2.new(0.5, 0.5)
+	tail.Position = UDim2.fromScale(0.5, 0.78)
+	tail.Size = UDim2.fromScale(0.26, 0.26)
+	tail.Rotation = 45
+	tail.BackgroundColor3 = BUBBLE_BG
+	tail.BackgroundTransparency = 1
+	tail.BorderSizePixel = 0
+	tail.ZIndex = 1
+	tail.Parent = gui
+	local tstroke = Instance.new("UIStroke")
+	tstroke.Thickness = 3
+	tstroke.Color = BUBBLE_INK
+	tstroke.Transparency = 1
+	tstroke.Parent = tail
+
+	local bubble = Instance.new("Frame")
+	bubble.Name = "Bubble"
+	bubble.AnchorPoint = Vector2.new(0.5, 0)
+	bubble.Position = UDim2.fromScale(0.5, 0)
+	bubble.Size = UDim2.fromScale(1, 0.8)
+	bubble.BackgroundColor3 = BUBBLE_BG
+	bubble.BackgroundTransparency = 1
+	bubble.BorderSizePixel = 0
+	bubble.ZIndex = 2
+	bubble.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0.32, 0)
+	corner.Parent = bubble
+	local bstroke = Instance.new("UIStroke")
+	bstroke.Thickness = 3
+	bstroke.Color = BUBBLE_INK
+	bstroke.Transparency = 1
+	bstroke.Parent = bubble
+
+	local emoji = Instance.new("TextLabel")
+	emoji.Name = "Emoji"
+	emoji.AnchorPoint = Vector2.new(0.5, 0.5)
+	emoji.Position = UDim2.fromScale(0.5, 0.4)
+	emoji.Size = UDim2.fromScale(0.74, 0.74)
+	emoji.BackgroundTransparency = 1
+	emoji.FontFace = Font.fromEnum(Enum.Font.GothamBold) -- modern font; the Instance.new default skips the emoji glyph
+	emoji.Text = "🤬"
+	emoji.TextScaled = true -- fill the bubble so it reads at distance
+	emoji.TextColor3 = BUBBLE_INK
+	emoji.TextTransparency = 1
+	emoji.ZIndex = 3 -- BillboardGui ZIndex is Global; must beat the bubble (2) or it renders behind it
+	emoji.Parent = bubble
+
+	local fades: { { inst: Instance, prop: string } } = {
+		{ inst = bubble, prop = "BackgroundTransparency" },
+		{ inst = bstroke, prop = "Transparency" },
+		{ inst = tail, prop = "BackgroundTransparency" },
+		{ inst = tstroke, prop = "Transparency" },
+		{ inst = emoji, prop = "TextTransparency" },
+	}
+	return gui, fades
+end
+
+local TWEEN_IN = TweenInfo.new(BALLOON_FADE, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TWEEN_OUT = TweenInfo.new(BALLOON_FADE, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+
+-- Pop an angry comic balloon over the car: fade in, hold for BalloonSeconds, fade out, clean up.
+local function showBalloon(car: Car)
+	if car.balloon then
+		return
+	end
+	local root = car.model.PrimaryPart
+	if not root then
+		return
+	end
+	local gui, fades = makeBalloon()
+	gui.Adornee = root
+	gui.Parent = root
+	car.balloon = gui
+
+	for _, f in fades do
+		local goal: { [string]: any } = { [f.prop] = 0 }
+		TweenService:Create(f.inst, TWEEN_IN, goal):Play()
+	end
+
+	task.delay(Config.Traffic.BalloonSeconds - BALLOON_FADE, function()
+		if gui.Parent == nil then
+			return
+		end
+		for _, f in fades do
+			local goal: { [string]: any } = { [f.prop] = 1 }
+			TweenService:Create(f.inst, TWEEN_OUT, goal):Play()
+		end
+		task.delay(BALLOON_FADE, function()
+			gui:Destroy()
+			if car.balloon == gui then
+				car.balloon = nil
+			end
+		end)
+	end)
+end
+
+-- Teleport a stuck car forward along its current route so it clears whatever blocked it (a player
+-- in the lane, a gridlocked queue) and drives on -- advancing its spline parameter keeps it exactly
+-- in-lane, rolling over graph nodes as needed.
+local function respawnAhead(car: Car)
+	car.t += Config.Traffic.RespawnAhead / car.seg
+	while car.t >= 1 do
+		car.t -= 1
+		advance(car)
+	end
+	car.speed = Config.Traffic.Speed
+end
+
 function TrafficService:Start()
 	local scenery = Workspace:FindFirstChild("Scenery")
 	if not scenery then
@@ -272,6 +404,9 @@ function TrafficService:Start()
 			speed = Config.Traffic.Speed,
 			laned = graph.pos[n1],
 			fwd = (graph.pos[n2] - graph.pos[n1]).Unit,
+			stuck = 0,
+			checkPos = graph.pos[n1],
+			balloon = nil,
 		}
 		car.model.Parent = folder
 		table.insert(cars, car)
@@ -323,6 +458,22 @@ function TrafficService:Start()
 			car.laned = laned
 			car.fwd = flat
 			car.model:PivotTo(CFrame.lookAt(laned, laned + tan))
+
+			-- Stuck detection: if the car has barely moved for StuckSeconds (a player blocking the lane,
+			-- a gridlocked queue), pop an angry comic balloon and teleport it ahead on the road. The
+			-- teleport lands next frame, far from checkPos, which resets the timer cleanly.
+			if (laned - car.checkPos).Magnitude > STUCK_MOVE then
+				car.checkPos = laned
+				car.stuck = 0
+			else
+				car.stuck += dt
+				if car.stuck >= Config.Traffic.StuckSeconds then
+					showBalloon(car)
+					respawnAhead(car)
+					car.stuck = 0
+					car.checkPos = laned
+				end
+			end
 		end
 	end)
 end

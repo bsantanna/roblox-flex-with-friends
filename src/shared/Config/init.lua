@@ -136,6 +136,9 @@ Config.Traffic = {
 	Speed = 26, -- cruising studs per second
 	LaneOffset = 6, -- studs from the road centre into the right-hand lane
 	StopDistance = 16, -- decelerate/stop for a player within this distance ahead, in-lane
+	StuckSeconds = 30, -- if a car barely moves for this long, respawn it ahead on the road
+	RespawnAhead = 24, -- studs to teleport a stuck car forward along its route (> StopDistance so it clears the blockage)
+	BalloonSeconds = 10, -- how long the angry comic balloon shows over a respawned car
 }
 
 Config.Photo = {

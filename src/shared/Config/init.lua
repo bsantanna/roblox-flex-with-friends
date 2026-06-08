@@ -125,7 +125,7 @@ Config.Roads = {
 	LaneLineWidth = 0.7, -- width of the dashed centre line
 	DashLength = 9, -- length of each centre-line dash
 	DashGap = 9, -- gap between dashes
-	CurbWidth = 3, -- concrete curb flanking each road edge
+	CurbWidth = 8, -- concrete walkway flanking each road edge
 	CurbHeight = 0.6, -- low enough to step/drive over, high enough to read as a curb
 }
 

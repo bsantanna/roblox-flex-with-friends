@@ -86,6 +86,7 @@ function RoadService:Start()
 	local th = R.Thickness
 	local junctionDiameter = W + 2 * R.Fillet
 	local clear = junctionDiameter -- markings/curbs stop this short of an edge's ends (the junction discs)
+	local walkOff = W / 2 + R.CurbWidth / 2 -- centre offset of the flanking walkway from the road centre
 
 	local nodes, edges = buildGraph(origin, T)
 
@@ -117,14 +118,13 @@ function RoadService:Start()
 			end
 		end
 
-		-- Concrete curbs flanking the road, also stopping clear of the junction discs.
+		-- Concrete walkways flanking the road, also stopping clear of the junction discs.
 		local curbLen = len - clear
 		if curbLen > 0 then
-			local off = W / 2 + R.CurbWidth / 2
 			for _, s in { -1, 1 } do
 				local pos = if alongX
-					then Vector3.new(mid.X, R.CurbHeight / 2, mid.Z + s * off)
-					else Vector3.new(mid.X + s * off, R.CurbHeight / 2, mid.Z)
+					then Vector3.new(mid.X, R.CurbHeight / 2, mid.Z + s * walkOff)
+					else Vector3.new(mid.X + s * walkOff, R.CurbHeight / 2, mid.Z)
 				local size = if alongX
 					then Vector3.new(curbLen, R.CurbHeight, R.CurbWidth)
 					else Vector3.new(R.CurbWidth, R.CurbHeight, curbLen)
@@ -134,7 +134,9 @@ function RoadService:Start()
 	end
 
 	-- A flat asphalt disc at each crossing rounds the corners (Cylinder length is local X, rotate
-	-- X->Y so it lies flat).
+	-- X->Y so it lies flat); then a walkway square in each corner where two arms meet, bridging the
+	-- flanking walkways (which stop short of the disc) so the pavement wraps the junction with no grass
+	-- gap. Only place a corner where both perpendicular arms exist, so none strands on the grass.
 	for _, n in nodes do
 		addPart(
 			model,
@@ -146,6 +148,23 @@ function RoadService:Start()
 			true,
 			Enum.PartType.Cylinder
 		)
+		local x, z = n.X - origin.X, n.Z - origin.Z
+		for _, sx in { -1, 1 } do
+			for _, sz in { -1, 1 } do
+				local armX = if sx > 0 then x < T.PerimeterLine else x > -T.PerimeterLine
+				local armZ = if sz > 0 then z < T.PerimeterLine else z > -T.PerimeterLine
+				if armX and armZ then
+					addPart(
+						model,
+						"Curb",
+						CFrame.new(n.X + sx * walkOff, R.CurbHeight / 2, n.Z + sz * walkOff),
+						Vector3.new(R.CurbWidth, R.CurbHeight, R.CurbWidth),
+						CURB,
+						Enum.Material.Concrete
+					)
+				end
+			end
+		end
 	end
 end
 

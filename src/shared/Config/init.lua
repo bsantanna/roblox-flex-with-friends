@@ -129,6 +129,14 @@ Config.Roads = {
 	CurbHeight = 0.6, -- low enough to step/drive over, high enough to read as a curb
 }
 
+-- Ambient cruising cars (TrafficService): decorative, server-driven traffic that loops the roads.
+Config.Traffic = {
+	OvalCars = 8, -- cars circling the elevated ring
+	PerimeterCars = 6, -- cars circling the ground perimeter loop
+	Speed = 26, -- studs per second
+	LaneOffset = 6, -- studs from the road centre into the cruising lane
+}
+
 Config.Photo = {
 	BaseReward = 25, -- followers per photo
 	CoopBonus = 40, -- extra followers per participant when >= 2 players pose together

@@ -137,6 +137,7 @@ Config.Traffic = {
 	Cars = 16, -- cars roaming the whole network
 	Speed = 26, -- cruising studs per second
 	LaneOffset = 6, -- studs from the road centre into the right-hand lane
+	TurnIn = 18, -- studs before a junction where the in-lane curve starts, keeping the turn local so the body stays off walkways
 	StopDistance = 16, -- decelerate/stop for a player within this distance ahead, in-lane
 	StuckSeconds = 30, -- if a car barely moves for this long, respawn it ahead on the road
 	RespawnAhead = 24, -- studs to teleport a stuck car forward along its route (> StopDistance so it clears the blockage)

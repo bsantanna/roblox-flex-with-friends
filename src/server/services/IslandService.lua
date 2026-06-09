@@ -283,11 +283,14 @@ local function buildRamps(parent: Instance, origin: Vector3, O: any, perimeterEd
 		end
 		local i0 = k * (O.Segments / O.Ramps)
 		local edgePlus, edgeMinus = innerEdge(i0 + 1), innerEdge(i0 - 1)
+		-- Give each ramp-side rail the gap edge on ITS OWN side (ramp-local +X vs -X), not the nearest
+		-- one. On the diagonal ramps the mouth lands mid-segment, so both rail ends are nearest the same
+		-- edge: picking by distance would route one tie rail across the driving lane (an obstructing pane)
+		-- and leave the other side open. The two edges straddle the ramp, so a side test pairs them cleanly.
+		local plusIsRight = rampCF:PointToObjectSpace(edgePlus).X >= 0
 		for _, sx in { -1, 1 } do
 			local railEnd = (rampCF * CFrame.new(sx * width / 2, 0, -rampLen / 2)).Position
-			local ovalEdge = if (edgePlus - railEnd).Magnitude < (edgeMinus - railEnd).Magnitude
-				then edgePlus
-				else edgeMinus
+			local ovalEdge = if (sx > 0) == plusIsRight then edgePlus else edgeMinus
 			local d = ovalEdge - railEnd
 			if d.Magnitude > 0.5 then
 				local mid = (railEnd + ovalEdge) / 2 + Vector3.new(0, O.GuardrailHeight / 2, 0)

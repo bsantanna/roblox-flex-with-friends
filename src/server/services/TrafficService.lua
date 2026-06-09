@@ -126,6 +126,19 @@ local function buildGraph(origin: Vector3, T: any, O: any): Graph
 		table.insert(adj[a], b)
 		table.insert(adj[b], a)
 	end
+	-- A straight grid edge, but with a turn-in node inserted a short distance from each end junction.
+	-- The car then drives dead-straight in its lane along the edge and only curves within TurnIn studs
+	-- of a crossing; without this the Catmull-Rom smoothing reaches the whole 144-stud segment and swings
+	-- the cars wide onto the flanking walkways through every 90-degree turn.
+	local turnIn = Config.Traffic.TurnIn
+	local function linkEdge(a: number, b: number)
+		local dir = (pos[b] - pos[a]).Unit
+		local ta = node(pos[a] + dir * turnIn)
+		local tb = node(pos[b] - dir * turnIn)
+		link(a, ta)
+		link(ta, tb)
+		link(tb, b)
+	end
 
 	local groundY = Config.Roads.Thickness
 	local deckY = origin.Y + O.Y + O.Thickness / 2
@@ -142,7 +155,7 @@ local function buildGraph(origin: Vector3, T: any, O: any): Graph
 		for _, z in line[2] :: { number } do
 			local n = gnode(line[1] :: number, z)
 			if prev then
-				link(prev, n)
+				linkEdge(prev, n)
 			end
 			prev = n
 		end
@@ -153,7 +166,7 @@ local function buildGraph(origin: Vector3, T: any, O: any): Graph
 		for _, x in line[2] :: { number } do
 			local n = gnode(x, line[1] :: number)
 			if prev then
-				link(prev, n)
+				linkEdge(prev, n)
 			end
 			prev = n
 		end

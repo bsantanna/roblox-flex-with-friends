@@ -66,9 +66,11 @@ end
 -- `seg` is the segment CFrame (local Z = travel direction, local X = lateral, +X outward), `lateral`
 -- the edge offset, `length` the segment length, `diag` the brace slope sign.
 local function guardrail(parent: Instance, seg: CFrame, lateral: number, length: number, O: any, diag: number)
-	-- Overlap each panel onto its neighbours so the straight chords meet with no fall-through sliver at
-	-- the vertices (the rail offset outward on the curve adds arc the +1 of old never spanned).
-	local span = length + O.GuardrailOverlap
+	-- Only the OUTER rail (convex, lateral > 0) needs the big overlap: offsetting straight panels
+	-- outward on the curve adds arc the old +1 never spanned, leaving fall-through slivers. The INNER
+	-- rail is concave, so its panels already overlap at every vertex -- a minimal +1 keeps it sealed
+	-- without piling doubled glass into a blob at the ramp merges.
+	local span = length + (if lateral > 0 then O.GuardrailOverlap else 1)
 	addGlass(
 		parent,
 		"Guardrail",

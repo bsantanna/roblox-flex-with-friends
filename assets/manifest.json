@@ -8,6 +8,17 @@
   },
   "assets": [
     {
+      "id": "CentralBuilding",
+      "kind": "mesh",
+      "source": "source/CentralBuilding/CentralBuilding.glb",
+      "zone": "Home",
+      "offset": [0, 0, -8],
+      "rotationY": 270,
+      "scale": 1,
+      "displayName": "Plaza Apartments",
+      "description": "Four-floor apartment block on the central square; ground floor is walkable (rooms per the reference floor plan), main entrance faces the spawn forecourt."
+    },
+    {
       "id": "Neighbor01",
       "kind": "mesh",
       "source": "source/Neighbor01/Neighbor01.glb",

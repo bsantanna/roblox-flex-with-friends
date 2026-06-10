@@ -123,7 +123,8 @@ Config.Terrain = {
 -- the lane-marking / curb dimensions.
 Config.Roads = {
 	Thickness = 0.4, -- asphalt slab height above the grass surface (Y=0)
-	Fillet = 4, -- extra radius at each junction so corners curve instead of meeting square
+	Fillet = 10, -- extra radius at each junction so corners curve instead of meeting square; must exceed
+	-- ~5 (RoadWidth 24, CurbWidth 30 -> corner tip at sqrt(2)*12) so the disc pokes past the walkway corner
 	LaneLineWidth = 0.7, -- width of the dashed centre line
 	DashLength = 9, -- length of each centre-line dash
 	DashGap = 9, -- gap between dashes

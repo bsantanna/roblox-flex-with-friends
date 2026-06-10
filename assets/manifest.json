@@ -13,7 +13,7 @@
       "source": "source/Neighbor01/Neighbor01.glb",
       "zone": "Home",
       "offset": [-144, 0, -144],
-      "rotationY": 0,
+      "rotationY": 180,
       "scale": 22,
       "displayName": "Neighbor House 1",
       "description": "Suburban neighbor home (NW square, faces the plaza)."
@@ -24,7 +24,7 @@
       "source": "source/Neighbor02/Neighbor02.glb",
       "zone": "Home",
       "offset": [144, 0, -144],
-      "rotationY": 0,
+      "rotationY": 180,
       "scale": 22,
       "displayName": "Neighbor House 2",
       "description": "Suburban neighbor home (NE square, faces the plaza)."
@@ -35,7 +35,7 @@
       "source": "source/Neighbor03/Neighbor03.glb",
       "zone": "Home",
       "offset": [-144, 0, 0],
-      "rotationY": 90,
+      "rotationY": 270,
       "scale": 22,
       "displayName": "Neighbor House 3",
       "description": "Suburban neighbor home (W square, faces the plaza)."
@@ -46,7 +46,7 @@
       "source": "source/Neighbor04/Neighbor04.glb",
       "zone": "Home",
       "offset": [144, 0, 0],
-      "rotationY": 270,
+      "rotationY": 90,
       "scale": 22,
       "displayName": "Neighbor House 4",
       "description": "Suburban neighbor home (E square, faces the plaza)."
@@ -57,7 +57,7 @@
       "source": "source/Neighbor05/Neighbor05.glb",
       "zone": "Home",
       "offset": [-144, 0, 144],
-      "rotationY": 180,
+      "rotationY": 0,
       "scale": 22,
       "displayName": "Neighbor House 5",
       "description": "Suburban neighbor home (SW square, faces the plaza)."
@@ -68,7 +68,7 @@
       "source": "source/Neighbor06/Neighbor06.glb",
       "zone": "Home",
       "offset": [144, 0, 144],
-      "rotationY": 180,
+      "rotationY": 0,
       "scale": 22,
       "displayName": "Neighbor House 6",
       "description": "Suburban neighbor home (SE square, faces the plaza)."

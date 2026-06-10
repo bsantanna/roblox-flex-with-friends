@@ -123,7 +123,8 @@ Config.Terrain = {
 -- the lane-marking / curb dimensions.
 Config.Roads = {
 	Thickness = 0.4, -- asphalt slab height above the grass surface (Y=0)
-	Fillet = 4, -- extra radius at each junction so corners curve instead of meeting square
+	Fillet = 10, -- extra radius at each junction so corners curve instead of meeting square; must exceed
+	-- ~5 (RoadWidth 24, CurbWidth 30 -> corner tip at sqrt(2)*12) so the disc pokes past the walkway corner
 	LaneLineWidth = 0.7, -- width of the dashed centre line
 	DashLength = 9, -- length of each centre-line dash
 	DashGap = 9, -- gap between dashes
@@ -137,6 +138,7 @@ Config.Traffic = {
 	Cars = 16, -- cars roaming the whole network
 	Speed = 26, -- cruising studs per second
 	LaneOffset = 6, -- studs from the road centre into the right-hand lane
+	TurnIn = 18, -- studs before a junction where the in-lane curve starts, keeping the turn local so the body stays off walkways
 	StopDistance = 16, -- decelerate/stop for a player within this distance ahead, in-lane
 	StuckSeconds = 30, -- if a car barely moves for this long, respawn it ahead on the road
 	RespawnAhead = 24, -- studs to teleport a stuck car forward along its route (> StopDistance so it clears the blockage)

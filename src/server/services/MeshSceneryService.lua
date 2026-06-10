@@ -53,6 +53,14 @@ local function place(scenery: Folder, entry: any, assetId: number)
 	local model = container :: Model
 	model.Name = entry.id
 
+	-- Uploaded meshes arrive unanchored. Anchor them, or a house that loads before WorldService
+	-- finishes painting the terrain free-falls and is destroyed at FallenPartsDestroyHeight.
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+		end
+	end
+
 	local scale = tonumber(entry.scale)
 	if scale and scale ~= 1 then
 		model:ScaleTo(scale)
@@ -76,12 +84,21 @@ local function place(scenery: Folder, entry: any, assetId: number)
 
 	-- Seat the model on the terrain below it: an uploaded mesh's origin relative to its geometry
 	-- varies (and shifts under :ScaleTo), so trusting offset.y alone can bury or float a house.
+	-- WorldService may still be painting the terrain when the first assets load in, so retry until
+	-- the ray finds ground; skipping the seat would leave the model buried or floating.
 	local cf, size = model:GetBoundingBox()
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Include
 	rayParams.FilterDescendantsInstances = { Workspace.Terrain }
-	local hit =
-		Workspace:Raycast(cf.Position + Vector3.new(0, size.Y, 0), Vector3.new(0, -2 * size.Y - 100, 0), rayParams)
+	local hit: RaycastResult? = nil
+	for _ = 1, 30 do
+		hit =
+			Workspace:Raycast(cf.Position + Vector3.new(0, size.Y, 0), Vector3.new(0, -2 * size.Y - 100, 0), rayParams)
+		if hit then
+			break
+		end
+		task.wait(1)
+	end
 	if hit then
 		model:PivotTo(model:GetPivot() + Vector3.new(0, hit.Position.Y - (cf.Y - size.Y / 2), 0))
 	end

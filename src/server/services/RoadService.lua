@@ -47,6 +47,25 @@ local function addPart(
 	return p
 end
 
+-- Subtract `cutters` from `main` and swap the result in for it. The cutters are consumed; on CSG
+-- failure the original part stays (pavement intact, just not rounded/trimmed).
+local function carve(main: Part, cutters: { Part }, name: string, color: Color3, parent: Instance)
+	local ok, result = pcall(function()
+		return main:SubtractAsync(cutters :: any)
+	end)
+	for _, c in cutters do
+		c:Destroy()
+	end
+	if ok and result then
+		result.Name = name
+		result.UsePartColor = true
+		result.Color = color
+		result.Anchored = true
+		result.Parent = parent
+		main:Destroy()
+	end
+end
+
 -- The grid crossings (nodes) and the straight segments joining consecutive crossings on each line
 -- (edges). Lines sit at +/-RoadLine (inner gaps) and +/-PerimeterLine (outer loop) on both axes.
 local function buildGraph(origin: Vector3, T: any): ({ Vector3 }, { { Vector3 } })
@@ -138,7 +157,7 @@ function RoadService:Start()
 	-- flanking walkways (which stop short of the disc) so the pavement wraps the junction with no grass
 	-- gap. Only place a corner where both perpendicular arms exist, so none strands on the grass.
 	for _, n in nodes do
-		addPart(
+		local disc = addPart(
 			model,
 			"Junction",
 			CFrame.new(n.X, th / 2, n.Z) * CFrame.Angles(0, 0, math.rad(90)),
@@ -149,12 +168,38 @@ function RoadService:Start()
 			Enum.PartType.Cylinder
 		)
 		local x, z = n.X - origin.X, n.Z - origin.Z
+
+		-- On sides with no outgoing arm (the perimeter's outward sides) trim the disc flush with the
+		-- road edge, so its extra radius rounds the walkway corners without bulging into the grass.
+		local trimDepth = R.Fillet + 1
+		local trims = {}
+		local dirs = {
+			{ arm = x < T.PerimeterLine, off = Vector3.new(1, 0, 0) },
+			{ arm = x > -T.PerimeterLine, off = Vector3.new(-1, 0, 0) },
+			{ arm = z < T.PerimeterLine, off = Vector3.new(0, 0, 1) },
+			{ arm = z > -T.PerimeterLine, off = Vector3.new(0, 0, -1) },
+		}
+		for _, d in dirs do
+			if not d.arm then
+				local center = Vector3.new(n.X, th / 2, n.Z) + d.off * (W / 2 + trimDepth / 2)
+				local size = if d.off.X ~= 0
+					then Vector3.new(trimDepth, th + 0.2, junctionDiameter + 2)
+					else Vector3.new(junctionDiameter + 2, th + 0.2, trimDepth)
+				table.insert(
+					trims,
+					addPart(model, "JunctionTrim", CFrame.new(center), size, ASPHALT, Enum.Material.Asphalt, false)
+				)
+			end
+		end
+		if #trims > 0 then
+			carve(disc, trims, "Junction", ASPHALT, model)
+		end
 		for _, sx in { -1, 1 } do
 			for _, sz in { -1, 1 } do
 				local armX = if sx > 0 then x < T.PerimeterLine else x > -T.PerimeterLine
 				local armZ = if sz > 0 then z < T.PerimeterLine else z > -T.PerimeterLine
 				if armX and armZ then
-					addPart(
+					local corner = addPart(
 						model,
 						"Curb",
 						CFrame.new(n.X + sx * walkOff, R.CurbHeight / 2, n.Z + sz * walkOff),
@@ -162,6 +207,19 @@ function RoadService:Start()
 						CURB,
 						Enum.Material.Concrete
 					)
+					-- Carve the corner's inside edge back to the junction disc's arc, so the walkway
+					-- border wraps the crossing as a curve instead of a sharp right angle.
+					local cutter = addPart(
+						model,
+						"CornerCutter",
+						CFrame.new(n.X, R.CurbHeight / 2, n.Z) * CFrame.Angles(0, 0, math.rad(90)),
+						Vector3.new(R.CurbHeight + 0.2, junctionDiameter, junctionDiameter),
+						CURB,
+						Enum.Material.Concrete,
+						false,
+						Enum.PartType.Cylinder
+					)
+					carve(corner, { cutter }, "Curb", CURB, model)
 				end
 			end
 		end

@@ -13,10 +13,11 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local WorldService = {}
 
 -- Interaction anchors: name -> { offset from zone origin, prompt action/object text }. Placed in
--- the central plaza, just clear of the spawn, so they're reachable the moment the player lands.
+-- the plaza forecourt south of the CentralBuilding mesh (which fills the north half of the
+-- central square), just clear of the spawn, so they're reachable the moment the player lands.
 local HOME_INTERACTIONS = {
-	{ name = "Phone", offset = Vector3.new(-12, 2, 8), action = "Use", object = "Phone" },
-	{ name = "Computer", offset = Vector3.new(12, 2, 8), action = "Use", object = "Computer" },
+	{ name = "Phone", offset = Vector3.new(-12, 2, 24), action = "Use", object = "Phone" },
+	{ name = "Computer", offset = Vector3.new(12, 2, 24), action = "Use", object = "Computer" },
 }
 
 local function makePart(name: string, size: Vector3, position: Vector3, color: Color3, parent: Instance): Part
@@ -197,11 +198,11 @@ function WorldService:Start()
 	local home = world:FindFirstChild("Home") :: Model
 	local origin = Config.Zones.Home
 
-	-- Spawn players in Home.
+	-- Spawn players in Home, in the forecourt south of the CentralBuilding, facing its entrance.
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HomeSpawn"
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = origin + Vector3.new(0, 0.5, 0)
+	spawn.Position = origin + Vector3.new(0, 0.5, 20)
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Color = Color3.fromRGB(80, 160, 120)

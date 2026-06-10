@@ -177,7 +177,7 @@ Config.Decay = {
 Config.Npc = {
 	PersonalTrainer = {
 		UnlockFollowers = 100,
-		SpawnOffset = Vector3.new(-12, 0, 10),
+		SpawnOffset = Vector3.new(-18, 0, 22), -- plaza forecourt (the CentralBuilding fills the north half)
 		RewardPerCorrect = 30,
 		Questions = {
 			{

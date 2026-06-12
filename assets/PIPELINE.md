@@ -70,6 +70,10 @@ Then register/lock the entry in `assets/manifest.json` (point `source` at the `.
 without an `.mtl`); `MeshSceneryService` tints every part of the loaded model with it. Omit it for
 textured GLBs so their materials show through.
 
+`scatter` is optional — `scatter: true` marks an asset that is uploaded through this pipeline but
+placed in bulk by a dedicated service instead of pinned once by `MeshSceneryService` (e.g. `Tree01`,
+which `ForestService` clones across the Home island; its `offset`/`rotationY`/`scale` are unused).
+
 The asset id is **not** in the manifest — `make assets-upload` records it in `assets/asset-ids.json`.
 Commit the source (`.glb`, or `.obj` + `.mtl` + textures); binaries go to LFS automatically via
 `.gitattributes`.

@@ -12,11 +12,23 @@
       "kind": "mesh",
       "source": "source/CentralBuilding/CentralBuilding.glb",
       "zone": "Home",
-      "offset": [0, 0, -8],
-      "rotationY": 270,
-      "scale": 1,
+      "offset": [0, 0, -95.25],
+      "rotationY": 180,
+      "scale": 2,
       "displayName": "Plaza Apartments",
-      "description": "Four-floor apartment block on the central square; ground floor is walkable (rooms per the reference floor plan), main entrance faces the spawn forecourt."
+      "description": "Four-floor apartment block at 2x (22-stud storeys, footprint x +/-59.5, z -16.5..-174): spans the plaza square and the north-center lot, bridging the east-west street with a ground-level underpass under the west wing. All four floors walkable (same plan per floor, spiral stair); main entrance (doormat) on the south face toward the spawn forecourt; players spawn inside the ground-floor entree."
+    },
+    {
+      "id": "Tree01",
+      "kind": "mesh",
+      "source": "source/Tree01/Tree01.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Neighborhood Tree",
+      "description": "Stylized cloud-canopy tree. scatter:true — uploaded by the pipeline but placed by ForestService, which clones it across the Home island's grass (Config.Forest)."
     },
     {
       "id": "Neighbor01",
@@ -25,7 +37,7 @@
       "zone": "Home",
       "offset": [-144, 0, -144],
       "rotationY": 180,
-      "scale": 22,
+      "scale": 24,
       "displayName": "Neighbor House 1",
       "description": "Suburban neighbor home (NW square, faces the plaza)."
     },
@@ -47,7 +59,7 @@
       "zone": "Home",
       "offset": [-144, 0, 0],
       "rotationY": 270,
-      "scale": 22,
+      "scale": 23,
       "displayName": "Neighbor House 3",
       "description": "Suburban neighbor home (W square, faces the plaza)."
     },
@@ -58,7 +70,7 @@
       "zone": "Home",
       "offset": [144, 0, 0],
       "rotationY": 90,
-      "scale": 22,
+      "scale": 32,
       "displayName": "Neighbor House 4",
       "description": "Suburban neighbor home (E square, faces the plaza)."
     },
@@ -69,7 +81,7 @@
       "zone": "Home",
       "offset": [-144, 0, 144],
       "rotationY": 0,
-      "scale": 22,
+      "scale": 14,
       "displayName": "Neighbor House 5",
       "description": "Suburban neighbor home (SW square, faces the plaza)."
     },
@@ -80,7 +92,7 @@
       "zone": "Home",
       "offset": [144, 0, 144],
       "rotationY": 0,
-      "scale": 22,
+      "scale": 14,
       "displayName": "Neighbor House 6",
       "description": "Suburban neighbor home (SE square, faces the plaza)."
     }

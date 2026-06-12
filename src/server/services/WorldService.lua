@@ -6,6 +6,7 @@
 -- replace these parts later without changing the interaction contract (the prompt names).
 
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -13,11 +14,11 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local WorldService = {}
 
 -- Interaction anchors: name -> { offset from zone origin, prompt action/object text }. Placed in
--- the plaza forecourt south of the CentralBuilding mesh (which fills the north half of the
--- central square), just clear of the spawn, so they're reachable the moment the player lands.
+-- the plaza forecourt south of the CentralBuilding mesh (whose front facade sits at z -16.5),
+-- so they're reachable moments after the player walks out of the main entrance.
 local HOME_INTERACTIONS = {
-	{ name = "Phone", offset = Vector3.new(-12, 2, 24), action = "Use", object = "Phone" },
-	{ name = "Computer", offset = Vector3.new(12, 2, 24), action = "Use", object = "Computer" },
+	{ name = "Phone", offset = Vector3.new(-4, 2, 26), action = "Use", object = "Phone" },
+	{ name = "Computer", offset = Vector3.new(20, 2, 26), action = "Use", object = "Computer" },
 }
 
 local function makePart(name: string, size: Vector3, position: Vector3, color: Color3, parent: Instance): Part
@@ -123,8 +124,8 @@ end
 
 -- The grid's hardscape: the circular central plaza floor and a driveway from each house to the road
 -- it faces (RoadService lays the streets and their curbs). Squares are by center
--- (cx, cz) in {-Pitch, 0, Pitch}: (0,0) is the plaza, ParkCell stays grass, the other seven hold a
--- house (the meshes in assets/manifest.json plus the primitive home in SceneryService).
+-- (cx, cz) in {-Pitch, 0, Pitch}: (0,0) is the plaza, ParkCell stays grass, six squares hold the
+-- neighbor meshes from assets/manifest.json and the north-center square is a free lot.
 local PAVING = Color3.fromRGB(200, 200, 205)
 
 local function buildHomeGrid(home: Model, origin: Vector3)
@@ -198,15 +199,26 @@ function WorldService:Start()
 	local home = world:FindFirstChild("Home") :: Model
 	local origin = Config.Zones.Home
 
-	-- Spawn players in Home, in the forecourt south of the CentralBuilding, facing its entrance.
+	-- Spawn players in Home, inside the CentralBuilding's ground-floor entree (east of the spiral
+	-- stair, just behind the main entrance in the south facade at z -16.5). The plate sits a hair
+	-- proud of the 2x ground slab (top at y 1) so the two top faces don't z-fight.
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "HomeSpawn"
 	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.Position = origin + Vector3.new(0, 0.5, 20)
+	spawn.Position = origin + Vector3.new(-8, 0.55, -27)
 	spawn.Anchored = true
 	spawn.Neutral = true
 	spawn.Color = Color3.fromRGB(80, 160, 120)
 	spawn.Parent = home
+
+	-- A player who joined before this SpawnLocation existed (boot race, common in Studio play)
+	-- got the engine's default spawn at the origin — historically on top of whatever stood there.
+	-- Re-seat any such early character on the real spawn.
+	for _, player in Players:GetPlayers() do
+		task.spawn(function()
+			player:LoadCharacter()
+		end)
+	end
 
 	-- Interaction anchors with named ProximityPrompts.
 	local interactions = Instance.new("Folder")

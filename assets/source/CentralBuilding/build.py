@@ -1,8 +1,14 @@
 # Build script for CentralBuilding — 4-floor apartment block on the Home plaza's central square.
 # Geometry interprets the reference floor plan (doc: Dutch apartment plan; rooms: autolift garage,
 # entree/stair lobby, keuken, eetkamer, kast-lobby, badkamer, 2x slaapkamer + hal, woonkamer,
-# top slaapkamer + badkamer, two terraces). Ground floor is walkable: real doorway openings,
-# every wall its own box so Roblox box collision keeps doorways passable (no mesh join).
+# top slaapkamer + badkamer, two terraces). ALL FOUR floors repeat the ground-floor plan and are
+# walkable: real doorway openings, every wall its own box so Roblox box collision keeps doorways
+# passable (no mesh join). A functional spiral stair in the entree connects the floors through
+# stairwell openings cut into the upper slabs. At the manifest placement (scale 2) the building
+# bridges the east-west street: a ground-level UNDERPASS band lets the road pass under the west
+# wing while floors 1+ span it (see UNDERPASS below).
+# Proportions are Roblox-exaggerated: SCALE 3.5 studs/plan-meter, 11-stud storeys, ~6.3x8.5 stud
+# doors — a ~5.5-stud character reads realistic scale (2.5 studs/m) as a doll house.
 # Units: built directly in STUDS (1 Blender unit = 1 stud), plan meters * SCALE.
 # Run inside Blender with blender_asset_helpers (bah) importable:
 #   exec(open(".../assets/source/CentralBuilding/build.py").read())
@@ -11,13 +17,28 @@ import bpy
 import math
 import blender_asset_helpers as bah
 
-SCALE = 2.5  # studs per plan-meter (walkable interior; doors widened to 1.8 m = 4.5 studs)
+SCALE = 3.5  # studs per plan-meter
 CX, CY = 8.5, 11.25  # plan-bbox center (m) -> model centered on origin
-PITCH = 8.0  # storey pitch in studs (slab 0.5 + wall 7.5, embedded 0.1 both ends)
-DOOR_H = 5.8  # doorway opening height (studs) above slab top
+PITCH = 11.0  # storey pitch in studs (slab 0.5 + wall 10.5, embedded 0.1 both ends)
+DOOR_H = 8.5  # doorway opening height (studs) above slab top
 TH_EXT = 0.4  # exterior wall thickness (m)
 TH_INT = 0.32  # interior wall thickness (m)
 FLOORS = 4
+
+# Street underpass: at manifest placement (scale 2, rotY 180, south face plan y=0 at world z
+# -16.5) the building bridges the east-west street; this plan-y band is where the street passes
+# under the west wing (world z -57..-87, road 24 wide + 3-stud margins). Ground floor only: no
+# slab in the band, arch openings in W1/E1, and the interior walls that cross it are clipped.
+# Floors 1+ span the band untouched. The main entrance is S1's door (faces the forecourt).
+UNDERPASS = (5.79, 10.07)  # plan-y band (m)
+ARCH_H = 9.2  # underpass opening height in studs above the slab (18.4 studs clear at 2x)
+
+# Spiral stair (in the entree/stair lobby, plan x 3.6..8.9, y 0..2.9): center, the stairwell
+# opening cut in each upper slab, and steps per flight (last flight takes 12 so every flight's
+# exit lands at 300-330 deg, beside the slab's east landing strip).
+STAIR_C = (5.05, 1.55)  # plan-m
+STAIR_HOLE = (3.65, 6.0, 0.0, 2.9)  # plan-m x0, x1, y0, y1
+FLIGHT_STEPS = (11, 11, 12)
 
 n_part = [0]
 
@@ -72,7 +93,7 @@ def wall_run(tag, axis, c, a0, a1, z0, z1, th=TH_EXT, openings=(), door_h=DOOR_H
     return parts
 
 
-def panel(tag, axis, c, face, m0, m1, zc, hh, prot=0.55, hth=0.18):
+def panel(tag, axis, c, face, m0, m1, zc, hh, prot=0.75, hth=0.18):
     """Flat decor panel (window glass / garage door) on a wall face. `face` = outward sign."""
     mid = (m0 + m1) / 2
     half_run = (m1 - m0) * SCALE / 2
@@ -92,7 +113,7 @@ FACADES = {
     "N2": ("x", 22.5, 1, 5.7, 10.8),  # top north
     "W2": ("y", 5.7, -1, 17.6, 22.5),  # top bedroom west (faces terrace TL)
     "N3": ("x", 17.6, 1, 0.0, 5.7),  # hall north (faces terrace TL)
-    "W1": ("y", 0.0, -1, 0.0, 17.6),  # west: MAIN facade (faces plaza after rotation)
+    "W1": ("y", 0.0, -1, 0.0, 17.6),  # west: MAIN facade (faces the spawn forecourt)
 }
 
 # Slab regions covering the footprint (enclosed A/B/C + terraces D/E)
@@ -118,38 +139,54 @@ def rails(z0):
         hth = 0.18 * SCALE / 2
         mid, half_run = (a0 + a1) / 2, (a1 - a0) * SCALE / 2 + hth
         if axis == "x":
-            bah.box(nm("Rail"), (X(mid), Y(c), z0 + 1.25), (half_run, hth, 1.25))
+            bah.box(nm("Rail"), (X(mid), Y(c), z0 + 1.6), (half_run, hth, 1.6))
         else:
-            bah.box(nm("Rail"), (X(c), Y(mid), z0 + 1.25), (hth, half_run, 1.25))
+            bah.box(nm("Rail"), (X(c), Y(mid), z0 + 1.6), (hth, half_run, 1.6))
 
 
-def floor_slabs(n, regions="ABCDE"):
+def floor_slabs(n, regions="ABCDE", hole=False, underpass=False):
     z0 = n * PITCH
     for r in regions:
         x0, x1, y0, y1 = REGIONS[r]
-        slab(r, x0, x1, y0, y1, z0, z0 + 0.5)
+        if r == "A" and underpass:
+            u0, u1 = UNDERPASS
+            slab(r, x0, x1, y0, u0, z0, z0 + 0.5)  # south of the street
+            slab(r, x0, x1, u1, y1, z0, z0 + 0.5)  # north of the street
+        elif r == "A" and hole:
+            hx0, hx1, hy0, hy1 = STAIR_HOLE
+            slab(r, x0, x1, hy1, y1, z0, z0 + 0.5)  # north of the stairwell
+            slab(r, x0, hx0, hy0, hy1, z0, z0 + 0.5)  # west of it
+            slab(r, hx1, x1, hy0, hy1, z0, z0 + 0.5)  # east landing strip (flights exit here)
+        else:
+            slab(r, x0, x1, y0, y1, z0, z0 + 0.5)
 
 
-def build_ground():
-    z0, z1 = 0.4, PITCH + 0.1
-    floor_slabs(0)
-    rails(0.5)
-    # Exterior walls with ground-floor openings
-    wall_run("S1", "x", 0.0, 0.0, 8.9, z0, z1, openings=[(5.9, 7.7)])  # side entree door
-    wall_run("E1", "y", 8.9, 0.0, 12.5, z0, z1)
+def exterior_walls(z0, z1, entrances):
+    """The facade loop, identical on every floor. Terrace doorways (E2/N3) repeat per floor —
+    each opens onto that floor's own terrace slab; the S1 main entrance and the W1/E1 street
+    underpass arches exist only at ground."""
+    wall_run("S1", "x", 0.0, 0.0, 8.9, z0, z1, openings=[(6.7, 8.5)] if entrances else [])  # MAIN ENTRANCE
+    wall_run("E1", "y", 8.9, 0.0, 12.5, z0, z1, openings=[UNDERPASS] if entrances else [], door_h=ARCH_H)
     wall_run("S2", "x", 12.5, 8.9, 14.2, z0, z1)
-    wall_run("E2", "y", 14.2, 12.5, 17.6, z0, z1, openings=[(14.2, 16.0)])  # glass door to terrace R
+    wall_run("E2", "y", 14.2, 12.5, 17.6, z0, z1, openings=[(14.2, 16.0)])  # door to terrace R
     wall_run("N1", "x", 17.6, 10.8, 14.2, z0, z1)
     wall_run("E3", "y", 10.8, 17.6, 22.5, z0, z1)
     wall_run("N2", "x", 22.5, 5.7, 10.8, z0, z1)
     wall_run("W2", "y", 5.7, 17.6, 22.5, z0, z1)
     wall_run("N3", "x", 17.6, 0.0, 5.7, z0, z1, openings=[(1.9, 3.7)])  # hall -> terrace TL
-    wall_run("W1", "y", 0.0, 0.0, 17.6, z0, z1, openings=[(8.1, 9.9)])  # MAIN ENTRANCE
-    # Interior walls
-    wall_run("Garage", "y", 3.6, 0.0, 6.7, z0, z1, th=TH_INT)
-    wall_run("Kitchen", "x", 2.9, 3.6, 8.9, z0, z1, th=TH_INT, openings=[(5.9, 7.7)])
-    wall_run("GarLobby", "x", 6.7, 0.0, 3.6, z0, z1, th=TH_INT, openings=[(0.9, 2.7)])
-    wall_run("LobbyDine", "y", 3.6, 6.7, 11.3, z0, z1, th=TH_INT, openings=[(8.1, 9.9)])
+    wall_run("W1", "y", 0.0, 0.0, 17.6, z0, z1, openings=[UNDERPASS] if entrances else [], door_h=ARCH_H)
+
+
+def interior_walls(z0, z1, ground=False):
+    """Interior plan, identical on every floor (the ground-floor plant repeated). The entree and
+    kitchen doors sit at x 6.7..8.5 so the spiral stair (around x 3.7..6.4) stays clear of them.
+    On the ground floor the walls crossing the street underpass band are clipped/dropped."""
+    u0, u1 = UNDERPASS
+    wall_run("Garage", "y", 3.6, 0.0, u0 if ground else 6.7, z0, z1, th=TH_INT)
+    wall_run("Kitchen", "x", 2.9, 3.6, 8.9, z0, z1, th=TH_INT, openings=[(6.7, 8.5)])
+    if not ground:
+        wall_run("GarLobby", "x", 6.7, 0.0, 3.6, z0, z1, th=TH_INT, openings=[(0.9, 2.7)])
+    wall_run("LobbyDine", "y", 3.6, u1 if ground else 6.7, 11.3, z0, z1, th=TH_INT, openings=[] if ground else [(8.1, 9.9)])
     wall_run("Bath", "x", 11.3, 0.0, 5.7, z0, z1, th=TH_INT, openings=[(0.9, 2.7)])
     wall_run("BathDine", "y", 5.7, 11.3, 15.9, z0, z1, th=TH_INT)
     wall_run("BathBeds", "x", 13.3, 0.0, 5.7, z0, z1, th=TH_INT)
@@ -157,34 +194,55 @@ def build_ground():
     wall_run("BedsHall", "x", 15.9, 0.0, 5.7, z0, z1, th=TH_INT, openings=[(0.7, 2.5), (3.1, 4.9)])
     wall_run("TopBed", "x", 17.6, 5.7, 10.8, z0, z1, th=TH_INT, openings=[(6.6, 8.4)])
     wall_run("TopBath", "y", 9.3, 17.6, 22.5, z0, z1, th=TH_INT, openings=[(19.0, 20.8)])
-    # Garage door: dark recessed panel on the south facade (garage not enterable from outside)
-    panel("Door", "x", 0.0, -1, 0.5, 3.1, 0.5 + 2.9, 2.9)
-    # Spiral stair (decor) in the entree: center column + steps rotated about Z only
-    cz = 7.5  # column top
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=cz, location=(X(7.7), Y(1.45), 0.5 + cz / 2))
+
+
+def spiral_stairs():
+    """Walkable spiral connecting all floors. ~1-stud risers, wide overlapping treads. Each
+    flight's top tread lands flush with the next floor's surface at 300-330 deg — right beside
+    the slab's east landing strip (STAIR_HOLE x1), so the character steps straight off."""
+    cx, cy = X(STAIR_C[0]), Y(STAIR_C[1])
+    top = (FLOORS - 1) * PITCH + 1.5
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=top, location=(cx, cy, 0.5 + top / 2))
     bpy.context.active_object.name = nm("Stair_Col")
-    for i in range(10):
-        ang = math.radians(i * 33)
-        zc = 0.8 + i * 0.68
-        # build at origin, bake scale+rotation only (transform_apply defaults ALL flags True —
-        # leaving location baked here is the bug that scatters parts around the world origin),
-        # then move into place via object location.
-        bpy.ops.mesh.primitive_cube_add(size=2, location=(0, 0, 0))
-        st = bpy.context.active_object
-        st.name = nm("Stair_Step")
-        st.scale = (1.45, 0.55, 0.12)
-        st.rotation_euler = (0, 0, ang)  # rotation about Z only (safe single-axis)
-        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-        st.location = (X(7.7) + math.cos(ang) * 1.0, Y(1.45) + math.sin(ang) * 1.0, zc)
+    m = 0
+    for n, count in enumerate(FLIGHT_STEPS):
+        riser = PITCH / count
+        for k in range(1, count + 1):
+            m += 1
+            ang = math.radians(m * 30)
+            ztop = n * PITCH + 0.5 + k * riser
+            # build at origin, bake scale+rotation only (transform_apply defaults ALL flags True —
+            # leaving location baked here is the bug that scatters parts around the world origin),
+            # then move into place via object location. Rotation about Z only (safe single-axis).
+            bpy.ops.mesh.primitive_cube_add(size=2, location=(0, 0, 0))
+            st = bpy.context.active_object
+            st.name = nm("Stair_Step")
+            st.scale = (1.9, 1.1, 0.2)
+            st.rotation_euler = (0, 0, ang)
+            bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+            st.location = (cx + math.cos(ang) * 2.7, cy + math.sin(ang) * 2.7, ztop - 0.2)
+
+
+def build_ground():
+    z0, z1 = 0.4, PITCH + 0.1
+    floor_slabs(0, underpass=True)
+    rails(0.5)
+    exterior_walls(z0, z1, entrances=True)
+    interior_walls(z0, z1, ground=True)
+    # Garage door: dark recessed panel on the south facade (garage not enterable from outside)
+    panel("Door", "x", 0.0, -1, 0.5, 3.1, 0.5 + 3.8, 3.8)
+    # Doormat outside the S1 main entrance (faces the spawn forecourt at the manifest rotation):
+    # reads as a welcome mat and doubles as the orientation marker for placement checks in Studio.
+    bah.box(nm("Doormat"), (X(7.6), Y(0.0) - TH_EXT * SCALE / 2 - 0.6, 0.3), (0.9 * SCALE / 2, 0.6, 0.3))
+    spiral_stairs()
     # Ground-floor windows (glass panels proud of the facade)
     for tag, fac, m0, m1 in [
         ("Glass", "W1", 2.0, 4.5),  # garage
         ("Glass", "W1", 11.6, 13.0),  # bathroom (high sill handled by zc)
         ("Glass", "W1", 13.6, 15.6),  # bedroom W
         ("Glass", "S1", 4.2, 5.4),  # stair lobby
-        ("Glass", "E1", 3.5, 6.0),
-        ("Glass", "E1", 7.0, 9.5),
-        ("Glass", "E1", 10.0, 12.0),  # dining column
+        ("Glass", "E1", 3.5, 5.5),  # clipped to the underpass band
+        ("Glass", "E1", 10.3, 12.0),  # dining column (the middle window fell in the band)
         ("Glass", "S2", 9.4, 11.2),
         ("Glass", "S2", 11.8, 13.6),  # woonkamer
         ("Glass", "E2", 16.3, 17.3),
@@ -196,27 +254,26 @@ def build_ground():
         ("Glass", "N3", 4.0, 5.2),
     ]:
         axis, c, face, _, _ = FACADES[fac]
-        panel(tag, axis, c, face, m0, m1, 0.4 + 4.4, 1.7)
+        panel(tag, axis, c, face, m0, m1, 0.4 + 5.4, 2.6)
 
 
 def build_upper():
     for n in range(1, FLOORS):
         z0, z1 = n * PITCH + 0.4, (n + 1) * PITCH + 0.1
-        floor_slabs(n)
+        floor_slabs(n, hole=True)
         rails(n * PITCH + 0.5)
+        exterior_walls(z0, z1, entrances=False)
+        interior_walls(z0, z1)
+        # window bands on the closed facades (terrace walls E2/N3 have real doorways instead)
         for fac, (axis, c, face, a0, a1) in FACADES.items():
-            wall_run(f"F{n}{fac}", axis, c, a0, a1, z0, z1)
-            # balcony glass doors on the walls facing the terraces, else window band
-            if fac in ("W2", "N3", "E2"):
-                mid = (a0 + a1) / 2
-                panel("Glass", axis, c, face, mid - 1.4, mid + 1.4, z0 + 3.1, 2.9)
+            if fac in ("E2", "N3"):
                 continue
             run = a1 - a0
             nwin = max(1, int(run // 2.6))
             step = run / nwin
             for i in range(nwin):
                 w0 = a0 + step * (i + 0.5) - 0.8
-                panel("Glass", axis, c, face, w0, w0 + 1.6, z0 + 4.0, 1.7)
+                panel("Glass", axis, c, face, w0, w0 + 1.6, z0 + 5.1, 2.0)
 
 
 def build_roof():
@@ -226,10 +283,25 @@ def build_roof():
     for fac, (axis, c, face, a0, a1) in FACADES.items():
         mid, half_run = (a0 + a1) / 2, (a1 - a0) * SCALE / 2 + hth
         if axis == "x":
-            bah.box(nm("Parapet"), (X(mid), Y(c), zr + 1.0), (half_run, hth, 1.1))
+            bah.box(nm("Parapet"), (X(mid), Y(c), zr + 1.3), (half_run, hth, 1.4))
         else:
-            bah.box(nm("Parapet"), (X(c), Y(mid), zr + 1.0), (hth, half_run, 1.1))
+            bah.box(nm("Parapet"), (X(c), Y(mid), zr + 1.3), (hth, half_run, 1.4))
     rails(zr + 0.5)  # parapet on the open balcony edges of the roof level too
+
+
+def paint_all():
+    """One flat material per part kind (rebuilding the collection drops materials, and the bake
+    in finalize_multi reads them). Most specific name rules first; Doormat before Door."""
+    rules = [
+        ("Doormat", bah.flat_material("CB_Mat", "#3E8E5B")),
+        ("Door", bah.flat_material("CB_Door", "#4F3A26")),
+        ("Glass", bah.flat_material("CB_Glass", "#33414F", rough=0.3)),
+        ("Rail", bah.flat_material("CB_Rail", "#F2F3F0")),
+        ("Stair", bah.flat_material("CB_Stair", "#8C9196")),
+        ("Slab", bah.flat_material("CB_Slab", "#C9C5BD")),
+        (("Wall", "Lin", "Parapet"), bah.flat_material("CB_Wall", "#E9DFC9")),
+    ]
+    return bah.paint(rules, "CB")
 
 
 def build(stage="ground"):

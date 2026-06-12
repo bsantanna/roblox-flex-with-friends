@@ -17,7 +17,11 @@ local EVENTS = {
 	"RequestPhotoCapture", -- client -> server: ()
 	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
 	"UnlockNpc", -- server -> client: (npcId: string)
-	"RequestTrainer", -- client -> server: ()
+	"DialogLine", -- server -> client: (text: string, index: number, total: number, choices: {string}?)
+	"DialogAdvance", -- client -> server: () -- advance past a plain line
+	"DialogChoose", -- client -> server: (choiceIndex: number) -- pick a branch-line choice
+	"DialogEnd", -- server -> client: () -- dismiss the dialog UI
+	"SetFollowers", -- client -> server: (value: number) -- dev cheat; server accepts in Studio only
 	"TrainerQuestion", -- server -> client: (index: number, total: number, question: string, options: {string})
 	"TrainerAnswer", -- client -> server: (optionIndex: number)
 	"TrainerResult", -- server -> client: (correct: boolean, reward: number, finished: boolean, score: number, message: string?)

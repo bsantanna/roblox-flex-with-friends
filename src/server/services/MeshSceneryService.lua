@@ -123,10 +123,12 @@ function MeshSceneryService:Start()
 	-- Place each mesh in its own task so the boot isn't blocked by LoadAsset retries and a slow asset
 	-- never holds up the others; each pops in as soon as it becomes loadable. Stagger the starts so 8
 	-- simultaneous LoadAsset calls don't rate-limit each other at boot.
+	-- scatter:true entries are uploaded through the same pipeline but placed in bulk by their
+	-- owning service (e.g. ForestService), not pinned here one at a time.
 	local index = 0
 	for _, entry in Manifest.assets :: { any } do
 		local assetId = AssetIds[entry.id]
-		if entry.kind == "mesh" and assetId then
+		if entry.kind == "mesh" and assetId and not entry.scatter then
 			index += 1
 			local startDelay = index * 0.5
 			task.spawn(function()

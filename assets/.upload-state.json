@@ -1,7 +1,7 @@
 {
   "CentralBuilding": {
     "assetId": 87305464749029,
-    "hash": "3d33d87ca4170c2dad7abc44215e075b7a1bede747c0ced74c881f68110d6682"
+    "hash": "889727c740c1f30d4ad894e3db336b38b69acc291600453f2ad15f9ba5286f9a"
   },
   "Neighbor01": {
     "assetId": 134957888385403,
@@ -26,5 +26,9 @@
   "Neighbor06": {
     "assetId": 116287141161587,
     "hash": "96b1e4e2ac8ef17bdf100342e1ca44897db2bf5fde4346bdc5980dbde60b349a"
+  },
+  "Tree01": {
+    "assetId": 110182506336395,
+    "hash": "253c725436399a18b5e95d79446ae4149739a705605abf83a5a7c739b25ca76b"
   }
 }

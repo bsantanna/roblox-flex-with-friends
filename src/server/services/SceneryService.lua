@@ -13,7 +13,6 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local SceneryService = {}
 
-local WALL = Color3.fromRGB(236, 228, 214)
 local GLASS = Color3.fromRGB(174, 198, 207)
 local ROOF = Color3.fromRGB(70, 70, 82)
 local DARKWOOD = Color3.fromRGB(80, 55, 35)
@@ -67,35 +66,6 @@ local function pillar(
 			material = material,
 		}
 	)
-end
-
-local function buildHouse(model: Model, base: CFrame)
-	local w, h, d = 44, 16, 32
-	add(model, base * CFrame.new(0, h / 2, 0), Vector3.new(w, h, d), WALL) -- body
-	add(model, base * CFrame.new(0, h + 0.5, 0), Vector3.new(w + 2, 1, d + 2), ROOF) -- flat roof
-	add(
-		model,
-		base * CFrame.new(0, h * 0.45, d / 2),
-		Vector3.new(w - 6, h - 4, 1),
-		GLASS,
-		{ material = Enum.Material.Glass, transparency = 0.35 }
-	) -- glass front
-	add(model, base * CFrame.new(0, 4, d / 2 + 0.1), Vector3.new(5, 8, 0.6), DARKWOOD) -- door
-	-- second-floor balcony
-	add(model, base * CFrame.new(0, h * 0.62, d / 2 + 2.5), Vector3.new(22, 0.6, 5), ROOF)
-	add(model, base * CFrame.new(0, h * 0.62 + 1.2, d / 2 + 4.8), Vector3.new(22, 1.4, 0.3), WALL)
-	-- side windows
-	for _, sx in { -1, 1 } do
-		for _, wz in { -8, 8 } do
-			add(
-				model,
-				base * CFrame.new(sx * (w / 2 + 0.05), 9, wz),
-				Vector3.new(0.5, 5, 6),
-				GLASS,
-				{ material = Enum.Material.Glass, transparency = 0.4 }
-			)
-		end
-	end
 end
 
 local function buildTerminal(model: Model, base: CFrame)
@@ -222,10 +192,9 @@ type Placement = {
 	build: (Model, CFrame) -> (),
 }
 
--- The player's Home sits in the north-center square of the neighborhood grid (faces the plaza), at
--- a scale that fits a CellSize (60) square. The taxi is the Cab01 mesh now (assets/manifest.json).
+-- The player's home is the CentralBuilding mesh on the plaza (assets/manifest.json); the
+-- north-center square of the neighborhood grid is a free lot.
 local PLACEMENTS: { Placement } = {
-	{ id = "House", zone = "Home", offset = Vector3.new(0, 0, -144), rotationY = 0, scale = 1.0, build = buildHouse },
 	{ id = "Terminal", zone = "Airport", offset = Vector3.new(0, 0, -20), rotationY = 0, build = buildTerminal },
 	{ id = "BoardingGate", zone = "Airport", offset = Vector3.new(0, 0, 10), rotationY = 0, build = buildBoardingGate },
 	{ id = "Airplane", zone = "Airport", offset = Vector3.new(18, 0, 30), rotationY = 90, build = buildAirplane },

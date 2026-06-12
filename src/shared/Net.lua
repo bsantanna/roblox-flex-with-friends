@@ -17,10 +17,16 @@ local EVENTS = {
 	"RequestPhotoCapture", -- client -> server: ()
 	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
 	"UnlockNpc", -- server -> client: (npcId: string)
-	"RequestTrainer", -- client -> server: ()
-	"TrainerQuestion", -- server -> client: (index: number, total: number, question: string, options: {string})
-	"TrainerAnswer", -- client -> server: (optionIndex: number)
-	"TrainerResult", -- server -> client: (correct: boolean, reward: number, finished: boolean, score: number, message: string?)
+	"DialogLine", -- server -> client: (text: string, index: number, total: number, choices: {string}?)
+	"DialogAdvance", -- client -> server: () -- advance past a plain line
+	"DialogChoose", -- client -> server: (choiceIndex: number) -- pick a branch-line choice
+	"DialogEnd", -- server -> client: () -- dismiss the dialog UI
+	"SetFollowers", -- client -> server: (value: number) -- dev cheat; server accepts in Studio only
+	"TrainerShowStep", -- server -> client: (arrow: string, round: number, maxRounds: number) -- light this arrow during the show
+	"TrainerInputPhase", -- server -> client: (timeoutSeconds: number) -- show done; server now accepts inputs
+	"TrainerPoseInput", -- client -> server: (arrow: string) -- one arrow per fire during the input phase
+	"TrainerRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
+	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean)
 }
 
 -- Request/response functions.

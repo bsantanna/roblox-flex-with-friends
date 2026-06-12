@@ -171,14 +171,40 @@ Config.Photo = {
 	Cooldown = 3, -- seconds between captures per player
 }
 
--- Collectible NPCs. An NPC unlocks once the player reaches UnlockFollowers; the Personal Trainer
--- then offers a quiz minigame that pays RewardPerCorrect per correct answer.
-type Question = { q: string, options: { string }, answer: number }
+-- Collectible NPCs. The NPC stands in the world for everyone; reaching UnlockFollowers records
+-- the unlock (persisted) and lets the dialog's branch line offer training — a Simon Says
+-- pose-memory minigame (SimonSays below). Dialog lines show in a speech bubble over the NPC
+-- (visible to all nearby players); {threshold} in a line is replaced with UnlockFollowers.
+type SimonSaysDef = {
+	StartLength: number, -- arrows in round 1's sequence
+	MaxRounds: number, -- the game is cleared after this many rounds
+	ShowStepSeconds: number, -- how long each arrow shows (and each pose plays)
+	ShowGapSeconds: number, -- blank gap between shown arrows
+	RoundDelaySeconds: number, -- pause between a cleared round and the next show phase
+	InputTimeoutSeconds: number, -- server-side deadline for a round's whole input phase
+	BaseReward: number, -- followers for clearing round 1
+	RewardPerRound: number, -- extra followers per round beyond the first
+	Arrows: { string }, -- input directions, each a key of Poses
+	Poses: { [string]: string }, -- arrow -> animation asset id played on NPC and player
+	MoveSeconds: number, -- seconds for the trainer to walk between its post and the arena
+	WalkAnimation: string, -- animation asset id played on the NPC while it walks
+}
+type NpcDialog = {
+	Lines: { string }, -- plain lines, advanced with Next
+	QualifiedLine: string, -- branch line when the player has the unlock
+	GateLine: string, -- branch line when the player does not
+	QualifiedChoices: { string }, -- choice 1 starts training, choice 2 leaves
+	GateChoices: { string }, -- choice 1 leaves
+	TimeoutSeconds: number, -- idle time before the server closes the session
+}
 type NpcDef = {
 	UnlockFollowers: number,
-	SpawnOffset: Vector3, -- relative to the Home zone origin
-	RewardPerCorrect: number,
-	Questions: { Question },
+	SpawnPosition: Vector3, -- world position of the floor point the NPC stands on (its post)
+	SpawnYaw: number, -- facing, degrees around Y (0 looks -Z/north); also the arena facing
+	AvatarUserId: number, -- avatar copied for the NPC model (red-box fallback on failure)
+	ArenaPosition: Vector3, -- floor point the trainer walks to for the minigame, then returns from
+	Dialog: NpcDialog,
+	SimonSays: SimonSaysDef,
 }
 
 Config.Invite = {
@@ -195,26 +221,50 @@ Config.Decay = {
 Config.Npc = {
 	PersonalTrainer = {
 		UnlockFollowers = 100,
-		SpawnOffset = Vector3.new(-10, 0, 30), -- plaza forecourt, left of the spawn/entrance
-		RewardPerCorrect = 30,
-		Questions = {
-			{
-				q = "Which macronutrient mainly builds muscle?",
-				options = { "Protein", "Sugar", "Trans fat" },
-				answer = 1,
+		SpawnPosition = Vector3.new(-10, 23, -32), -- CentralBuilding first floor, beside the spiral stair
+		SpawnYaw = 180, -- face south, toward the entrance forecourt where players approach
+		AvatarUserId = 1, -- Roblox's own avatar as the stand-in trainer look
+		ArenaPosition = Vector3.new(-10, 23, -50), -- open floor north of the post, in clear view from it
+		Dialog = {
+			Lines = {
+				"Hey, welcome to my gym!",
+				"I coach influencers who take their fitness seriously.",
 			},
-			{
-				q = "How many rest days a week are healthy?",
-				options = { "Zero", "One to two", "Never rest" },
-				answer = 2,
+			QualifiedLine = "You've got the following — ready to sweat?",
+			GateLine = "Come back when you have {threshold} followers and we'll train.",
+			QualifiedChoices = { "Train", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 3,
+			MaxRounds = 5,
+			ShowStepSeconds = 0.6,
+			ShowGapSeconds = 0.25,
+			RoundDelaySeconds = 1.2,
+			InputTimeoutSeconds = 10,
+			BaseReward = 30,
+			RewardPerRound = 10,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				-- Roblox default emote animations as stand-in poses; swap for custom
+				-- squat/pull-up/jump/yoga uploads later by editing only these ids.
+				Left = "rbxassetid://507770239", -- wave
+				Up = "rbxassetid://507770677", -- cheer
+				Right = "rbxassetid://507770453", -- point
+				Down = "rbxassetid://507771019", -- dance
 			},
-			{
-				q = "Which best supports heart health?",
-				options = { "Smoking", "Regular cardio", "Skipping sleep" },
-				answer = 2,
-			},
+			MoveSeconds = 1.5,
+			WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
 		},
 	},
 } :: { [string]: NpcDef }
+
+-- Dev cheat console (DevConsoleController): typing Sequence on the keyboard toggles a console
+-- that can set the follower count. The server accepts SetFollowers only in Studio.
+Config.DevConsole = {
+	Sequence = { "Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right", "B", "A" },
+	MaxFollowers = 1000000, -- server-side clamp on a cheated value
+}
 
 return Config

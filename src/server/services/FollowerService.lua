@@ -5,6 +5,7 @@
 -- See references/architecture.md (Follower / reputation economy).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
@@ -16,6 +17,7 @@ local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local FollowerService = {}
 
 local followerChanged: RemoteEvent
+local setFollowers: RemoteEvent
 local changedCallbacks: { (Player, number) -> () } = {}
 
 local function getLeaderstatValue(player: Player): IntValue?
@@ -51,6 +53,7 @@ end
 
 function FollowerService:Init()
 	followerChanged = Net.Event("FollowerChanged")
+	setFollowers = Net.Event("SetFollowers")
 end
 
 function FollowerService:Start()
@@ -72,6 +75,16 @@ function FollowerService:Start()
 			FollowerService:Deduct(player, loss, "offline-decay")
 		end
 	end)
+
+	-- Dev cheat (Konami console): force-set the balance. Studio only — in production this
+	-- remote is a no-op, so an exploiting client gains nothing by firing it.
+	setFollowers.OnServerEvent:Connect(function(player: Player, value: unknown)
+		if not RunService:IsStudio() or type(value) ~= "number" then
+			return
+		end
+		local clamped = math.clamp(math.floor(value), 0, Config.DevConsole.MaxFollowers)
+		FollowerService:Set(player, clamped, "dev-cheat")
+	end)
 end
 
 function FollowerService:Award(player: Player, amount: number, reason: string?)
@@ -90,6 +103,16 @@ function FollowerService:Deduct(player: Player, amount: number, reason: string?)
 	end
 	set(player, Followers.afterDeduct(profile.Data.Followers, amount))
 	Analytics.event(player, "FollowerDeduct", amount, reason)
+end
+
+-- Force the balance to an exact value (dev cheat path). Clamped like every other write.
+function FollowerService:Set(player: Player, value: number, reason: string?)
+	local profile = DataService:GetProfile(player)
+	if not profile then
+		return
+	end
+	set(player, value)
+	Analytics.event(player, "FollowerSet", value, reason)
 end
 
 function FollowerService:Get(player: Player): number

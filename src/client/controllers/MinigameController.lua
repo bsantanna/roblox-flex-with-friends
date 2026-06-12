@@ -1,18 +1,17 @@
 --!strict
--- MinigameController: drives the Personal Trainer quiz UI. Triggering the Trainer prompt asks the
--- server to start; the server sends each question and grades answers. Also toasts NPC unlocks.
+-- MinigameController: drives the Personal Trainer quiz UI. The quiz starts server-side (the
+-- trainer dialog's Train choice); the server sends each question and grades answers. Also
+-- toasts NPC unlocks.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Net = require(ReplicatedStorage.Shared.Net)
-local InteractionController = require(script.Parent.InteractionController)
 
 local MinigameController = {}
 
 local player = Players.LocalPlayer
 
-local requestTrainer: RemoteEvent
 local trainerQuestion: RemoteEvent
 local trainerAnswer: RemoteEvent
 local trainerResult: RemoteEvent
@@ -80,7 +79,6 @@ local function onUnlockNpc(npcId: string)
 end
 
 function MinigameController:Init()
-	requestTrainer = Net.Event("RequestTrainer")
 	trainerQuestion = Net.Event("TrainerQuestion")
 	trainerAnswer = Net.Event("TrainerAnswer")
 	trainerResult = Net.Event("TrainerResult")
@@ -146,9 +144,6 @@ function MinigameController:Init()
 end
 
 function MinigameController:Start()
-	InteractionController:OnInteract("Trainer", function()
-		requestTrainer:FireServer()
-	end)
 	trainerQuestion.OnClientEvent:Connect(onTrainerQuestion)
 	trainerResult.OnClientEvent:Connect(onTrainerResult)
 	unlockNpc.OnClientEvent:Connect(onUnlockNpc)

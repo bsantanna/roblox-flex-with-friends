@@ -1,7 +1,8 @@
 --!strict
 -- MinigameService: runs the Personal Trainer quiz. The server owns the questions and grades the
--- answers; correct answers pay followers via FollowerService. A player must have unlocked the
--- trainer to start. See doc/002_implementation_plan.md (1.6).
+-- answers; correct answers pay followers via FollowerService. DialogService starts a quiz via
+-- StartQuiz after the trainer dialog's Train choice; the unlock guard inside stays as defense in
+-- depth. See doc/002_implementation_plan.md (1.6).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,7 +14,6 @@ local FollowerService = require(script.Parent.FollowerService)
 
 local MinigameService = {}
 
-local requestTrainer: RemoteEvent
 local trainerQuestion: RemoteEvent
 local trainerAnswer: RemoteEvent
 local trainerResult: RemoteEvent
@@ -28,7 +28,9 @@ local function sendQuestion(player: Player)
 	trainerQuestion:FireClient(player, session.index, #questions, question.q, question.options)
 end
 
-local function onRequestTrainer(player: Player)
+-- Starts a quiz session. Called by DialogService when the player picks Train; the unlock
+-- check repeats here so no other path can start an ungated session.
+function MinigameService:StartQuiz(player: Player)
 	local profile = DataService:GetProfile(player)
 	if not profile or sessions[player] then
 		return
@@ -72,14 +74,12 @@ local function onTrainerAnswer(player: Player, optionIndex: unknown)
 end
 
 function MinigameService:Init()
-	requestTrainer = Net.Event("RequestTrainer")
 	trainerQuestion = Net.Event("TrainerQuestion")
 	trainerAnswer = Net.Event("TrainerAnswer")
 	trainerResult = Net.Event("TrainerResult")
 end
 
 function MinigameService:Start()
-	requestTrainer.OnServerEvent:Connect(onRequestTrainer)
 	trainerAnswer.OnServerEvent:Connect(onTrainerAnswer)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		sessions[player] = nil

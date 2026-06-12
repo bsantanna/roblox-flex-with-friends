@@ -171,13 +171,26 @@ Config.Photo = {
 	Cooldown = 3, -- seconds between captures per player
 }
 
--- Collectible NPCs. An NPC unlocks once the player reaches UnlockFollowers; the Personal Trainer
--- then offers a quiz minigame that pays RewardPerCorrect per correct answer.
+-- Collectible NPCs. The NPC stands in the world for everyone; reaching UnlockFollowers records
+-- the unlock (persisted) and lets the dialog's branch line offer training — a quiz minigame that
+-- pays RewardPerCorrect per correct answer. Dialog lines show in a speech bubble over the NPC
+-- (visible to all nearby players); {threshold} in a line is replaced with UnlockFollowers.
 type Question = { q: string, options: { string }, answer: number }
+type NpcDialog = {
+	Lines: { string }, -- plain lines, advanced with Next
+	QualifiedLine: string, -- branch line when the player has the unlock
+	GateLine: string, -- branch line when the player does not
+	QualifiedChoices: { string }, -- choice 1 starts training, choice 2 leaves
+	GateChoices: { string }, -- choice 1 leaves
+	TimeoutSeconds: number, -- idle time before the server closes the session
+}
 type NpcDef = {
 	UnlockFollowers: number,
-	SpawnOffset: Vector3, -- relative to the Home zone origin
+	SpawnPosition: Vector3, -- world position of the floor point the NPC stands on
+	SpawnYaw: number, -- facing, degrees around Y (0 looks -Z/north)
+	AvatarUserId: number, -- avatar copied for the NPC model (red-box fallback on failure)
 	RewardPerCorrect: number,
+	Dialog: NpcDialog,
 	Questions: { Question },
 }
 
@@ -195,8 +208,21 @@ Config.Decay = {
 Config.Npc = {
 	PersonalTrainer = {
 		UnlockFollowers = 100,
-		SpawnOffset = Vector3.new(-10, 0, 30), -- plaza forecourt, left of the spawn/entrance
+		SpawnPosition = Vector3.new(-10, 23, -32), -- CentralBuilding first floor, beside the spiral stair
+		SpawnYaw = 90, -- face west, toward the stair landing
+		AvatarUserId = 1, -- Roblox's own avatar as the stand-in trainer look
 		RewardPerCorrect = 30,
+		Dialog = {
+			Lines = {
+				"Hey, welcome to my gym!",
+				"I coach influencers who take their fitness seriously.",
+			},
+			QualifiedLine = "You've got the following — ready to sweat?",
+			GateLine = "Come back when you have {threshold} followers and we'll train.",
+			QualifiedChoices = { "Train", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
 		Questions = {
 			{
 				q = "Which macronutrient mainly builds muscle?",
@@ -216,5 +242,12 @@ Config.Npc = {
 		},
 	},
 } :: { [string]: NpcDef }
+
+-- Dev cheat console (DevConsoleController): typing Sequence on the keyboard toggles a console
+-- that can set the follower count. The server accepts SetFollowers only in Studio.
+Config.DevConsole = {
+	Sequence = { "Up", "Up", "Down", "Down", "Left", "Right", "Left", "Right", "B", "A" },
+	MaxFollowers = 1000000, -- server-side clamp on a cheated value
+}
 
 return Config

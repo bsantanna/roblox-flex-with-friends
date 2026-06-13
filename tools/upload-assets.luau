@@ -153,6 +153,10 @@ for _, p in pending do
 	else
 		requestBody = {
 			-- Open Cloud asset type per source kind: a 3D mesh is a Model, a 2D UI image is a Decal.
+			-- NOTE for image assets: Open Cloud returns the *Decal* id, but `ImageLabel.Image` can
+			-- only render the Decal's underlying *texture* id (they differ). After creating or
+			-- re-uploading an image, resolve the texture id and store THAT in asset-ids.json -- e.g.
+			-- InsertService:LoadAsset(<decalId>) in Studio, then read the inner Decal.Texture.
 			assetType = if entry.kind == "image" then "Decal" else "Model",
 			displayName = entry.displayName or entry.id,
 			description = entry.description or entry.id,

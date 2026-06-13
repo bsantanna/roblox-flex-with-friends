@@ -13,16 +13,12 @@ local Config = require(ReplicatedStorage.Shared.Config)
 
 local SceneryService = {}
 
-local GLASS = Color3.fromRGB(174, 198, 207)
-local ROOF = Color3.fromRGB(70, 70, 82)
 local DARKWOOD = Color3.fromRGB(80, 55, 35)
-local METAL = Color3.fromRGB(221, 227, 234)
 local THATCH = Color3.fromRGB(169, 116, 79)
 local WHITE = Color3.fromRGB(245, 245, 245)
 local FROND = Color3.fromRGB(62, 142, 65)
 local TRUNK = Color3.fromRGB(139, 90, 43)
 local CUSHION = Color3.fromRGB(232, 213, 183)
-local GOLD = Color3.fromRGB(212, 175, 55)
 
 type PartOpts = { material: Enum.Material?, transparency: number?, shape: Enum.PartType? }
 
@@ -66,47 +62,6 @@ local function pillar(
 			material = material,
 		}
 	)
-end
-
-local function buildTerminal(model: Model, base: CFrame)
-	add(model, base * CFrame.new(0, 7, 0), Vector3.new(60, 14, 20), METAL, { material = Enum.Material.Concrete })
-	add(model, base * CFrame.new(0, 14.5, 0), Vector3.new(62, 1, 22), ROOF)
-	add(
-		model,
-		base * CFrame.new(0, 6, 10.1),
-		Vector3.new(56, 10, 1),
-		GLASS,
-		{ material = Enum.Material.Glass, transparency = 0.35 }
-	)
-	add(model, base * CFrame.new(0, 12, 10.4), Vector3.new(18, 2, 0.5), Color3.fromRGB(30, 111, 186)) -- departures sign band
-	for _, sx in { -24, -12, 0, 12, 24 } do
-		pillar(model, base, sx, 6, 10.6, 12, 1, METAL)
-	end
-end
-
-local function buildBoardingGate(model: Model, base: CFrame)
-	add(model, base * CFrame.new(0, 1.5, 0), Vector3.new(3, 3, 2), Color3.fromRGB(120, 120, 130)) -- podium
-	pillar(model, base, -3, 3, 0, 6, 0.6, METAL) -- sign post
-	add(model, base * CFrame.new(-3, 6, 0), Vector3.new(0.4, 3, 4), Color3.fromRGB(30, 111, 186)) -- gate sign
-	add(model, base * CFrame.new(0, 3, 10), Vector3.new(4, 5, 16), Color3.fromRGB(150, 150, 160)) -- jet bridge
-end
-
-local function buildAirplane(model: Model, base: CFrame)
-	add(model, base * CFrame.new(0, 6, 0), Vector3.new(40, 6, 6), WHITE, { shape = Enum.PartType.Cylinder }) -- fuselage
-	add(model, base * CFrame.new(20, 6, 0), Vector3.new(6, 5.6, 5.6), WHITE, { shape = Enum.PartType.Ball }) -- nose
-	add(model, base * CFrame.new(0, 6, 0), Vector3.new(40, 1, 0.2), GOLD) -- stripe
-	add(model, base * CFrame.new(0, 6, 0), Vector3.new(8, 0.6, 34), WHITE) -- main wing
-	add(model, base * CFrame.new(-17, 9, 0), Vector3.new(5, 6, 0.6), WHITE) -- tail fin
-	add(model, base * CFrame.new(-15, 6, 0), Vector3.new(8, 0.5, 12), WHITE) -- tailplane
-	for _, sz in { -10, 10 } do
-		add(
-			model,
-			base * CFrame.new(2, 4.2, sz),
-			Vector3.new(6, 2.2, 2.2),
-			Color3.fromRGB(60, 60, 70),
-			{ shape = Enum.PartType.Cylinder }
-		) -- engine
-	end
 end
 
 local function buildBeachCabana(model: Model, base: CFrame)
@@ -195,9 +150,6 @@ type Placement = {
 -- The player's home is the CentralBuilding mesh on the plaza (assets/manifest.json); the
 -- north-center square of the neighborhood grid is a free lot.
 local PLACEMENTS: { Placement } = {
-	{ id = "Terminal", zone = "Airport", offset = Vector3.new(0, 0, -20), rotationY = 0, build = buildTerminal },
-	{ id = "BoardingGate", zone = "Airport", offset = Vector3.new(0, 0, 10), rotationY = 0, build = buildBoardingGate },
-	{ id = "Airplane", zone = "Airport", offset = Vector3.new(18, 0, 30), rotationY = 90, build = buildAirplane },
 	{ id = "BeachCabana", zone = "Beach", offset = Vector3.new(0, 0, 0), rotationY = 0, build = buildBeachCabana },
 	{ id = "PalmTree", zone = "Beach", offset = Vector3.new(-22, 0, 12), rotationY = 0, build = buildPalmTree },
 	{ id = "SunLounger", zone = "Beach", offset = Vector3.new(14, 0, 6), rotationY = -90, build = buildSunLounger },

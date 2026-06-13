@@ -1,6 +1,7 @@
 --!strict
--- FriendController: an "Invite Friends" button that opens the Roblox game-invite prompt, carrying
--- the inviter's userId as launchData so the server can grant the invite bonus when the friend joins.
+-- FriendController: opens the Roblox game-invite prompt via :PromptInvite() (triggered from the
+-- phone carousel, "Invite Friends"), carrying the inviter's userId as launchData so the server can
+-- grant the invite bonus when the friend joins. Owns only the status toast now.
 
 local Players = game:GetService("Players")
 local SocialService = game:GetService("SocialService")
@@ -45,21 +46,15 @@ local function promptInvite()
 	showStatus(if sent then "Opening invites…" else UNAVAILABLE)
 end
 
+-- Triggered from the phone carousel ("Invite Friends"); the launcher button now lives there.
+function FriendController:PromptInvite()
+	promptInvite()
+end
+
 function FriendController:Init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Friends"
 	gui.ResetOnSpawn = false
-
-	local button = Instance.new("TextButton")
-	button.AnchorPoint = Vector2.new(1, 0)
-	button.Position = UDim2.new(1, -16, 0, 16)
-	button.Size = UDim2.fromOffset(160, 44)
-	button.BackgroundColor3 = Color3.fromRGB(90, 70, 200)
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.Font = Enum.Font.GothamBold
-	button.TextScaled = true
-	button.Text = "Invite Friends"
-	button.Parent = gui
 
 	statusLabel = Instance.new("TextLabel")
 	statusLabel.AnchorPoint = Vector2.new(1, 0)
@@ -73,8 +68,6 @@ function FriendController:Init()
 	statusLabel.Text = ""
 	statusLabel.Visible = false
 	statusLabel.Parent = gui
-
-	button.Activated:Connect(promptInvite)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

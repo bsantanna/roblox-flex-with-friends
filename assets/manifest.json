@@ -95,6 +95,13 @@
       "scale": 14,
       "displayName": "Neighbor House 6",
       "description": "Suburban neighbor home (SE square, faces the plaza)."
+    },
+    {
+      "id": "Phone01",
+      "kind": "image",
+      "source": "source/Phone01/Phone01.png",
+      "displayName": "Cellphone HUD",
+      "description": "Flat cartoon phone art for the cellphone HUD (PhoneMenuController). 2D UI image, not world scenery."
     }
   ]
 }

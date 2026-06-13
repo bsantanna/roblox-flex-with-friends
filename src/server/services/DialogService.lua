@@ -3,7 +3,7 @@
 -- The NPC's lines render in a server-side speech bubble (a BillboardGui in Workspace), so every
 -- nearby player sees the conversation; only the interacting player gets the on-screen choices
 -- (DialogLine/DialogAdvance/DialogChoose/DialogEnd). Picking Train hands off to
--- MinigameService:StartQuiz. The flow itself is pure logic in Shared.Logic.Dialog.
+-- MinigameService:StartGame. The flow itself is pure logic in Shared.Logic.Dialog.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -31,6 +31,7 @@ local dialogChoose: RemoteEvent
 local dialogEnd: RemoteEvent
 
 local npcRoot: BasePart? = nil
+local npcModel: Model? = nil -- the trainer model, handed to MinigameService to pose and walk it
 
 -- One session at a time: the bubble is a single shared world object. A trigger while busy is
 -- ignored — bystanders watch the running conversation instead (and can talk right after).
@@ -234,7 +235,7 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	local train = s.qualified and choiceIndex == 1
 	endSession()
 	if train then
-		MinigameService:StartQuiz(player)
+		MinigameService:StartGame(player, npcModel)
 	end
 end
 
@@ -284,6 +285,15 @@ local function spawnTrainer()
 	local bottom = boundsCFrame.Position.Y - boundsSize.Y / 2
 	model:PivotTo(model:GetPivot() + Vector3.new(0, def.SpawnPosition.Y - bottom, 0))
 
+	-- The minigame poses and walks the trainer through its Animator (Animator:LoadAnimation needs
+	-- one; CreateHumanoidModelFromUserId does not guarantee it). Ensure it exists here; the
+	-- fallback body has no Humanoid, so the minigame just skips animation.
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid and not humanoid:FindFirstChildOfClass("Animator") then
+		local animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "Trainer"
 	prompt.ActionText = "Talk"
@@ -296,6 +306,7 @@ local function spawnTrainer()
 
 	model.Parent = home
 	npcRoot = root
+	npcModel = model
 end
 
 function DialogService:Init()

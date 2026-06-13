@@ -1,7 +1,8 @@
 --!strict
--- PhotoController: a shutter button that takes a real screen capture (CaptureService) and shows
--- it as a polaroid preview with Save/Cancel, while requesting the follower reward from the server.
--- The server (PhotoService) decides the reward; the capture is purely client-side visual feedback.
+-- PhotoController: takes a real screen capture (CaptureService) and shows it as a polaroid preview
+-- with Save/Cancel, while requesting the follower reward from the server. Triggered via :Capture()
+-- from the phone carousel ("Take Photo"). The server (PhotoService) decides the reward; the capture
+-- is purely client-side visual feedback.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -95,6 +96,11 @@ local function takePhoto()
 	end)
 end
 
+-- Triggered from the phone carousel ("Take Photo"); the launcher button now lives there.
+function PhotoController:Capture()
+	takePhoto()
+end
+
 function PhotoController:Init()
 	requestPhotoCapture = Net.Event("RequestPhotoCapture")
 	photoResult = Net.Event("PhotoResult")
@@ -111,17 +117,6 @@ function PhotoController:Init()
 	flash.BackgroundTransparency = 1
 	flash.ZIndex = 20
 	flash.Parent = gui
-
-	local shutter = Instance.new("TextButton")
-	shutter.AnchorPoint = Vector2.new(0.5, 1)
-	shutter.Position = UDim2.new(0.5, 0, 1, -24)
-	shutter.Size = UDim2.fromOffset(120, 48)
-	shutter.BackgroundColor3 = Color3.fromRGB(230, 230, 235)
-	shutter.TextColor3 = Color3.fromRGB(20, 20, 24)
-	shutter.Font = Enum.Font.GothamBold
-	shutter.TextScaled = true
-	shutter.Text = "Photo"
-	shutter.Parent = gui
 
 	resultLabel = Instance.new("TextLabel")
 	resultLabel.AnchorPoint = Vector2.new(0.5, 1)
@@ -176,7 +171,6 @@ function PhotoController:Init()
 	cancelButton.Text = "Cancel"
 	cancelButton.Parent = previewFrame
 
-	shutter.Activated:Connect(takePhoto)
 	saveButton.Activated:Connect(function()
 		if lastCapture then
 			CaptureService:PromptSaveCapturesToGallery({ lastCapture }, function() end)

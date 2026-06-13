@@ -54,7 +54,7 @@ end
 -- Collect entries that need uploading, tagging each with its current hash and the reason.
 local pending = {}
 for _, entry in manifest.assets do
-	if entry.kind ~= "mesh" then
+	if entry.kind ~= "mesh" and entry.kind ~= "image" then
 		continue
 	end
 	local hash = sourceHash("assets/" .. entry.source)
@@ -66,7 +66,7 @@ for _, entry in manifest.assets do
 end
 
 if #pending == 0 then
-	print("No mesh assets new or changed since last upload.")
+	print("No assets new or changed since last upload.")
 	process.exit(0)
 end
 
@@ -74,7 +74,7 @@ local apiKey = process.env.ROBLOX_API_KEY
 local creatorId = process.env.ROBLOX_CREATOR_ID
 local creatorType = process.env.ROBLOX_CREATOR_TYPE
 if not (apiKey and creatorId and creatorType) then
-	print(`{#pending} mesh asset(s) pending upload:`)
+	print(`{#pending} asset(s) pending upload:`)
 	for _, p in pending do
 		print(`  - {p.entry.id}  ({p.reason})  {p.entry.source}`)
 	end
@@ -152,7 +152,8 @@ for _, p in pending do
 		url = `{API}/assets/{existingId}`
 	else
 		requestBody = {
-			assetType = "Model",
+			-- Open Cloud asset type per source kind: a 3D mesh is a Model, a 2D UI image is a Decal.
+			assetType = if entry.kind == "image" then "Decal" else "Model",
 			displayName = entry.displayName or entry.id,
 			description = entry.description or entry.id,
 			creationContext = { creator = { [creatorKey] = tonumber(creatorId) or creatorId } },
@@ -172,7 +173,7 @@ for _, p in pending do
 		"-F",
 		`request=<{requestPath};type=application/json`,
 		"-F",
-		`fileContent=@{uploadPath};type=model/gltf-binary`,
+		`fileContent=@{uploadPath};type={if entry.kind == "image" then "image/png" else "model/gltf-binary"}`,
 	})
 
 	local operationId = created.operationId

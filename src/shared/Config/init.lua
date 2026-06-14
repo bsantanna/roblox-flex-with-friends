@@ -376,10 +376,13 @@ Config.DefaultNpcOutfit = {
 	Accessories = {},
 } :: Types.OutfitData
 
--- The first-meeting "create your friend" editor. A minimal placeholder palette (body colour only)
--- proving the per-player customization + persistence + rendering pipeline; the full Roblox catalog
--- (clothing, accessories) replaces this later via AvatarEditorService. The server validates a saved
--- BodyColor against this list, so a tampered client can't set an arbitrary look.
+-- The first-meeting "create your friend" editor. The body-colour palette below is applied as the
+-- single block colour; ClothingSlots and AccessorySlots drive the AvatarEditorService catalog tabs the
+-- player browses to dress the friend. The server validates every saved value (BodyColor against this
+-- list, and each clothing/accessory id against its slot's catalog category) so a tampered client can't
+-- set an arbitrary look. Each accessory slot equips into one HumanoidDescription <Slot>Accessory.
+type ClothingSlot = { Label: string, Category: Enum.AvatarAssetType, Field: string }
+type AccessorySlot = { Label: string, Category: Enum.AvatarAssetType, Type: Enum.AccessoryType }
 Config.OutfitEditor = {
 	BodyColors = {
 		0xA3A3A3, -- grey
@@ -395,6 +398,22 @@ Config.OutfitEditor = {
 		0xE05AAE, -- pink
 		0x2E2E2E, -- charcoal
 	} :: { number },
+	-- Classic clothing tabs: the catalog category to browse -> the OutfitData field it fills.
+	ClothingSlots = {
+		{ Label = "Shirt", Category = Enum.AvatarAssetType.Shirt, Field = "Shirt" },
+		{ Label = "Pants", Category = Enum.AvatarAssetType.Pants, Field = "Pants" },
+	} :: { ClothingSlot },
+	-- Accessory tabs: the catalog category to browse -> the slot it equips into (one item per slot).
+	AccessorySlots = {
+		{ Label = "Hats", Category = Enum.AvatarAssetType.Hat, Type = Enum.AccessoryType.Hat },
+		{ Label = "Hair", Category = Enum.AvatarAssetType.HairAccessory, Type = Enum.AccessoryType.Hair },
+		{ Label = "Face", Category = Enum.AvatarAssetType.FaceAccessory, Type = Enum.AccessoryType.Face },
+		{ Label = "Neck", Category = Enum.AvatarAssetType.NeckAccessory, Type = Enum.AccessoryType.Neck },
+		{ Label = "Shoulder", Category = Enum.AvatarAssetType.ShoulderAccessory, Type = Enum.AccessoryType.Shoulder },
+		{ Label = "Front", Category = Enum.AvatarAssetType.FrontAccessory, Type = Enum.AccessoryType.Front },
+		{ Label = "Back", Category = Enum.AvatarAssetType.BackAccessory, Type = Enum.AccessoryType.Back },
+		{ Label = "Waist", Category = Enum.AvatarAssetType.WaistAccessory, Type = Enum.AccessoryType.Waist },
+	} :: { AccessorySlot },
 }
 
 -- Dev cheat console (DevConsoleController): typing Sequence on the keyboard toggles a console

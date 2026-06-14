@@ -49,15 +49,12 @@ function GymFriend.routine(self: GymFriend)
 		return self.rng:NextInteger(min, max)
 	end
 
-	-- Shift: begin at a random point in the cycle so the friends aren't in lockstep (they shouldn't
-	-- all break at once). After this, independent jittered durations keep them desynced.
-	local state: Routine.State
-	local duration: number
-	if self.rng:NextInteger(1, 2) == 1 then
-		state, duration = "exercise", self.rng:NextInteger(0, cfg.exercise.max)
-	else
-		state, duration = "break", self.rng:NextInteger(0, cfg.rest.max)
-	end
+	-- First mission: get into place. The friend spawns at the gym's entry edge (see GymFriendService),
+	-- and the routine always opens in "exercise" -- so its first action is to walk to its station before
+	-- it ever heads off to a lounge. The random opening duration still desyncs the friends (so they don't
+	-- all break at once); after that, jittered durations keep them out of lockstep.
+	local state: Routine.State = "exercise"
+	local duration = self.rng:NextInteger(0, cfg.exercise.max)
 
 	while self:isAlive() do
 		if state == "exercise" then

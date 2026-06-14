@@ -197,8 +197,18 @@ local function onChoose(player: Player, choiceIndex: unknown)
 	end
 end
 
--- Builds one friend (avatar copy or red-box fallback), seats it at its station, wires the Talk
--- prompt, and starts its routine. The avatar fetch yields, so this runs in its own thread.
+-- Places `model` with its feet at `footPos`, facing `yaw` degrees. Works whether or not the model is
+-- parented (used both to seat a friend at the entry edge on spawn and to reseat a fallen one).
+local function seatAt(model: Model, footPos: Vector3, yaw: number)
+	model:PivotTo(CFrame.new(footPos) * CFrame.Angles(0, math.rad(yaw), 0))
+	local boundsCF, boundsSize = model:GetBoundingBox()
+	local bottom = boundsCF.Position.Y - boundsSize.Y / 2
+	model:PivotTo(model:GetPivot() + Vector3.new(0, footPos.Y - bottom, 0))
+end
+
+-- Builds one friend (avatar copy or red-box fallback), seats it at the gym's entry edge, wires the Talk
+-- prompt, and starts its routine -- whose first mission is to walk to its station. The avatar fetch
+-- yields, so this runs in its own thread.
 local function spawnFriend(def: FriendDef, parent: Folder)
 	-- Every friend starts as the shared "default lego block" look (Config.DefaultNpcOutfit); a player
 	-- who customizes them sees their own version, rendered client-side (per-player rendering).
@@ -208,11 +218,9 @@ local function spawnFriend(def: FriendDef, parent: Folder)
 	local model: Model = if ok and result then result else makeFallbackBody()
 	model.Name = def.Name
 
-	-- Seat feet on the station, facing Yaw (left unanchored, so it stands and walks via physics).
-	model:PivotTo(CFrame.new(def.Station) * CFrame.Angles(0, math.rad(def.Yaw), 0))
-	local boundsCF, boundsSize = model:GetBoundingBox()
-	local bottom = boundsCF.Position.Y - boundsSize.Y / 2
-	model:PivotTo(model:GetPivot() + Vector3.new(0, def.Station.Y - bottom, 0))
+	-- Spawn at the gym's entry edge, lined up under the friend's own station column; the routine walks
+	-- it in to its station from here (see GymFriend.routine). Faces the station's Yaw.
+	seatAt(model, Vector3.new(def.Station.X, def.Station.Y, GymFriendsCfg.EntryZ), def.Yaw)
 
 	-- Build the agent before parenting into Workspace: Agent.new anchors the root and assigns the
 	-- GymNpc collision group. Doing it first means the rig is already anchored (and grouped) the instant
@@ -253,6 +261,40 @@ local function registerGroups()
 	PhysicsService:CollisionGroupSetCollidable(GymFriendsCfg.CollisionGroup, GymFriendsCfg.EquipmentGroup, false)
 end
 
+-- An invisible solid slab laid over the gym floor at station height. The real floor is a 1-stud mesh
+-- slab that walking (unanchored) friends tunnel through; this thick collision pad gives them (and
+-- players) a reliable surface so nobody falls to the floor below.
+local function buildWalkFloor()
+	local floor = Instance.new("Part")
+	floor.Name = "GymWalkFloor"
+	floor.Anchored = true
+	floor.CanCollide = true
+	floor.CanQuery = false -- invisible to raycasts (photos, prompts) -- it only needs to be walkable
+	floor.CanTouch = false
+	floor.Transparency = 1
+	floor.Size = GymFriendsCfg.WalkFloor.Size
+	floor.CFrame = CFrame.new(GymFriendsCfg.WalkFloor.Center)
+	floor.Parent = Workspace
+end
+
+-- Safety net for the user-requested behaviour: every RespawnInterval seconds, any friend whose root has
+-- dropped below FallY (fell off/through the floor despite the pad) is reseated at its station. Repeats
+-- until it is back in place. With the walk floor this should almost never fire.
+local function startFallWatchdog()
+	task.spawn(function()
+		while true do
+			task.wait(GymFriendsCfg.RespawnInterval)
+			for _, entry in agents do
+				local agent = entry.agent
+				if agent:isAlive() and agent.root.Position.Y < GymFriendsCfg.FallY then
+					seatAt(agent.model, entry.def.Station, entry.def.Yaw)
+					agent.root.Anchored = true -- the routine re-unanchors when it next walks
+				end
+			end
+		end
+	end)
+end
+
 -- Tags the gym equipment so friends pass through it. Yields on WaitForChild, so run off the boot thread.
 local function tagEquipment()
 	local gym = Workspace:WaitForChild("Gym")
@@ -287,9 +329,12 @@ function GymFriendService:Start()
 		end
 	end)
 
+	startFallWatchdog()
+
 	-- Equipment tagging + the avatar fetches yield; running them off the boot thread lets Start
 	-- return so the other services (incl. GymService, which builds Workspace.Gym) get to start.
 	task.spawn(function()
+		buildWalkFloor() -- solid footing first, before any friend can walk
 		tagEquipment()
 
 		local folder = Instance.new("Folder")

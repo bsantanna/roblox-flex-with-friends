@@ -14,9 +14,11 @@ local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local DialogTree = require(ReplicatedStorage.Shared.Logic.DialogTree)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
+local OutfitBuilder = require(ReplicatedStorage.Shared.Util.OutfitBuilder)
 local GymFriendsCfg = require(ReplicatedStorage.Shared.Config.GymFriends)
 local DataService = require(script.Parent.DataService)
 local OutfitService = require(script.Parent.OutfitService)
@@ -174,8 +176,10 @@ end
 -- Builds one friend (avatar copy or red-box fallback), seats it at its station, wires the Talk
 -- prompt, and starts its routine. The avatar fetch yields, so this runs in its own thread.
 local function spawnFriend(def: FriendDef, parent: Folder)
+	-- Every friend starts as the shared "default lego block" look (Config.DefaultNpcOutfit); a player
+	-- who customizes them sees their own version, rendered client-side (per-player rendering).
 	local ok, result = pcall(function()
-		return Players:CreateHumanoidModelFromUserId(def.AvatarUserId)
+		return OutfitBuilder.buildModel(Config.DefaultNpcOutfit)
 	end)
 	local model: Model = if ok and result then result else makeFallbackBody()
 	model.Name = def.Name

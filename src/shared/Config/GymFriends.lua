@@ -1,11 +1,13 @@
 --!strict
 -- Gym-friend roster and AI/dialog tunables (Config.GymFriends). Twelve NPCs, four workout types x
--- three people, each with a name, gender, avatar, a home station on the opened first floor, and two
+-- three people, each with a name, gender, a home station on the opened first floor, and two
 -- branching dialog trees: Intro (first meeting -- they introduce themselves; befriending them on
--- close awards BefriendReward followers) and Friend (they already know you). GymFriendService spawns
--- them, runs the exercise/break routine (Shared.Logic.Routine) with natural Humanoid walking, and
--- runs the conversations (Shared.Logic.DialogTree). Positions, avatar userIds and the placeholder
--- animation ids are tuned by looking in Studio and swapped for real workout uploads later (doc 002).
+-- close awards BefriendReward followers) and Friend (they already know you). They all spawn with the
+-- shared "default lego block" look (Config.DefaultNpcOutfit); a player who customizes one sees their
+-- own version, rendered client-side. GymFriendService spawns them, runs the exercise/break routine
+-- (Shared.Logic.Routine) with natural Humanoid walking, and runs the conversations
+-- (Shared.Logic.DialogTree). Positions and the placeholder animation ids are tuned by looking in
+-- Studio and swapped for real workout uploads later (doc 002).
 
 local DialogTree = require(script.Parent.Parent.Logic.DialogTree)
 
@@ -14,7 +16,6 @@ export type FriendDef = {
 	Name: string, -- display name (ProximityPrompt + name tag)
 	Gender: "male" | "female",
 	Type: "Runner" | "Cyclist" | "Lifter" | "Floor", -- selects the workout animation
-	AvatarUserId: number, -- CreateHumanoidModelFromUserId source (red-box fallback on failure)
 	Station: Vector3, -- where they stand to exercise (a gym equipment spot, floor surface y=23)
 	Yaw: number, -- facing while exercising (0 looks -Z), matched to the equipment
 	Intro: DialogTree.Tree, -- first meeting
@@ -71,7 +72,6 @@ GymFriends.Friends = {
 		Name = "Maya",
 		Gender = "female",
 		Type = "Runner",
-		AvatarUserId = 2,
 		Station = Vector3.new(-50, 23, -59),
 		Yaw = 180,
 		Intro = {
@@ -120,7 +120,6 @@ GymFriends.Friends = {
 		Name = "Theo",
 		Gender = "male",
 		Type = "Runner",
-		AvatarUserId = 156,
 		Station = Vector3.new(-5, 23, -59),
 		Yaw = 180,
 		Intro = {
@@ -169,7 +168,6 @@ GymFriends.Friends = {
 		Name = "Priya",
 		Gender = "female",
 		Type = "Runner",
-		AvatarUserId = 261,
 		Station = Vector3.new(-28, 23, -71),
 		Yaw = 180,
 		Intro = {
@@ -219,7 +217,6 @@ GymFriends.Friends = {
 		Name = "Lucas",
 		Gender = "male",
 		Type = "Cyclist",
-		AvatarUserId = 1,
 		Station = Vector3.new(-50, 23, -47),
 		Yaw = 180,
 		Intro = {
@@ -268,7 +265,6 @@ GymFriends.Friends = {
 		Name = "Sofia",
 		Gender = "female",
 		Type = "Cyclist",
-		AvatarUserId = 3,
 		Station = Vector3.new(-5, 23, -47),
 		Yaw = 180,
 		Intro = {
@@ -317,7 +313,6 @@ GymFriends.Friends = {
 		Name = "Marcus",
 		Gender = "male",
 		Type = "Cyclist",
-		AvatarUserId = 16,
 		Station = Vector3.new(-28, 23, -83),
 		Yaw = 180,
 		Intro = {
@@ -367,7 +362,6 @@ GymFriends.Friends = {
 		Name = "Bianca",
 		Gender = "female",
 		Type = "Lifter",
-		AvatarUserId = 100000,
 		Station = Vector3.new(-50, 23, -95),
 		Yaw = 0,
 		Intro = {
@@ -416,7 +410,6 @@ GymFriends.Friends = {
 		Name = "Diego",
 		Gender = "male",
 		Type = "Lifter",
-		AvatarUserId = 200000,
 		Station = Vector3.new(-28, 23, -95),
 		Yaw = 0,
 		Intro = {
@@ -465,7 +458,6 @@ GymFriends.Friends = {
 		Name = "Hana",
 		Gender = "female",
 		Type = "Lifter",
-		AvatarUserId = 500000,
 		Station = Vector3.new(-5, 23, -95),
 		Yaw = 0,
 		Intro = {
@@ -515,7 +507,6 @@ GymFriends.Friends = {
 		Name = "Noah",
 		Gender = "male",
 		Type = "Floor",
-		AvatarUserId = 1000000,
 		Station = Vector3.new(-39, 23, -131),
 		Yaw = 0,
 		Intro = {
@@ -564,7 +555,6 @@ GymFriends.Friends = {
 		Name = "Aisha",
 		Gender = "female",
 		Type = "Floor",
-		AvatarUserId = 2000000,
 		Station = Vector3.new(-16, 23, -119),
 		Yaw = 0,
 		Intro = {
@@ -613,7 +603,6 @@ GymFriends.Friends = {
 		Name = "Sam",
 		Gender = "male",
 		Type = "Floor",
-		AvatarUserId = 5000000,
 		Station = Vector3.new(-5, 23, -131),
 		Yaw = 0,
 		Intro = {

@@ -17,10 +17,9 @@ local Workspace = game:GetService("Workspace")
 local Net = require(ReplicatedStorage.Shared.Net)
 local DialogTree = require(ReplicatedStorage.Shared.Logic.DialogTree)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
-local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local GymFriendsCfg = require(ReplicatedStorage.Shared.Config.GymFriends)
 local DataService = require(script.Parent.DataService)
-local FollowerService = require(script.Parent.FollowerService)
+local OutfitService = require(script.Parent.OutfitService)
 local GymFriend = require(script.Parent.Parent.agents.GymFriend)
 
 type FriendDef = GymFriendsCfg.FriendDef
@@ -88,16 +87,6 @@ local function clearSession(session: FriendSession)
 	end
 end
 
-local function befriend(player: Player, def: FriendDef)
-	local profile = DataService:GetProfile(player)
-	if not profile or table.find(profile.Data.Friends, def.Id) then
-		return
-	end
-	table.insert(profile.Data.Friends, def.Id)
-	FollowerService:Award(player, GymFriendsCfg.BefriendReward, "gym-friend:" .. def.Id)
-	Analytics.event(player, "GymFriendBefriended", nil, def.Id)
-end
-
 -- Ends a conversation: drops the session, fades the bubble, frees the agent, dismisses the player's
 -- buttons, and (only on a *completed* first meeting) befriends + rewards.
 function endSession(session: FriendSession, completed: boolean)
@@ -108,7 +97,7 @@ function endSession(session: FriendSession, completed: boolean)
 		friendDialogEnd:FireClient(session.player)
 	end
 	if completed and session.isIntro then
-		befriend(session.player, session.def)
+		OutfitService:Befriend(session.player, session.def.Id)
 	end
 end
 
@@ -143,7 +132,7 @@ local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
 	if not profile then
 		return
 	end
-	local isFriend = table.find(profile.Data.Friends, def.Id) ~= nil
+	local isFriend = profile.Data.Friends[def.Id] ~= nil
 	local tree = if isFriend then def.Friend else def.Intro
 
 	local character = player.Character

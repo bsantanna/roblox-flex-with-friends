@@ -7,7 +7,8 @@ local Types = require(script.Parent.Types)
 local Config = {}
 
 -- DataStore name for player profiles. Bump the suffix to reset all saved data during dev.
-Config.DataStoreName = "PlayerData_v1"
+-- v2: Friends changed from a { string } list of befriended ids to a { [id]: OutfitData } map.
+Config.DataStoreName = "PlayerData_v2"
 
 -- Default profile data. New keys added here are reconciled into existing profiles on load.
 Config.ProfileTemplate = {
@@ -363,6 +364,17 @@ Config.Gym = {
 -- The gym friends (12 NPCs, 4 types x 3) and their AI/dialog tunables live in a submodule to keep
 -- this file readable; GymFriendService spawns them and runs their branching dialog.
 Config.GymFriends = require(script.GymFriends)
+
+-- The "default lego block" look every customizable NPC wears the first time you meet it, before
+-- you create their outfit: a neutral grey blocky avatar, no clothing or accessories. Stored as the
+-- friend's OutfitData until the player customizes it. BefriendReward (Config.GymFriends) is awarded
+-- once when the outfit is first saved.
+Config.DefaultNpcOutfit = {
+	BodyColor = 0xA3A3A3, -- neutral grey "unpainted block"
+	Shirt = 0,
+	Pants = 0,
+	Accessories = {},
+} :: Types.OutfitData
 
 -- Dev cheat console (DevConsoleController): typing Sequence on the keyboard toggles a console
 -- that can set the follower count. The server accepts SetFollowers only in Studio.

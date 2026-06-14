@@ -3,27 +3,22 @@
 -- The NPC's lines render in a server-side speech bubble (a BillboardGui in Workspace), so every
 -- nearby player sees the conversation; only the interacting player gets the on-screen choices
 -- (DialogLine/DialogAdvance/DialogChoose/DialogEnd). Picking Train hands off to
--- MinigameService:StartGame. The flow itself is pure logic in Shared.Logic.Dialog.
+-- MinigameService:StartGame. The flow itself is pure logic in Shared.Logic.Dialog; the bubble is
+-- the shared Shared.Util.SpeechBubble (the gym friends use the same one).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Dialog = require(ReplicatedStorage.Shared.Logic.Dialog)
 local Log = require(ReplicatedStorage.Shared.Util.Log)
+local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local MinigameService = require(script.Parent.MinigameService)
 
 local DialogService = {}
-
-local BUBBLE_BG = Color3.fromRGB(250, 250, 245)
-local BUBBLE_INK = Color3.fromRGB(35, 30, 30)
-local BUBBLE_FADE = 0.25 -- seconds for the bubble fade in/out
-local TWEEN_IN = TweenInfo.new(BUBBLE_FADE, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TWEEN_OUT = TweenInfo.new(BUBBLE_FADE, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 
 local dialogLine: RemoteEvent
 local dialogAdvance: RemoteEvent
@@ -41,94 +36,10 @@ type Session = {
 	qualified: boolean,
 	index: number,
 	choices: { string }?, -- the branch line's choices once reached; nil while lines advance
-	bubble: BillboardGui,
-	text: TextLabel,
-	fades: { { inst: Instance, prop: string } },
+	bubble: SpeechBubble.SpeechBubble,
 	timeout: thread?,
 }
 local session: Session? = nil
-
--- A comic speech bubble over the NPC (white rounded bubble + downward tail + dialog text),
--- built fully transparent so it can be faded in; same pattern as TrafficService's balloon.
-local function makeBubble(root: BasePart): (BillboardGui, TextLabel, { { inst: Instance, prop: string } })
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "DialogBubble"
-	gui.Size = UDim2.fromOffset(280, 120)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
-	gui.AlwaysOnTop = true
-	gui.LightInfluence = 0
-	gui.MaxDistance = 120
-
-	local tail = Instance.new("Frame")
-	tail.Name = "Tail"
-	tail.AnchorPoint = Vector2.new(0.5, 0.5)
-	tail.Position = UDim2.fromScale(0.5, 0.8)
-	tail.Size = UDim2.fromScale(0.18, 0.42)
-	tail.Rotation = 45
-	tail.BackgroundColor3 = BUBBLE_BG
-	tail.BackgroundTransparency = 1
-	tail.BorderSizePixel = 0
-	tail.ZIndex = 1
-	tail.Parent = gui
-	local tstroke = Instance.new("UIStroke")
-	tstroke.Thickness = 3
-	tstroke.Color = BUBBLE_INK
-	tstroke.Transparency = 1
-	tstroke.Parent = tail
-
-	local bubble = Instance.new("Frame")
-	bubble.Name = "Bubble"
-	bubble.AnchorPoint = Vector2.new(0.5, 0)
-	bubble.Position = UDim2.fromScale(0.5, 0)
-	bubble.Size = UDim2.fromScale(1, 0.78)
-	bubble.BackgroundColor3 = BUBBLE_BG
-	bubble.BackgroundTransparency = 1
-	bubble.BorderSizePixel = 0
-	bubble.ZIndex = 2
-	bubble.Parent = gui
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.24, 0)
-	corner.Parent = bubble
-	local bstroke = Instance.new("UIStroke")
-	bstroke.Thickness = 3
-	bstroke.Color = BUBBLE_INK
-	bstroke.Transparency = 1
-	bstroke.Parent = bubble
-
-	local text = Instance.new("TextLabel")
-	text.Name = "Text"
-	text.AnchorPoint = Vector2.new(0.5, 0.5)
-	text.Position = UDim2.fromScale(0.5, 0.5)
-	text.Size = UDim2.fromScale(0.9, 0.8)
-	text.BackgroundTransparency = 1
-	text.FontFace = Font.fromEnum(Enum.Font.GothamBold)
-	text.Text = ""
-	text.TextWrapped = true
-	text.TextScaled = true
-	text.TextColor3 = BUBBLE_INK
-	text.TextTransparency = 1
-	text.ZIndex = 3 -- BillboardGui ZIndex is Global; must beat the bubble (2)
-	text.Parent = bubble
-
-	local fades: { { inst: Instance, prop: string } } = {
-		{ inst = bubble, prop = "BackgroundTransparency" },
-		{ inst = bstroke, prop = "Transparency" },
-		{ inst = tail, prop = "BackgroundTransparency" },
-		{ inst = tstroke, prop = "Transparency" },
-		{ inst = text, prop = "TextTransparency" },
-	}
-
-	gui.Adornee = root
-	gui.Parent = root
-	return gui, text, fades
-end
-
-local function tweenBubble(fades: { { inst: Instance, prop: string } }, info: TweenInfo, transparency: number)
-	for _, f in fades do
-		local goal: { [string]: any } = { [f.prop] = transparency }
-		TweenService:Create(f.inst, info, goal):Play()
-	end
-end
 
 -- Ends the running session: cancels the timeout, fades the bubble away, dismisses the
 -- interacting player's choice UI. Safe to call from the timeout thread itself.
@@ -143,11 +54,7 @@ local function endSession()
 		task.cancel(s.timeout)
 	end
 
-	local bubble = s.bubble
-	tweenBubble(s.fades, TWEEN_OUT, 1)
-	task.delay(BUBBLE_FADE, function()
-		bubble:Destroy()
-	end)
+	s.bubble:hide()
 
 	if s.player.Parent then
 		dialogEnd:FireClient(s.player)
@@ -170,7 +77,7 @@ local function sendStep(s: Session)
 		return
 	end
 	s.choices = step.choices
-	s.text.Text = step.text
+	s.bubble:setText(step.text)
 	dialogLine:FireClient(s.player, step.text, step.index, step.total, step.choices)
 	armTimeout(s)
 end
@@ -199,18 +106,16 @@ local function onPromptTriggered(player: Player)
 		gateChoices = d.GateChoices,
 	}
 
-	local bubble, text, fades = makeBubble(npcRoot)
+	local bubble = SpeechBubble.create(npcRoot)
 	local s: Session = {
 		player = player,
 		def = def,
 		qualified = table.find(profile.Data.UnlockedNpcs, "PersonalTrainer") ~= nil,
 		index = 1,
 		bubble = bubble,
-		text = text,
-		fades = fades,
 	}
 	session = s
-	tweenBubble(fades, TWEEN_IN, 0)
+	bubble:show()
 	sendStep(s)
 end
 

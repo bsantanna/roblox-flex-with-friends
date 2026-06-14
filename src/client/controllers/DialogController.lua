@@ -18,6 +18,11 @@ local dialogAdvance: RemoteEvent
 local dialogChoose: RemoteEvent
 local dialogEnd: RemoteEvent
 
+-- Gym-friend conversations reuse this same button row, with their own remotes (branching trees).
+local friendDialogLine: RemoteEvent
+local friendDialogChoose: RemoteEvent
+local friendDialogEnd: RemoteEvent
+
 local buttonRow: Frame
 
 local function clearButtons()
@@ -65,11 +70,26 @@ local function onDialogEnd()
 	buttonRow.Visible = false
 end
 
+-- Gym-friend lines always carry the player's answer choices (a branching tree, no plain "Next");
+-- render them with the same buttons and report the pick on the friend remote.
+local function onFriendLine(_text: string, choices: { string })
+	buttonRow.Visible = true
+	clearButtons()
+	for choiceIndex, label in choices do
+		addButton(label, function()
+			friendDialogChoose:FireServer(choiceIndex)
+		end)
+	end
+end
+
 function DialogController:Init()
 	dialogLine = Net.Event("DialogLine")
 	dialogAdvance = Net.Event("DialogAdvance")
 	dialogChoose = Net.Event("DialogChoose")
 	dialogEnd = Net.Event("DialogEnd")
+	friendDialogLine = Net.Event("FriendDialogLine")
+	friendDialogChoose = Net.Event("FriendDialogChoose")
+	friendDialogEnd = Net.Event("FriendDialogEnd")
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Dialog"
@@ -96,6 +116,8 @@ end
 function DialogController:Start()
 	dialogLine.OnClientEvent:Connect(onDialogLine)
 	dialogEnd.OnClientEvent:Connect(onDialogEnd)
+	friendDialogLine.OnClientEvent:Connect(onFriendLine)
+	friendDialogEnd.OnClientEvent:Connect(onDialogEnd)
 end
 
 return DialogController

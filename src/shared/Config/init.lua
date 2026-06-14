@@ -24,6 +24,7 @@ Config.ProfileTemplate = {
 	-- CompanionNpc defaults to nil (no companion).
 	InvitedFriends = {},
 	ClaimedReferral = false,
+	Friends = {},
 } :: Types.ProfileData
 
 -- World zone origins. MVP keeps Home/Airport/Beach as zones in one place; "travel"
@@ -358,6 +359,10 @@ Config.Gym = {
 		{ Kind = "MirrorWall", Position = Vector3.new(-56, 23, -110), Yaw = 90 },
 	} :: { GymStation },
 }
+
+-- The gym friends (12 NPCs, 4 types x 3) and their AI/dialog tunables live in a submodule to keep
+-- this file readable; GymFriendService spawns them and runs their branching dialog.
+Config.GymFriends = require(script.GymFriends)
 
 -- Dev cheat console (DevConsoleController): typing Sequence on the keyboard toggles a console
 -- that can set the follower count. The server accepts SetFollowers only in Studio.

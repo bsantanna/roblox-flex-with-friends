@@ -214,10 +214,14 @@ local function spawnFriend(def: FriendDef, parent: Folder)
 	local bottom = boundsCF.Position.Y - boundsSize.Y / 2
 	model:PivotTo(model:GetPivot() + Vector3.new(0, def.Station.Y - bottom, 0))
 
-	model.Parent = parent
+	-- Build the agent first: it assigns the GymNpc collision group (non-collidable with the gym
+	-- equipment) to every part. We must do this *before* parenting into Workspace -- a friend stands
+	-- inside its station's equipment, so if the rig went live in physics in the default group first, a
+	-- physics step landing in that window would collide it with the equipment and launch it skyward.
 	local breakSpot, breakCenter = computeBreak(def)
 	local agent = GymFriend.new(model, def, breakSpot, breakCenter)
 	agents[def.Id] = { def = def, agent = agent } -- so onSaveOutfit can greet via this friend
+	model.Parent = parent
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "Talk"

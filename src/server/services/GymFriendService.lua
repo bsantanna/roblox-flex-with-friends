@@ -14,13 +14,13 @@ local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local DialogTree = require(ReplicatedStorage.Shared.Logic.DialogTree)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
-local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
+local OutfitBuilder = require(ReplicatedStorage.Shared.Util.OutfitBuilder)
 local GymFriendsCfg = require(ReplicatedStorage.Shared.Config.GymFriends)
-local DataService = require(script.Parent.DataService)
-local FollowerService = require(script.Parent.FollowerService)
+local OutfitService = require(script.Parent.OutfitService)
 local GymFriend = require(script.Parent.Parent.agents.GymFriend)
 
 type FriendDef = GymFriendsCfg.FriendDef
@@ -31,13 +31,14 @@ local GymFriendService = {}
 local friendDialogLine: RemoteEvent
 local friendDialogChoose: RemoteEvent
 local friendDialogEnd: RemoteEvent
+local openNpcEditor: RemoteEvent
+local saveNpcOutfit: RemoteEvent
 
 type FriendSession = {
 	player: Player,
 	def: FriendDef,
 	tree: DialogTree.Tree,
 	nodeId: string,
-	isIntro: boolean, -- befriend on a completed first meeting
 	agent: GymFriendObj,
 	bubble: SpeechBubble.SpeechBubble,
 	timeout: thread?,
@@ -45,7 +46,8 @@ type FriendSession = {
 
 local sessions: { [string]: FriendSession } = {} -- keyed by def.Id: one conversation per NPC
 local playerSession: { [Player]: FriendSession } = {} -- a player is in at most one conversation
-local endSession: (FriendSession, boolean) -> ()
+local agents: { [string]: { def: FriendDef, agent: GymFriendObj } } = {} -- by def.Id, for save-time greetings
+local endSession: (FriendSession) -> ()
 
 local BREAK_RADIUS = 3.5 -- studs from the group centre each resting friend stands (a chat-sized ring)
 
@@ -88,27 +90,14 @@ local function clearSession(session: FriendSession)
 	end
 end
 
-local function befriend(player: Player, def: FriendDef)
-	local profile = DataService:GetProfile(player)
-	if not profile or table.find(profile.Data.Friends, def.Id) then
-		return
-	end
-	table.insert(profile.Data.Friends, def.Id)
-	FollowerService:Award(player, GymFriendsCfg.BefriendReward, "gym-friend:" .. def.Id)
-	Analytics.event(player, "GymFriendBefriended", nil, def.Id)
-end
-
 -- Ends a conversation: drops the session, fades the bubble, frees the agent, dismisses the player's
--- buttons, and (only on a *completed* first meeting) befriends + rewards.
-function endSession(session: FriendSession, completed: boolean)
+-- buttons. (Befriending + the reward happen at editor-save time, not here -- see onSaveOutfit.)
+function endSession(session: FriendSession)
 	clearSession(session)
 	session.bubble:hide()
 	session.agent:resume()
 	if session.player.Parent then
 		friendDialogEnd:FireClient(session.player)
-	end
-	if completed and session.isIntro then
-		befriend(session.player, session.def)
 	end
 end
 
@@ -118,7 +107,7 @@ local function armTimeout(session: FriendSession)
 	end
 	session.timeout = task.delay(GymFriendsCfg.DialogTimeout, function()
 		if sessions[session.def.Id] == session then
-			endSession(session, false)
+			endSession(session)
 		end
 	end)
 end
@@ -127,7 +116,7 @@ end
 local function sendNode(session: FriendSession)
 	local node = DialogTree.node(session.tree, session.nodeId)
 	if not node then
-		endSession(session, false)
+		endSession(session)
 		return
 	end
 	session.bubble:setText(node.text)
@@ -135,17 +124,9 @@ local function sendNode(session: FriendSession)
 	armTimeout(session)
 end
 
-local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
-	if sessions[def.Id] or playerSession[player] then
-		return -- this friend is busy, or the player is already chatting with someone
-	end
-	local profile = DataService:GetProfile(player)
-	if not profile then
-		return
-	end
-	local isFriend = table.find(profile.Data.Friends, def.Id) ~= nil
-	local tree = if isFriend then def.Friend else def.Intro
-
+-- Opens a branching conversation: interrupts the agent to face the player, shows the first node.
+-- Caller guarantees the NPC and the player are both free.
+local function startDialog(player: Player, def: FriendDef, agent: GymFriendObj, tree: DialogTree.Tree)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	agent:interrupt(if hrp and hrp:IsA("BasePart") then hrp.Position else nil)
@@ -155,7 +136,6 @@ local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
 		def = def,
 		tree = tree,
 		nodeId = tree.start,
-		isIntro = not isFriend,
 		agent = agent,
 		bubble = SpeechBubble.create(agent.root),
 	}
@@ -163,6 +143,41 @@ local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
 	playerSession[player] = session
 	session.bubble:show()
 	sendNode(session)
+end
+
+local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
+	if playerSession[player] then
+		return -- the player is already chatting with someone
+	end
+	-- First meeting: open the "create your friend" editor instead of talking. Befriending, the
+	-- reward, and a greeting all happen when they save (onSaveOutfit). The editor is client-side, so
+	-- the NPC keeps exercising and we don't block on a shared bubble here.
+	if not OutfitService:IsFriend(player, def.Id) then
+		openNpcEditor:FireClient(player, def.Id)
+		return
+	end
+	if sessions[def.Id] then
+		return -- this friend is busy talking to someone else
+	end
+	startDialog(player, def, agent, def.Friend)
+end
+
+-- A first-meeting editor save: validate + persist the look (OutfitService), then have the NPC greet
+-- the player with its intro lines if it's free.
+local function onSaveOutfit(player: Player, npcId: unknown, outfit: unknown)
+	if type(npcId) ~= "string" then
+		return
+	end
+	local entry = agents[npcId]
+	if not entry then
+		return
+	end
+	if not OutfitService:SaveOutfit(player, npcId, outfit) then
+		return -- invalid payload, or already a friend
+	end
+	if not sessions[npcId] and not playerSession[player] then
+		startDialog(player, entry.def, entry.agent, entry.def.Intro)
+	end
 end
 
 local function onChoose(player: Player, choiceIndex: unknown)
@@ -178,28 +193,43 @@ local function onChoose(player: Player, choiceIndex: unknown)
 		session.nodeId = nextId
 		sendNode(session)
 	else
-		endSession(session, true)
+		endSession(session)
 	end
 end
 
--- Builds one friend (avatar copy or red-box fallback), seats it at its station, wires the Talk
--- prompt, and starts its routine. The avatar fetch yields, so this runs in its own thread.
+-- Places `model` with its feet at `footPos`, facing `yaw` degrees. Works whether or not the model is
+-- parented (used both to seat a friend at the entry edge on spawn and to reseat a fallen one).
+local function seatAt(model: Model, footPos: Vector3, yaw: number)
+	model:PivotTo(CFrame.new(footPos) * CFrame.Angles(0, math.rad(yaw), 0))
+	local boundsCF, boundsSize = model:GetBoundingBox()
+	local bottom = boundsCF.Position.Y - boundsSize.Y / 2
+	model:PivotTo(model:GetPivot() + Vector3.new(0, footPos.Y - bottom, 0))
+end
+
+-- Builds one friend (avatar copy or red-box fallback), seats it at the gym's entry edge, wires the Talk
+-- prompt, and starts its routine -- whose first mission is to walk to its station. The avatar fetch
+-- yields, so this runs in its own thread.
 local function spawnFriend(def: FriendDef, parent: Folder)
+	-- Every friend starts as the shared "default lego block" look (Config.DefaultNpcOutfit); a player
+	-- who customizes them sees their own version, rendered client-side (per-player rendering).
 	local ok, result = pcall(function()
-		return Players:CreateHumanoidModelFromUserId(def.AvatarUserId)
+		return OutfitBuilder.buildModel(Config.DefaultNpcOutfit)
 	end)
 	local model: Model = if ok and result then result else makeFallbackBody()
 	model.Name = def.Name
 
-	-- Seat feet on the station, facing Yaw (left unanchored, so it stands and walks via physics).
-	model:PivotTo(CFrame.new(def.Station) * CFrame.Angles(0, math.rad(def.Yaw), 0))
-	local boundsCF, boundsSize = model:GetBoundingBox()
-	local bottom = boundsCF.Position.Y - boundsSize.Y / 2
-	model:PivotTo(model:GetPivot() + Vector3.new(0, def.Station.Y - bottom, 0))
+	-- Spawn at the gym's entry edge, lined up under the friend's own station column; the routine walks
+	-- it in to its station from here (see GymFriend.routine). Faces the station's Yaw.
+	seatAt(model, Vector3.new(def.Station.X, def.Station.Y, GymFriendsCfg.EntryZ), def.Yaw)
 
-	model.Parent = parent
+	-- Build the agent before parenting into Workspace: Agent.new anchors the root and assigns the
+	-- GymNpc collision group. Doing it first means the rig is already anchored (and grouped) the instant
+	-- it goes live in physics -- a friend stands inside its station's equipment, so a rig that went live
+	-- unanchored could be ejected by an overlap before it ever settles.
 	local breakSpot, breakCenter = computeBreak(def)
 	local agent = GymFriend.new(model, def, breakSpot, breakCenter)
+	agents[def.Id] = { def = def, agent = agent } -- so onSaveOutfit can greet via this friend
+	model.Parent = parent
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "Talk"
@@ -225,9 +255,44 @@ local function registerGroups()
 	ensure(GymFriendsCfg.CollisionGroup)
 	ensure(GymFriendsCfg.EquipmentGroup)
 	-- Friends never collide with each other, and pass through the gym equipment (so straight-line
-	-- MoveTo never snags); they still collide with the floor and players (the Default group).
+	-- MoveTo never snags); they still collide with the floor and players (the Default group). They
+	-- stand anchored while idle (see Agent), so a player bumping into one can't shove it.
 	PhysicsService:CollisionGroupSetCollidable(GymFriendsCfg.CollisionGroup, GymFriendsCfg.CollisionGroup, false)
 	PhysicsService:CollisionGroupSetCollidable(GymFriendsCfg.CollisionGroup, GymFriendsCfg.EquipmentGroup, false)
+end
+
+-- An invisible solid slab laid over the gym floor at station height. The real floor is a 1-stud mesh
+-- slab that walking (unanchored) friends tunnel through; this thick collision pad gives them (and
+-- players) a reliable surface so nobody falls to the floor below.
+local function buildWalkFloor()
+	local floor = Instance.new("Part")
+	floor.Name = "GymWalkFloor"
+	floor.Anchored = true
+	floor.CanCollide = true
+	floor.CanQuery = false -- invisible to raycasts (photos, prompts) -- it only needs to be walkable
+	floor.CanTouch = false
+	floor.Transparency = 1
+	floor.Size = GymFriendsCfg.WalkFloor.Size
+	floor.CFrame = CFrame.new(GymFriendsCfg.WalkFloor.Center)
+	floor.Parent = Workspace
+end
+
+-- Safety net for the user-requested behaviour: every RespawnInterval seconds, any friend whose root has
+-- dropped below FallY (fell off/through the floor despite the pad) is reseated at its station. Repeats
+-- until it is back in place. With the walk floor this should almost never fire.
+local function startFallWatchdog()
+	task.spawn(function()
+		while true do
+			task.wait(GymFriendsCfg.RespawnInterval)
+			for _, entry in agents do
+				local agent = entry.agent
+				if agent:isAlive() and agent.root.Position.Y < GymFriendsCfg.FallY then
+					seatAt(agent.model, entry.def.Station, entry.def.Yaw)
+					agent.root.Anchored = true -- the routine re-unanchors when it next walks
+				end
+			end
+		end
+	end)
 end
 
 -- Tags the gym equipment so friends pass through it. Yields on WaitForChild, so run off the boot thread.
@@ -248,22 +313,28 @@ function GymFriendService:Init()
 	friendDialogLine = Net.Event("FriendDialogLine")
 	friendDialogChoose = Net.Event("FriendDialogChoose")
 	friendDialogEnd = Net.Event("FriendDialogEnd")
+	openNpcEditor = Net.Event("OpenNpcEditor")
+	saveNpcOutfit = Net.Event("SaveNpcOutfit")
 end
 
 function GymFriendService:Start()
 	registerGroups()
 
 	friendDialogChoose.OnServerEvent:Connect(onChoose)
+	saveNpcOutfit.OnServerEvent:Connect(onSaveOutfit)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		local session = playerSession[player]
 		if session then
-			endSession(session, false)
+			endSession(session)
 		end
 	end)
+
+	startFallWatchdog()
 
 	-- Equipment tagging + the avatar fetches yield; running them off the boot thread lets Start
 	-- return so the other services (incl. GymService, which builds Workspace.Gym) get to start.
 	task.spawn(function()
+		buildWalkFloor() -- solid footing first, before any friend can walk
 		tagEquipment()
 
 		local folder = Instance.new("Folder")

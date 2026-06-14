@@ -49,6 +49,11 @@ function Agent.new(props: Props): Agent
 	) :: BasePart
 	assert(root, "Agent: model has no BasePart")
 
+	-- Stand anchored while idle so nothing can shove or launch the rig -- a player bumping into it, a
+	-- spawn overlap, or network-ownership handoff when a player approaches (unanchored R15 rigs are
+	-- otherwise easily knocked around). walkTo unanchors only while actually moving, then re-anchors.
+	root.Anchored = true
+
 	local animator: Animator? = nil
 	if humanoid then
 		humanoid.WalkSpeed = props.walkSpeed
@@ -88,12 +93,15 @@ function Agent.isAlive(self: Agent): boolean
 end
 
 -- Plays `animId` on a loop, replacing any current loop. No-op if it is already the current loop or
--- the rig has no Animator (a fallback body).
+-- the rig has no Animator (a fallback body). The current loop is also mirrored to a "LoopAnim" model
+-- attribute so per-player client cosmetic rigs (which replace a hidden server rig) can play the same
+-- animation -- see client NpcAppearanceController.
 function Agent.playLoop(self: Agent, animId: string)
 	if self.loopAnimId == animId and self.loopTrack then
 		return
 	end
 	self:stopLoop()
+	self.model:SetAttribute("LoopAnim", animId)
 	local animator = self.animator
 	if not animator then
 		return
@@ -112,6 +120,7 @@ function Agent.stopLoop(self: Agent)
 		self.loopTrack = nil
 		self.loopAnimId = nil
 	end
+	self.model:SetAttribute("LoopAnim", "")
 end
 
 -- Walks to `position` on the current floor (plays the walk loop while moving) and, with `faceYaw`,
@@ -127,6 +136,7 @@ function Agent.walkTo(self: Agent, position: Vector3, faceYaw: number?): boolean
 	end
 
 	if humanoid and not arrived() then
+		self.root.Anchored = false -- unanchor only while walking; MoveTo can't move an anchored root
 		if self.walkAnim then
 			self:playLoop(self.walkAnim)
 		end
@@ -135,12 +145,14 @@ function Agent.walkTo(self: Agent, position: Vector3, faceYaw: number?): boolean
 			if self.interrupted then
 				humanoid:Move(Vector3.zero)
 				self:stopLoop()
+				self.root.Anchored = true -- stay put while paused (e.g. for a dialog)
 				repeat
 					task.wait(0.1)
 				until (not self.interrupted) or not self.alive
 				if not self.alive then
 					break
 				end
+				self.root.Anchored = false
 				if self.walkAnim then
 					self:playLoop(self.walkAnim)
 				end
@@ -154,6 +166,7 @@ function Agent.walkTo(self: Agent, position: Vector3, faceYaw: number?): boolean
 		end
 		humanoid:Move(Vector3.zero)
 		self:stopLoop()
+		self.root.Anchored = true -- re-anchor on arrival/timeout so it stands solid
 	elseif not humanoid then
 		self.model:PivotTo(CFrame.new(target) * CFrame.Angles(0, math.rad(faceYaw or 0), 0))
 	end
@@ -192,6 +205,7 @@ function Agent.interrupt(self: Agent, faceTarget: Vector3?)
 	if humanoid then
 		humanoid:Move(Vector3.zero)
 	end
+	self.root.Anchored = true -- freeze in place for the conversation (walkTo unanchors again on resume)
 	if faceTarget then
 		self:face(faceTarget)
 	end

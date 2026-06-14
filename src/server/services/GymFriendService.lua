@@ -20,7 +20,6 @@ local DialogTree = require(ReplicatedStorage.Shared.Logic.DialogTree)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local OutfitBuilder = require(ReplicatedStorage.Shared.Util.OutfitBuilder)
 local GymFriendsCfg = require(ReplicatedStorage.Shared.Config.GymFriends)
-local DataService = require(script.Parent.DataService)
 local OutfitService = require(script.Parent.OutfitService)
 local GymFriend = require(script.Parent.Parent.agents.GymFriend)
 
@@ -32,13 +31,14 @@ local GymFriendService = {}
 local friendDialogLine: RemoteEvent
 local friendDialogChoose: RemoteEvent
 local friendDialogEnd: RemoteEvent
+local openNpcEditor: RemoteEvent
+local saveNpcOutfit: RemoteEvent
 
 type FriendSession = {
 	player: Player,
 	def: FriendDef,
 	tree: DialogTree.Tree,
 	nodeId: string,
-	isIntro: boolean, -- befriend on a completed first meeting
 	agent: GymFriendObj,
 	bubble: SpeechBubble.SpeechBubble,
 	timeout: thread?,
@@ -46,7 +46,8 @@ type FriendSession = {
 
 local sessions: { [string]: FriendSession } = {} -- keyed by def.Id: one conversation per NPC
 local playerSession: { [Player]: FriendSession } = {} -- a player is in at most one conversation
-local endSession: (FriendSession, boolean) -> ()
+local agents: { [string]: { def: FriendDef, agent: GymFriendObj } } = {} -- by def.Id, for save-time greetings
+local endSession: (FriendSession) -> ()
 
 local BREAK_RADIUS = 3.5 -- studs from the group centre each resting friend stands (a chat-sized ring)
 
@@ -90,16 +91,13 @@ local function clearSession(session: FriendSession)
 end
 
 -- Ends a conversation: drops the session, fades the bubble, frees the agent, dismisses the player's
--- buttons, and (only on a *completed* first meeting) befriends + rewards.
-function endSession(session: FriendSession, completed: boolean)
+-- buttons. (Befriending + the reward happen at editor-save time, not here -- see onSaveOutfit.)
+function endSession(session: FriendSession)
 	clearSession(session)
 	session.bubble:hide()
 	session.agent:resume()
 	if session.player.Parent then
 		friendDialogEnd:FireClient(session.player)
-	end
-	if completed and session.isIntro then
-		OutfitService:Befriend(session.player, session.def.Id)
 	end
 end
 
@@ -109,7 +107,7 @@ local function armTimeout(session: FriendSession)
 	end
 	session.timeout = task.delay(GymFriendsCfg.DialogTimeout, function()
 		if sessions[session.def.Id] == session then
-			endSession(session, false)
+			endSession(session)
 		end
 	end)
 end
@@ -118,7 +116,7 @@ end
 local function sendNode(session: FriendSession)
 	local node = DialogTree.node(session.tree, session.nodeId)
 	if not node then
-		endSession(session, false)
+		endSession(session)
 		return
 	end
 	session.bubble:setText(node.text)
@@ -126,17 +124,9 @@ local function sendNode(session: FriendSession)
 	armTimeout(session)
 end
 
-local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
-	if sessions[def.Id] or playerSession[player] then
-		return -- this friend is busy, or the player is already chatting with someone
-	end
-	local profile = DataService:GetProfile(player)
-	if not profile then
-		return
-	end
-	local isFriend = profile.Data.Friends[def.Id] ~= nil
-	local tree = if isFriend then def.Friend else def.Intro
-
+-- Opens a branching conversation: interrupts the agent to face the player, shows the first node.
+-- Caller guarantees the NPC and the player are both free.
+local function startDialog(player: Player, def: FriendDef, agent: GymFriendObj, tree: DialogTree.Tree)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	agent:interrupt(if hrp and hrp:IsA("BasePart") then hrp.Position else nil)
@@ -146,7 +136,6 @@ local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
 		def = def,
 		tree = tree,
 		nodeId = tree.start,
-		isIntro = not isFriend,
 		agent = agent,
 		bubble = SpeechBubble.create(agent.root),
 	}
@@ -154,6 +143,41 @@ local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
 	playerSession[player] = session
 	session.bubble:show()
 	sendNode(session)
+end
+
+local function onTalk(player: Player, def: FriendDef, agent: GymFriendObj)
+	if playerSession[player] then
+		return -- the player is already chatting with someone
+	end
+	-- First meeting: open the "create your friend" editor instead of talking. Befriending, the
+	-- reward, and a greeting all happen when they save (onSaveOutfit). The editor is client-side, so
+	-- the NPC keeps exercising and we don't block on a shared bubble here.
+	if not OutfitService:IsFriend(player, def.Id) then
+		openNpcEditor:FireClient(player, def.Id)
+		return
+	end
+	if sessions[def.Id] then
+		return -- this friend is busy talking to someone else
+	end
+	startDialog(player, def, agent, def.Friend)
+end
+
+-- A first-meeting editor save: validate + persist the look (OutfitService), then have the NPC greet
+-- the player with its intro lines if it's free.
+local function onSaveOutfit(player: Player, npcId: unknown, outfit: unknown)
+	if type(npcId) ~= "string" then
+		return
+	end
+	local entry = agents[npcId]
+	if not entry then
+		return
+	end
+	if not OutfitService:SaveOutfit(player, npcId, outfit) then
+		return -- invalid payload, or already a friend
+	end
+	if not sessions[npcId] and not playerSession[player] then
+		startDialog(player, entry.def, entry.agent, entry.def.Intro)
+	end
 end
 
 local function onChoose(player: Player, choiceIndex: unknown)
@@ -169,7 +193,7 @@ local function onChoose(player: Player, choiceIndex: unknown)
 		session.nodeId = nextId
 		sendNode(session)
 	else
-		endSession(session, true)
+		endSession(session)
 	end
 end
 
@@ -193,6 +217,7 @@ local function spawnFriend(def: FriendDef, parent: Folder)
 	model.Parent = parent
 	local breakSpot, breakCenter = computeBreak(def)
 	local agent = GymFriend.new(model, def, breakSpot, breakCenter)
+	agents[def.Id] = { def = def, agent = agent } -- so onSaveOutfit can greet via this friend
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "Talk"
@@ -241,16 +266,19 @@ function GymFriendService:Init()
 	friendDialogLine = Net.Event("FriendDialogLine")
 	friendDialogChoose = Net.Event("FriendDialogChoose")
 	friendDialogEnd = Net.Event("FriendDialogEnd")
+	openNpcEditor = Net.Event("OpenNpcEditor")
+	saveNpcOutfit = Net.Event("SaveNpcOutfit")
 end
 
 function GymFriendService:Start()
 	registerGroups()
 
 	friendDialogChoose.OnServerEvent:Connect(onChoose)
+	saveNpcOutfit.OnServerEvent:Connect(onSaveOutfit)
 	Players.PlayerRemoving:Connect(function(player: Player)
 		local session = playerSession[player]
 		if session then
-			endSession(session, false)
+			endSession(session)
 		end
 	end)
 

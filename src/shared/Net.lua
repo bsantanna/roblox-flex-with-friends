@@ -30,6 +30,9 @@ local EVENTS = {
 	"FriendDialogLine", -- server -> client: (text: string, choices: {string}) -- gym-friend line + answer options
 	"FriendDialogChoose", -- client -> server: (choiceIndex: number) -- pick an answer
 	"FriendDialogEnd", -- server -> client: () -- dismiss the friend dialog UI
+	"OpenNpcEditor", -- server -> client: (npcId: string) -- first meeting: open the "create your friend" editor
+	"SaveNpcOutfit", -- client -> server: (npcId: string, outfit: OutfitData) -- save the created look (validated server-side)
+	"NpcOutfitSync", -- server -> client: (outfits: { [string]: OutfitData }) -- this player's saved NPC looks
 }
 
 -- Request/response functions.

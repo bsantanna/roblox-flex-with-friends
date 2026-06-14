@@ -88,12 +88,15 @@ function Agent.isAlive(self: Agent): boolean
 end
 
 -- Plays `animId` on a loop, replacing any current loop. No-op if it is already the current loop or
--- the rig has no Animator (a fallback body).
+-- the rig has no Animator (a fallback body). The current loop is also mirrored to a "LoopAnim" model
+-- attribute so per-player client cosmetic rigs (which replace a hidden server rig) can play the same
+-- animation -- see client NpcAppearanceController.
 function Agent.playLoop(self: Agent, animId: string)
 	if self.loopAnimId == animId and self.loopTrack then
 		return
 	end
 	self:stopLoop()
+	self.model:SetAttribute("LoopAnim", animId)
 	local animator = self.animator
 	if not animator then
 		return
@@ -112,6 +115,7 @@ function Agent.stopLoop(self: Agent)
 		self.loopTrack = nil
 		self.loopAnimId = nil
 	end
+	self.model:SetAttribute("LoopAnim", "")
 end
 
 -- Walks to `position` on the current floor (plays the walk loop while moving) and, with `faceYaw`,

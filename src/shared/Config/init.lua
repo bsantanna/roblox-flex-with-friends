@@ -376,6 +376,27 @@ Config.DefaultNpcOutfit = {
 	Accessories = {},
 } :: Types.OutfitData
 
+-- The first-meeting "create your friend" editor. A minimal placeholder palette (body colour only)
+-- proving the per-player customization + persistence + rendering pipeline; the full Roblox catalog
+-- (clothing, accessories) replaces this later via AvatarEditorService. The server validates a saved
+-- BodyColor against this list, so a tampered client can't set an arbitrary look.
+Config.OutfitEditor = {
+	BodyColors = {
+		0xA3A3A3, -- grey
+		0xD9B38C, -- tan
+		0xF2CDA0, -- light skin
+		0x8C5A3B, -- brown
+		0xE05A5A, -- red
+		0xE0913B, -- orange
+		0xE8D44D, -- yellow
+		0x5AB85A, -- green
+		0x4DA6E0, -- blue
+		0x8C5AE0, -- purple
+		0xE05AAE, -- pink
+		0x2E2E2E, -- charcoal
+	} :: { number },
+}
+
 -- Dev cheat console (DevConsoleController): typing Sequence on the keyboard toggles a console
 -- that can set the follower count. The server accepts SetFollowers only in Studio.
 Config.DevConsole = {

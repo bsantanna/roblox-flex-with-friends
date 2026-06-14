@@ -214,10 +214,10 @@ local function spawnFriend(def: FriendDef, parent: Folder)
 	local bottom = boundsCF.Position.Y - boundsSize.Y / 2
 	model:PivotTo(model:GetPivot() + Vector3.new(0, def.Station.Y - bottom, 0))
 
-	-- Build the agent first: it assigns the GymNpc collision group (non-collidable with the gym
-	-- equipment) to every part. We must do this *before* parenting into Workspace -- a friend stands
-	-- inside its station's equipment, so if the rig went live in physics in the default group first, a
-	-- physics step landing in that window would collide it with the equipment and launch it skyward.
+	-- Build the agent before parenting into Workspace: Agent.new anchors the root and assigns the
+	-- GymNpc collision group. Doing it first means the rig is already anchored (and grouped) the instant
+	-- it goes live in physics -- a friend stands inside its station's equipment, so a rig that went live
+	-- unanchored could be ejected by an overlap before it ever settles.
 	local breakSpot, breakCenter = computeBreak(def)
 	local agent = GymFriend.new(model, def, breakSpot, breakCenter)
 	agents[def.Id] = { def = def, agent = agent } -- so onSaveOutfit can greet via this friend
@@ -247,7 +247,8 @@ local function registerGroups()
 	ensure(GymFriendsCfg.CollisionGroup)
 	ensure(GymFriendsCfg.EquipmentGroup)
 	-- Friends never collide with each other, and pass through the gym equipment (so straight-line
-	-- MoveTo never snags); they still collide with the floor and players (the Default group).
+	-- MoveTo never snags); they still collide with the floor and players (the Default group). They
+	-- stand anchored while idle (see Agent), so a player bumping into one can't shove it.
 	PhysicsService:CollisionGroupSetCollidable(GymFriendsCfg.CollisionGroup, GymFriendsCfg.CollisionGroup, false)
 	PhysicsService:CollisionGroupSetCollidable(GymFriendsCfg.CollisionGroup, GymFriendsCfg.EquipmentGroup, false)
 end

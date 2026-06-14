@@ -27,6 +27,9 @@ local EVENTS = {
 	"TrainerPoseInput", -- client -> server: (arrow: string) -- one arrow per fire during the input phase
 	"TrainerRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
 	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean)
+	"FriendDialogLine", -- server -> client: (text: string, choices: {string}) -- gym-friend line + answer options
+	"FriendDialogChoose", -- client -> server: (choiceIndex: number) -- pick an answer
+	"FriendDialogEnd", -- server -> client: () -- dismiss the friend dialog UI
 }
 
 -- Request/response functions.

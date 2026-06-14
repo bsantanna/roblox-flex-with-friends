@@ -19,6 +19,7 @@ export type ProfileData = {
 	CompanionNpc: string?, -- NPC currently traveling with the player
 	InvitedFriends: { number }, -- userIds this player has already been rewarded for inviting
 	ClaimedReferral: boolean, -- whether this player has claimed their one-time invited-join bonus
+	Friends: { string }, -- gym-friend NPC ids the player has befriended (first-meet vs friend dialog)
 }
 
 -- Minimal shim over ProfileStore's Profile<T>. The Wally wrapper module re-exports

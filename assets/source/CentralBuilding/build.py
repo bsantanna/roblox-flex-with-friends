@@ -1,7 +1,8 @@
 # Build script for CentralBuilding — 4-floor apartment block on the Home plaza's central square.
 # Geometry interprets the reference floor plan (doc: Dutch apartment plan; rooms: autolift garage,
 # entree/stair lobby, keuken, eetkamer, kast-lobby, badkamer, 2x slaapkamer + hal, woonkamer,
-# top slaapkamer + badkamer, two terraces). ALL FOUR floors repeat the ground-floor plan and are
+# top slaapkamer + badkamer, two terraces). The ground floor and floors 2-3 repeat this plan;
+# floor 1 is left as one open gym hall (no interior partitions). All floors are
 # walkable: real doorway openings, every wall its own box so Roblox box collision keeps doorways
 # passable (no mesh join). A functional spiral stair in the entree connects the floors through
 # stairwell openings cut into the upper slabs. At the manifest placement (scale 2) the building
@@ -263,7 +264,8 @@ def build_upper():
         floor_slabs(n, hole=True)
         rails(n * PITCH + 0.5)
         exterior_walls(z0, z1, entrances=False)
-        interior_walls(z0, z1)
+        if n != 1:  # floor 1 is left as one open gym hall (no interior partitions)
+            interior_walls(z0, z1)
         # window bands on the closed facades (terrace walls E2/N3 have real doorways instead)
         for fac, (axis, c, face, a0, a1) in FACADES.items():
             if fac in ("E2", "N3"):

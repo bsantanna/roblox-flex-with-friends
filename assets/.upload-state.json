@@ -3,6 +3,22 @@
     "assetId": 87305464749029,
     "hash": "e98bc82703ec87cbeff8cbbb69117461600186810498d84226f2f4467e571549"
   },
+  "ChickenBody": {
+    "assetId": 88015904248058,
+    "hash": "b14b2650d12a6b1763b151301c168df3f6b58baf8674002d0f49c862b031b4b7"
+  },
+  "ChickenLeg": {
+    "assetId": 130482384215472,
+    "hash": "d847903624d84e0dc209b21da5ebb98293b8e0601de69cd0db912f539397f5fa"
+  },
+  "CowBody": {
+    "assetId": 98275317136013,
+    "hash": "c137ea95f8b515304a424112d99d51f5f8d33cff09518541f4b47a3575bbcb06"
+  },
+  "CowLeg": {
+    "assetId": 85214479760346,
+    "hash": "2eda33e8cf2975b914a754b5075401625340169491746ba1e7b9dd77cc727696"
+  },
   "Neighbor01": {
     "assetId": 134957888385403,
     "hash": "425314838995e63f6a194f0b7a7479a917940a8c4242a3f227174aef8767b682"
@@ -30,6 +46,14 @@
   "Phone01": {
     "assetId": 97936663284219,
     "hash": "07fe54605cb4942e5ce38f0104c1020154dda302649d5fa012b30d5161641c8c"
+  },
+  "SheepBody": {
+    "assetId": 106868780762695,
+    "hash": "e1172dc8270fd82434829fb2d071a28ee1b5acf62e9f7cfddba3b6b0309e2bbb"
+  },
+  "SheepLeg": {
+    "assetId": 113291761400692,
+    "hash": "7ab01a0f63cb8ab82a792882e8034dd0899e76ea07405025ef6a2854b772674d"
   },
   "Tree01": {
     "assetId": 110182506336395,

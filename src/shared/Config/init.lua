@@ -137,6 +137,100 @@ Config.Forest = {
 	GardenInset = 23, -- house-garden corner trees: outside the house, clear of the driveway
 }
 
+-- The farm: a fenced paddock on the Home island's north-east green belt (FarmService builds it). The
+-- pen footprint was chosen in Studio to sit on grass, clear of the perimeter road, the elevated ring
+-- highway/walkway, and the shoreline; it encloses a few of the belt's scattered trees as pasture
+-- shade. Center is Home-relative (grass surface Y=0); Size is the X-by-Z interior. The white
+-- post-and-rail fence is built from primitives (like the gym equipment). Animals are cloned from
+-- ReplicatedStorage.Shared.FarmModels templates and gently wander inside the rails; until those
+-- templates exist the populate step skips, so a pending model never breaks boot.
+Config.Farm = {
+	Center = Vector3.new(320, 0, -140),
+	Size = Vector2.new(64, 64), -- interior X by Z; gate opens on the town-facing west side
+	Fence = {
+		PostSpacing = 8, -- studs between posts along each side
+		PostSize = Vector3.new(0.6, 3.4, 0.6),
+		RailHeights = { 1.1, 2.4 }, -- centre height of each horizontal rail above the grass
+		RailThickness = 0.35, -- depth of a rail board (across the fence line)
+		RailBoardHeight = 0.55, -- vertical height of a rail board
+		Color = Color3.fromRGB(244, 244, 238), -- white wood
+		Material = Enum.Material.WoodPlanks,
+		GateWidth = 10, -- width of the opening left in the west side
+	},
+	Animals = {
+		Seed = 11, -- deterministic spawn points + wander, like the forest
+		Roster = { -- Kind names a Species below; only built species spawn (others are skipped)
+			{ Kind = "Cow", Count = 3 },
+			{ Kind = "Sheep", Count = 3 },
+			{ Kind = "Chicken", Count = 2 },
+		},
+		WanderSpeed = 4, -- studs/second while walking to a target
+		TurnSpeed = 5, -- radians/second the animal yaws toward its heading
+		PauseMin = 2, -- seconds idled between walks
+		PauseMax = 6,
+		EdgeMargin = 6, -- keep animals this far inside the rails
+		TreeClearance = 5, -- keep spawn/target points this far from a pasture tree trunk
+		-- Each animal is assembled in code from uploaded part meshes (asset ids in SceneryAssetIds):
+		-- a body root plus N legs, all anchored, animated kinematically (legs swing for the walk, a
+		-- gentle body bob). Hip offsets are in template studs relative to the body part centre and were
+		-- tuned in Studio; Scale multiplies the whole rig. Forward is +X, up +Y, side ±Z (the GLB import
+		-- maps Blender X/Z/-Y to Roblox X/Y/Z).
+		Species = {
+			Cow = {
+				Body = "CowBody",
+				Leg = "CowLeg",
+				Legs = 4,
+				Scale = 0.8,
+				BodyColor = Color3.fromRGB(236, 230, 218),
+				LegColor = Color3.fromRGB(86, 64, 50),
+				Material = Enum.Material.SmoothPlastic,
+				HipForwardFront = 1.2, -- +X offset of the front legs from the body centre
+				HipForwardBack = -1.9, -- +X offset of the back legs
+				HipSide = 0.75, -- ±Z offset of each leg pair
+				HipDown = 0.9, -- -Y drop from the body centre to where the legs attach
+				WalkSwing = 0.5, -- radians peak fore/aft leg swing while walking
+				WalkFreq = 2.2, -- gait cycles per second at full walk speed
+				BobAmplitude = 0.1, -- studs the body bobs vertically
+				BobFreq = 2.0, -- bob cycles per second
+			},
+			Sheep = {
+				Body = "SheepBody",
+				Leg = "SheepLeg",
+				Legs = 4,
+				Scale = 0.85,
+				BodyColor = Color3.fromRGB(238, 236, 228),
+				LegColor = Color3.fromRGB(60, 56, 52),
+				Material = Enum.Material.SmoothPlastic,
+				HipForwardFront = 1.0,
+				HipForwardBack = -1.1,
+				HipSide = 0.62,
+				HipDown = 0.85,
+				WalkSwing = 0.45,
+				WalkFreq = 2.6,
+				BobAmplitude = 0.08,
+				BobFreq = 2.4,
+			},
+			Chicken = {
+				Body = "ChickenBody",
+				Leg = "ChickenLeg",
+				Legs = 2,
+				Scale = 1.0,
+				BodyColor = Color3.fromRGB(246, 244, 238),
+				LegColor = Color3.fromRGB(222, 152, 44),
+				Material = Enum.Material.SmoothPlastic,
+				HipForwardFront = -0.25, -- both legs sit just behind the body centre
+				HipForwardBack = -0.25,
+				HipSide = 0.22,
+				HipDown = 0.5,
+				WalkSwing = 0.6,
+				WalkFreq = 4.0,
+				BobAmplitude = 0.05,
+				BobFreq = 3.5,
+			},
+		},
+	},
+}
+
 -- Ground road network (RoadService lays these parts over the grass). The lane geometry derives from
 -- the grid lines in Config.Terrain.Home (RoadLine / PerimeterLine / RoadWidth); these are the visual
 -- tunables: how thick the asphalt sits over the grass, how much each junction rounds its corners, and

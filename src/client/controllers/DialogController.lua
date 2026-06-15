@@ -36,12 +36,31 @@ end
 local function addButton(label: string, onActivated: () -> ())
 	local button = Instance.new("TextButton")
 	button.Size = UDim2.fromOffset(140, 40)
-	button.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+	-- Same dark slate look as the "Create your friend!" editor, instead of the old flat blue.
+	button.BackgroundColor3 = Color3.fromRGB(55, 60, 72)
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
 	button.Font = Enum.Font.GothamBold
 	button.TextScaled = true
 	button.Text = label
 	button.Parent = buttonRow
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+
+	-- Inset the label so it doesn't hug the rounded border.
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 8)
+	padding.PaddingBottom = UDim.new(0, 8)
+	padding.PaddingLeft = UDim.new(0, 14)
+	padding.PaddingRight = UDim.new(0, 14)
+	padding.Parent = button
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(90, 98, 116)
+	stroke.Thickness = 1
+	stroke.Parent = button
+
 	button.Activated:Connect(function()
 		-- One shot per step: the server answers with the next line or DialogEnd.
 		clearButtons()
@@ -59,7 +78,7 @@ local function onDialogLine(_text: string, _index: number, _total: number, choic
 			end)
 		end
 	else
-		addButton("Next \u{25B8}", function()
+		addButton("Next \u{27A1}\u{FE0F}", function()
 			dialogAdvance:FireServer()
 		end)
 	end

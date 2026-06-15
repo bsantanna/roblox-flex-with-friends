@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AvatarEditorService = game:GetService("AvatarEditorService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -32,6 +33,7 @@ local tabRow: ScrollingFrame
 local grid: ScrollingFrame
 local previewRig: Model?
 local previewGen = 0 -- guards async rig rebuilds: a stale build (older gen) is discarded
+local previewYaw = math.pi -- the friend faces the camera by default; drag the preview to spin it
 
 local currentNpcId: string?
 local selectedColor: number = Config.DefaultNpcOutfit.BodyColor
@@ -53,7 +55,15 @@ local catalogCache: { [number]: { { Id: number, Name: string } } } = {} -- Avata
 -- A grid item plus a predicate for whether it is the current selection (for highlighting).
 type GridEntry = { stroke: UIStroke, isSelected: () -> boolean }
 local gridEntries: { GridEntry }
-local tabButtonStrokes: { [number]: UIStroke } = {} -- tab index -> its button's stroke
+local tabButtons: { [number]: TextButton } = {} -- tab index -> its button (active tab gets a lighter bg)
+
+-- Tab backgrounds: the active tab is a lighter slate so it reads clearly without touching the text.
+local TAB_BG = Color3.fromRGB(55, 60, 72)
+local TAB_BG_ACTIVE = Color3.fromRGB(120, 130, 152)
+
+local function highlightTab(button: TextButton, on: boolean)
+	button.BackgroundColor3 = if on then TAB_BG_ACTIVE else TAB_BG
+end
 
 local function unpackColor(packed: number): Color3
 	return Color3.fromRGB(
@@ -95,6 +105,13 @@ local function recolorPreview()
 	end
 end
 
+-- Orients the preview rig to the current drag yaw (origin-pivot, so it just spins in place).
+local function applyPreviewOrientation()
+	if previewRig then
+		previewRig:PivotTo(CFrame.Angles(0, previewYaw, 0))
+	end
+end
+
 -- Rebuilds the preview rig from the current selection (clothing/accessories need a full rebuild --
 -- CreateHumanoidModelFromDescription yields, so guard against an out-of-date build replacing a newer one).
 local function rebuildPreview()
@@ -118,7 +135,7 @@ local function rebuildPreview()
 		if hrp and hrp:IsA("BasePart") then
 			hrp.Anchored = true
 		end
-		rig:PivotTo(CFrame.new(0, 0, 0))
+		rig:PivotTo(CFrame.Angles(0, previewYaw, 0))
 		if previewRig then
 			previewRig:Destroy()
 		end
@@ -263,8 +280,8 @@ end
 
 local function selectTab(index: number)
 	activeTab = index
-	for i, stroke in tabButtonStrokes do
-		highlight(stroke, i == index)
+	for i, button in tabButtons do
+		highlightTab(button, i == index)
 	end
 	clearGrid()
 	local tab = tabs[index]
@@ -296,6 +313,7 @@ local function onOpen(npcId: string)
 	selectedShirt = 0
 	selectedPants = 0
 	selectedAccessories = {}
+	previewYaw = math.pi
 	rebuildPreview()
 	selectTab(1)
 	root.Visible = true
@@ -316,7 +334,7 @@ local function buildTabs()
 	for index, tab in tabs do
 		local button = Instance.new("TextButton")
 		button.Size = UDim2.fromOffset(78, 28)
-		button.BackgroundColor3 = Color3.fromRGB(55, 60, 72)
+		button.BackgroundColor3 = TAB_BG
 		button.TextColor3 = Color3.fromRGB(255, 255, 255)
 		button.Font = Enum.Font.GothamMedium
 		button.TextSize = 14
@@ -327,9 +345,7 @@ local function buildTabs()
 		corner.CornerRadius = UDim.new(0, 6)
 		corner.Parent = button
 
-		local stroke = Instance.new("UIStroke")
-		stroke.Parent = button
-		tabButtonStrokes[index] = stroke
+		tabButtons[index] = button
 
 		button.Activated:Connect(function()
 			selectTab(index)
@@ -400,6 +416,40 @@ function NpcEditorController:Init()
 	viewport.CurrentCamera = camera
 	previewWorld = Instance.new("WorldModel")
 	previewWorld.Parent = viewport
+
+	-- Drag the preview left/right to spin the friend around so any side can be inspected.
+	local dragging = false
+	local lastX = 0
+	viewport.InputBegan:Connect(function(input: InputObject)
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			dragging = true
+			lastX = input.Position.X
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input: InputObject)
+		if not dragging then
+			return
+		end
+		if
+			input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			previewYaw -= (input.Position.X - lastX) * 0.01
+			lastX = input.Position.X
+			applyPreviewOrientation()
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			dragging = false
+		end
+	end)
 
 	local buttonRow = Instance.new("Frame")
 	buttonRow.AnchorPoint = Vector2.new(0, 1)

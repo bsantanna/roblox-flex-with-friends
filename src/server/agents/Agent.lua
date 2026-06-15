@@ -130,6 +130,11 @@ end
 -- walkSpeed, pinning Y to groundY -- so the agent walks naturally but can never be launched, fall, or
 -- drift off the floor. Plays the walk loop while moving. Blocks the calling coroutine; pauses in
 -- place while interrupted and resumes toward the target. Returns whether the agent is still alive.
+-- The walk stops once within ARRIVE_RADIUS, which leaves the agent up to that far short on whichever
+-- side it approached from. When `faceYaw` is given (a precise pose, e.g. exercising at a station) we
+-- snap that small remainder so the agent lands exactly on `position` -- otherwise the resting spot
+-- drifts with the approach direction, which puts a stationed agent inside its equipment. Without
+-- `faceYaw` (a loose spot like a break-huddle slot) the short stop is fine and left as-is.
 function Agent.walkTo(self: Agent, position: Vector3, faceYaw: number?): boolean
 	local target = Vector3.new(position.X, self.groundY, position.Z)
 
@@ -170,7 +175,7 @@ function Agent.walkTo(self: Agent, position: Vector3, faceYaw: number?): boolean
 	end
 
 	if faceYaw and self.alive then
-		self.model:PivotTo(CFrame.new(self.root.Position) * CFrame.Angles(0, math.rad(faceYaw), 0))
+		self.model:PivotTo(CFrame.new(target) * CFrame.Angles(0, math.rad(faceYaw), 0))
 	end
 	return self.alive
 end

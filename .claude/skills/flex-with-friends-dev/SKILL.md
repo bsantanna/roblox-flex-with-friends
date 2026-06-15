@@ -44,6 +44,8 @@ This skill is the fast path. For depth, read the reference files when the task c
 - `references/architecture.md` — full layout, the bootstrapper contract, data model, networking, place model.
 - `references/lifecycle.md` — the phased plan, goal-driven verification, branching, how to runtime-verify.
 - `references/makefile.md` — every `make` target, the pinned tools, and the analyze gotchas.
+- `references/minigames.md` — the NPC-minigame framework + the recipe for adding one (read before
+  building, extending, or debugging an NPC minigame — e.g. Simon Says).
 
 The authoritative roadmap is `doc/002_implementation_plan.md`. When in doubt about *what* to build
 next, read it; this skill is about *how* to build it.
@@ -134,6 +136,11 @@ Services are the unit of server logic (FollowerService, DataService, PhotoServic
 Client **Controllers** are identical but live in `src/client/controllers/` and are booted by
 `init.client.lua`. Controllers own UI and input; they send requests to services and react to
 server events — they never decide rewards.
+
+**Building an NPC minigame** (a game a player starts by talking to an NPC, like Simon Says) is a
+special case: there's a generic framework so each game shares one pre-game flow (walk → ready mark →
+rules → confirm) and you only write the game-specific part as a plugin. Don't hand-roll it — read
+`references/minigames.md` for the contract and the recipe.
 
 ## Development loop
 

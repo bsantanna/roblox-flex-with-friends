@@ -218,12 +218,16 @@ GymFriends.Friends = {
 		},
 	},
 	-- ===== Cyclists (bikes) =====
+	-- A bike's flywheel juts toward the saddle, so a friend standing on the bike's centre clips the
+	-- wheel. Their station sits ~2.5 studs behind the saddle (the bikes face +Z, saddle on the -Z
+	-- side) so they stand just behind their bike facing it (Yaw 180) -- clear of the wheel. Bike
+	-- centres are at Z = -47 / -83 (see Config.Gym.Stations); these are offset to -49.5 / -85.5.
 	{
 		Id = "lucas",
 		Name = "Lucas",
 		Gender = "male",
 		Type = "Cyclist",
-		Station = Vector3.new(-50, 23, -47),
+		Station = Vector3.new(-50, 23, -49.5),
 		Yaw = 180,
 		Intro = {
 			start = "hi",
@@ -271,7 +275,7 @@ GymFriends.Friends = {
 		Name = "Sofia",
 		Gender = "female",
 		Type = "Cyclist",
-		Station = Vector3.new(-5, 23, -47),
+		Station = Vector3.new(-5, 23, -49.5),
 		Yaw = 180,
 		Intro = {
 			start = "hi",
@@ -319,7 +323,7 @@ GymFriends.Friends = {
 		Name = "Marcus",
 		Gender = "male",
 		Type = "Cyclist",
-		Station = Vector3.new(-28, 23, -83),
+		Station = Vector3.new(-28, 23, -85.5),
 		Yaw = 180,
 		Intro = {
 			start = "hi",

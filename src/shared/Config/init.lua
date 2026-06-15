@@ -230,8 +230,6 @@ type SimonSaysDef = {
 	RewardPerRound: number, -- extra followers per round beyond the first
 	Arrows: { string }, -- input directions, each a key of Poses
 	Poses: { [string]: string }, -- arrow -> animation asset id played on NPC and player
-	MoveSeconds: number, -- seconds for the trainer to walk between its post and the arena
-	WalkAnimation: string, -- animation asset id played on the NPC while it walks
 }
 type NpcDialog = {
 	Lines: { string }, -- plain lines, advanced with Next
@@ -246,7 +244,10 @@ type NpcDef = {
 	SpawnPosition: Vector3, -- world position of the floor point the NPC stands on (its post)
 	SpawnYaw: number, -- facing, degrees around Y (0 looks -Z/north); also the arena facing
 	AvatarUserId: number, -- avatar copied for the NPC model (red-box fallback on failure)
-	ArenaPosition: Vector3, -- floor point the trainer walks to for the minigame, then returns from
+	ArenaPosition: Vector3, -- floor point the NPC walks to for its minigame, then returns from
+	MoveSeconds: number, -- seconds for the NPC to walk between its post and the arena
+	WalkAnimation: string, -- animation asset id played on the NPC while it walks
+	Instructions: string, -- pre-game rules the NPC explains (speech bubble + client Start prompt)
 	Dialog: NpcDialog,
 	SimonSays: SimonSaysDef,
 }
@@ -262,6 +263,21 @@ Config.Decay = {
 	MaxLoss = 50, -- cap on a single return's loss
 }
 
+-- Generic NPC-minigame framework tunables (MinigameService). Before any minigame plays, the NPC
+-- walks to its arena and runs a shared pre-game flow: a green ready-zone the player must step into,
+-- then the NPC explains the rules and waits for a Start confirmation. Per-NPC/per-game values
+-- (arena, motion, instructions, rewards) live under Config.Npc; these are the cross-game defaults.
+Config.Minigame = {
+	ReadyTimeoutSeconds = 30, -- abort (NPC walks home) if the player never reaches the ready-zone
+	ConfirmTimeoutSeconds = 30, -- abort if the player never confirms the instructions
+	ReadyZone = {
+		Radius = 4, -- entry-detection + visual radius, studs
+		Offset = 6, -- studs in front of the NPC (along its facing) where the disc sits
+		Height = 0.1, -- disc thickness above the floor
+		Color = Color3.fromRGB(80, 230, 110), -- bright green
+	},
+}
+
 Config.Npc = {
 	PersonalTrainer = {
 		UnlockFollowers = 100,
@@ -269,6 +285,10 @@ Config.Npc = {
 		SpawnYaw = 180, -- face south, toward the entrance forecourt where players approach
 		AvatarUserId = 1, -- Roblox's own avatar as the stand-in trainer look
 		ArenaPosition = Vector3.new(-10, 23, -50), -- open floor north of the post, in clear view from it
+		MoveSeconds = 1.5, -- seconds for the trainer to walk between its post and the arena
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Simon Says! Watch the moves I make, then repeat them in order with the on-screen"
+			.. " buttons or the arrow keys. Clear every round to bank followers. Step on the mark and hit Start!",
 		Dialog = {
 			Lines = {
 				"Hey, welcome to my gym!",
@@ -298,8 +318,6 @@ Config.Npc = {
 				Right = "rbxassetid://507770453", -- point
 				Down = "rbxassetid://507771019", -- dance
 			},
-			MoveSeconds = 1.5,
-			WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
 		},
 	},
 } :: { [string]: NpcDef }

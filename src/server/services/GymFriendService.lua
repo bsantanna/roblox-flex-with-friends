@@ -261,40 +261,6 @@ local function registerGroups()
 	PhysicsService:CollisionGroupSetCollidable(GymFriendsCfg.CollisionGroup, GymFriendsCfg.EquipmentGroup, false)
 end
 
--- An invisible solid slab laid over the gym floor at station height. The real floor is a 1-stud mesh
--- slab that walking (unanchored) friends tunnel through; this thick collision pad gives them (and
--- players) a reliable surface so nobody falls to the floor below.
-local function buildWalkFloor()
-	local floor = Instance.new("Part")
-	floor.Name = "GymWalkFloor"
-	floor.Anchored = true
-	floor.CanCollide = true
-	floor.CanQuery = false -- invisible to raycasts (photos, prompts) -- it only needs to be walkable
-	floor.CanTouch = false
-	floor.Transparency = 1
-	floor.Size = GymFriendsCfg.WalkFloor.Size
-	floor.CFrame = CFrame.new(GymFriendsCfg.WalkFloor.Center)
-	floor.Parent = Workspace
-end
-
--- Safety net for the user-requested behaviour: every RespawnInterval seconds, any friend whose root has
--- dropped below FallY (fell off/through the floor despite the pad) is reseated at its station. Repeats
--- until it is back in place. With the walk floor this should almost never fire.
-local function startFallWatchdog()
-	task.spawn(function()
-		while true do
-			task.wait(GymFriendsCfg.RespawnInterval)
-			for _, entry in agents do
-				local agent = entry.agent
-				if agent:isAlive() and agent.root.Position.Y < GymFriendsCfg.FallY then
-					seatAt(agent.model, entry.def.Station, entry.def.Yaw)
-					agent.root.Anchored = true -- the routine re-unanchors when it next walks
-				end
-			end
-		end
-	end)
-end
-
 -- Tags the gym equipment so friends pass through it. Yields on WaitForChild, so run off the boot thread.
 local function tagEquipment()
 	local gym = Workspace:WaitForChild("Gym")
@@ -329,12 +295,9 @@ function GymFriendService:Start()
 		end
 	end)
 
-	startFallWatchdog()
-
 	-- Equipment tagging + the avatar fetches yield; running them off the boot thread lets Start
 	-- return so the other services (incl. GymService, which builds Workspace.Gym) get to start.
 	task.spawn(function()
-		buildWalkFloor() -- solid footing first, before any friend can walk
 		tagEquipment()
 
 		local folder = Instance.new("Folder")

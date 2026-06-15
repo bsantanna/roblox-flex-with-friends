@@ -13,6 +13,7 @@ type AgentFields = {
 	humanoid: Humanoid?, -- nil for a non-rig fallback body (then it teleports instead of walking)
 	animator: Animator?,
 	root: BasePart,
+	groundY: number, -- the fixed floor-plane Y; movement never leaves it, so the agent can't fly or fall
 	walkSpeed: number,
 	walkAnim: string?, -- looped while walking
 	alive: boolean,
@@ -30,7 +31,6 @@ export type Props = {
 	walkAnim: string?,
 }
 
-local MOVE_TIMEOUT = 8 -- seconds before giving up on a MoveTo (blocked path), so the loop never hangs
 local ARRIVE_RADIUS = 2 -- studs from the target that counts as "arrived"
 
 local function loadTrack(animator: Animator, animId: string): AnimationTrack
@@ -49,9 +49,10 @@ function Agent.new(props: Props): Agent
 	) :: BasePart
 	assert(root, "Agent: model has no BasePart")
 
-	-- Stand anchored while idle so nothing can shove or launch the rig -- a player bumping into it, a
-	-- spawn overlap, or network-ownership handoff when a player approaches (unanchored R15 rigs are
-	-- otherwise easily knocked around). walkTo unanchors only while actually moving, then re-anchors.
+	-- The rig stays anchored for its whole life -- it never falls under gravity, can't be shoved by a
+	-- player or a spawn overlap, and is never handed to a client by network-ownership. All movement is
+	-- driven by stepping its CFrame (see walkTo), with Y pinned to groundY, so it physically cannot
+	-- leave the floor plane it spawned on.
 	root.Anchored = true
 
 	local animator: Animator? = nil
@@ -79,6 +80,7 @@ function Agent.new(props: Props): Agent
 		humanoid = humanoid,
 		animator = animator,
 		root = root,
+		groundY = root.Position.Y, -- captured once at the seated spawn height; movement keeps it constant
 		walkSpeed = props.walkSpeed,
 		walkAnim = props.walkAnim,
 		alive = true,
@@ -123,52 +125,48 @@ function Agent.stopLoop(self: Agent)
 	self.model:SetAttribute("LoopAnim", "")
 end
 
--- Walks to `position` on the current floor (plays the walk loop while moving) and, with `faceYaw`,
--- turns to that facing on arrival. Blocks the calling coroutine; pauses in place while interrupted
--- and resumes toward the target afterwards. Returns whether the agent is still alive at the end.
+-- Glides to `position` on the fixed floor plane and, with `faceYaw`, turns to that facing on arrival.
+-- The root stays anchored throughout: each frame we step the model's CFrame toward the target at
+-- walkSpeed, pinning Y to groundY -- so the agent walks naturally but can never be launched, fall, or
+-- drift off the floor. Plays the walk loop while moving. Blocks the calling coroutine; pauses in
+-- place while interrupted and resumes toward the target. Returns whether the agent is still alive.
 function Agent.walkTo(self: Agent, position: Vector3, faceYaw: number?): boolean
-	local humanoid = self.humanoid
-	local target = Vector3.new(position.X, self.root.Position.Y, position.Z)
+	local target = Vector3.new(position.X, self.groundY, position.Z)
 
 	local function arrived(): boolean
 		local p = self.root.Position
 		return (Vector3.new(p.X, target.Y, p.Z) - target).Magnitude <= ARRIVE_RADIUS
 	end
 
-	if humanoid and not arrived() then
-		self.root.Anchored = false -- unanchor only while walking; MoveTo can't move an anchored root
+	if not arrived() then
 		if self.walkAnim then
 			self:playLoop(self.walkAnim)
 		end
-		local started = os.clock()
 		while self.alive and not arrived() do
 			if self.interrupted then
-				humanoid:Move(Vector3.zero)
 				self:stopLoop()
-				self.root.Anchored = true -- stay put while paused (e.g. for a dialog)
 				repeat
 					task.wait(0.1)
 				until (not self.interrupted) or not self.alive
 				if not self.alive then
 					break
 				end
-				self.root.Anchored = false
 				if self.walkAnim then
 					self:playLoop(self.walkAnim)
 				end
-				started = os.clock()
 			end
-			if os.clock() - started > MOVE_TIMEOUT then
-				break
-			end
-			humanoid:MoveTo(target)
-			task.wait(0.2)
+			local pos = self.root.Position
+			local flat = Vector3.new(target.X - pos.X, 0, target.Z - pos.Z)
+			local dist = flat.Magnitude -- always > ARRIVE_RADIUS here, so the unit step below is safe
+			local dir = flat / dist
+			local dt = task.wait()
+			local step = self.walkSpeed * dt
+			local nextPos = if step >= dist
+				then target
+				else Vector3.new(pos.X + dir.X * step, self.groundY, pos.Z + dir.Z * step)
+			self.model:PivotTo(CFrame.lookAt(nextPos, nextPos + dir))
 		end
-		humanoid:Move(Vector3.zero)
 		self:stopLoop()
-		self.root.Anchored = true -- re-anchor on arrival/timeout so it stands solid
-	elseif not humanoid then
-		self.model:PivotTo(CFrame.new(target) * CFrame.Angles(0, math.rad(faceYaw or 0), 0))
 	end
 
 	if faceYaw and self.alive then
@@ -198,14 +196,10 @@ function Agent.face(self: Agent, target: Vector3)
 end
 
 -- Freezes the agent (the routine's walk/hold pause) and, given a point, turns it to face there.
--- Used by a dialog service so the NPC stops to talk to a player.
+-- Used by a dialog service so the NPC stops to talk to a player. The root is always anchored, so the
+-- agent simply stops stepping its CFrame; walkTo resumes toward its target once interrupted clears.
 function Agent.interrupt(self: Agent, faceTarget: Vector3?)
 	self.interrupted = true
-	local humanoid = self.humanoid
-	if humanoid then
-		humanoid:Move(Vector3.zero)
-	end
-	self.root.Anchored = true -- freeze in place for the conversation (walkTo unanchors again on resume)
 	if faceTarget then
 		self:face(faceTarget)
 	end

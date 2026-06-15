@@ -33,15 +33,11 @@ GymFriends.EquipmentGroup = "GymProp" -- the gym equipment group friends pass th
 GymFriends.PromptDistance = 12 -- studs the Talk prompt is reachable from
 GymFriends.DialogTimeout = 30 -- seconds of inactivity before a conversation closes itself
 
--- Arrival + footing. Friends spawn along the gym's south entry edge (by their station's X column) and
--- their first mission is to walk to their station. The gym's real floor is a 1-stud mesh slab that
--- walking NPCs tunnel through, so an invisible solid collision pad is laid over it (top at the station
--- height Y=23), covering the station + lounge area and staying north of the stairwell hole (Z in
--- [-37.5, -19.1]) so it never blocks the stairs. A watchdog reseats any friend that still falls.
-GymFriends.EntryZ = -40 -- spawn line at the gym's south entry edge (on the pad, north of the stair hole)
-GymFriends.WalkFloor = { Center = Vector3.new(-27.5, 19, -87), Size = Vector3.new(53, 8, 96) }
-GymFriends.RespawnInterval = 10 -- seconds between watchdog sweeps that reseat any fallen friend
-GymFriends.FallY = 18 -- a friend whose root drops below this Y has fallen off/through the floor
+-- Spawn line. Friends spawn along the gym's south entry edge (by their station's X column) and their
+-- first mission is to walk to their station, staying north of the stairwell hole (Z in [-37.5, -19.1])
+-- so the straight walk never crosses the shaft. Movement is anchored CFrame walking on a fixed Y plane
+-- (see Agent.walkTo), so they never fall through the floor and need no walk pad or fall watchdog.
+GymFriends.EntryZ = -40 -- spawn line at the gym's south entry edge (north of the stair hole)
 
 -- Placeholder workout animations: confirmed-loadable Roblox defaults/emotes (already used by the
 -- trainer) standing in for real push-up/cycling/lifting uploads -- swap the ids when those exist.

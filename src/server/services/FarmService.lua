@@ -99,6 +99,8 @@ type Animal = {
 	pauseUntil: number,
 	gait: number, -- accumulating gait phase
 	swing: number, -- eased 0..1 walk amount, for smooth start/stop
+	vx: number, -- last steering/move direction, used to face travel
+	vz: number,
 }
 
 local rng = Random.new(ANIM.Seed)
@@ -149,7 +151,10 @@ local function snapshotTrees()
 	for _, t in forest:GetChildren() do
 		if t:IsA("Model") then
 			local p = t:GetPivot().Position
-			if p.X >= minX and p.X <= maxX and p.Z >= minZ and p.Z <= maxZ then
+			-- include trees just outside the rails too, so an animal hugging the fence still steers
+			-- clear of a trunk that straddles the boundary
+			local m = 4
+			if p.X >= minX - m and p.X <= maxX + m and p.Z >= minZ - m and p.Z <= maxZ + m then
 				table.insert(trees, Vector2.new(p.X, p.Z))
 			end
 		end
@@ -239,7 +244,7 @@ local function buildAnimal(farm: Instance, species: any): boolean
 	end
 
 	local extents = root.Size
-	local radius = math.max(extents.X, extents.Z) / 2
+	local radius = (extents.X + extents.Z) / 4 -- mean body half-extent, used for spacing/clearance
 	local x, z = pickPoint(radius)
 	local y = (species.HipDown + legTemplate.Size.Y) * scale -- body-centre height: feet at grass (Y=0)
 	local tx, tz = pickPoint(radius)
@@ -260,36 +265,127 @@ local function buildAnimal(farm: Instance, species: any): boolean
 		pauseUntil = os.clock() + rng:NextNumber(0, ANIM.PauseMax),
 		gait = rng:NextNumber(0, 2 * math.pi),
 		swing = 0,
+		vx = 0,
+		vz = 0,
 	})
 	return true
 end
 
--- Advance every animal one frame: walk toward the target (turning the body's forward, +X, to face
--- travel), idle a random pause, then pick the next target. Legs swing while walking (eased in/out)
--- and the body bobs; all poses are set kinematically on the anchored parts.
+-- Steer one animal toward its target while pushing away from nearby trees and other animals, and
+-- return the chosen move direction (so the body can face it). Pure seek when nothing is close.
+local function steer(a: Animal): (number, number)
+	local dx, dz = a.tx - a.x, a.tz - a.z
+	local dist = math.sqrt(dx * dx + dz * dz)
+	local sx, sz = if dist > 1e-3 then dx / dist else 0, if dist > 1e-3 then dz / dist else 0
+	local px, pz = 0, 0
+	for _, t in trees do
+		local ox, oz = a.x - t.X, a.z - t.Y
+		local od = math.sqrt(ox * ox + oz * oz)
+		local range = ANIM.TreeRadius + a.radius + 4
+		if od > 1e-3 and od < range then
+			local w = (range - od) / range
+			px += (ox / od) * w
+			pz += (oz / od) * w
+		end
+	end
+	for _, b in animals do
+		if b ~= a then
+			local ox, oz = a.x - b.x, a.z - b.z
+			local od = math.sqrt(ox * ox + oz * oz)
+			local range = a.radius + b.radius + 2
+			if od > 1e-3 and od < range then
+				local w = (range - od) / range
+				px += (ox / od) * w
+				pz += (oz / od) * w
+			end
+		end
+	end
+	local stx, stz = sx + px * ANIM.Separation, sz + pz * ANIM.Separation
+	local stl = math.sqrt(stx * stx + stz * stz)
+	if stl > 1e-3 then
+		return stx / stl, stz / stl
+	end
+	return sx, sz
+end
+
+-- Resolve any overlap by pushing animals out of tree trunks and apart from each other, then keep
+-- everyone inside the rails. Run a few times per frame so it converges -- this is the hard guarantee
+-- that nothing clips a trunk or another animal, even when steering alone isn't enough.
+local function resolveOverlaps()
+	for _ = 1, ANIM.SeparationIterations do
+		for _, a in animals do
+			for _, t in trees do
+				local ox, oz = a.x - t.X, a.z - t.Y
+				local od = math.sqrt(ox * ox + oz * oz)
+				local mind = ANIM.TreeRadius + a.radius
+				if od < mind then
+					if od < 1e-3 then
+						ox, oz, od = 1, 0, 1
+					end
+					a.x, a.z = t.X + (ox / od) * mind, t.Y + (oz / od) * mind
+				end
+			end
+		end
+		for i = 1, #animals do
+			local a = animals[i]
+			for j = i + 1, #animals do
+				local b = animals[j]
+				local ox, oz = a.x - b.x, a.z - b.z
+				local od = math.sqrt(ox * ox + oz * oz)
+				local mind = a.radius + b.radius
+				if od < mind then
+					if od < 1e-3 then
+						ox, oz, od = 1, 0, 1
+					end
+					local push = (mind - od) / 2
+					a.x += (ox / od) * push
+					a.z += (oz / od) * push
+					b.x -= (ox / od) * push
+					b.z -= (oz / od) * push
+				end
+			end
+		end
+		for _, a in animals do
+			a.x = math.clamp(a.x, minX + a.radius, maxX - a.radius)
+			a.z = math.clamp(a.z, minZ + a.radius, maxZ - a.radius)
+		end
+	end
+end
+
+-- Advance every animal one frame: steer toward the target (idling random pauses), resolve overlaps so
+-- nothing clips, then face travel, bob, and swing the legs -- all poses set kinematically on the
+-- anchored parts.
 local function step(dt: number)
 	local now = os.clock()
 	for _, a in animals do
-		local sp = a.species
 		if a.walking then
 			local dx, dz = a.tx - a.x, a.tz - a.z
-			local dist = math.sqrt(dx * dx + dz * dz)
-			if dist < 0.5 then
+			if (dx * dx + dz * dz) < 0.8 * 0.8 then
 				a.walking = false
 				a.pauseUntil = now + rng:NextNumber(ANIM.PauseMin, ANIM.PauseMax)
+				a.vx, a.vz = 0, 0
 			else
-				local move = math.min(ANIM.WanderSpeed * dt, dist)
-				a.x += (dx / dist) * move
-				a.z += (dz / dist) * move
-				a.yaw = lerpAngle(a.yaw, math.atan2(-dz, dx), math.min(ANIM.TurnSpeed * dt, 1))
-				a.gait += dt * sp.WalkFreq * 2 * math.pi
+				local stx, stz = steer(a)
+				local move = ANIM.WanderSpeed * dt
+				a.x += stx * move
+				a.z += stz * move
+				a.vx, a.vz = stx, stz
+				a.gait += dt * a.species.WalkFreq * 2 * math.pi
 			end
 		elseif now >= a.pauseUntil then
 			a.tx, a.tz = pickPoint(a.radius)
 			a.walking = true
 		end
+	end
 
-		-- ease the leg swing in/out so starts and stops aren't abrupt
+	resolveOverlaps()
+
+	for _, a in animals do
+		local sp = a.species
+		if a.walking and (a.vx * a.vx + a.vz * a.vz) > 1e-4 then
+			-- body forward is the head (-X in Roblox after the GLB import flips Blender +X)
+			a.yaw = lerpAngle(a.yaw, math.atan2(a.vz, -a.vx), math.min(ANIM.TurnSpeed * dt, 1))
+		end
 		a.swing += ((a.walking and 1 or 0) - a.swing) * math.min(dt * 6, 1)
 		local bob = math.sin(now * sp.BobFreq * 2 * math.pi) * sp.BobAmplitude * (0.4 + 0.6 * a.swing)
 		local rootCf = CFrame.new(a.x, a.y + bob, a.z) * CFrame.Angles(0, a.yaw, 0)

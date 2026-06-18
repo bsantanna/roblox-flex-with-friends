@@ -5,19 +5,19 @@
   },
   "ChickenBody": {
     "assetId": 88015904248058,
-    "hash": "b14b2650d12a6b1763b151301c168df3f6b58baf8674002d0f49c862b031b4b7"
+    "hash": "71815a2bbc9d83e5345299b6364f4007cf1c62fd51fbf3f3efdfb0ac473b81ea"
   },
   "ChickenLeg": {
     "assetId": 130482384215472,
-    "hash": "d847903624d84e0dc209b21da5ebb98293b8e0601de69cd0db912f539397f5fa"
+    "hash": "bc32145108ff21bc25fd95a13376d5b1d63406cdba38596d5800064f7b8d8a33"
   },
   "CowBody": {
     "assetId": 98275317136013,
-    "hash": "c137ea95f8b515304a424112d99d51f5f8d33cff09518541f4b47a3575bbcb06"
+    "hash": "22c2e885ed204629512ee594c3986d703ba3e651564066688681b654695f0c37"
   },
   "CowLeg": {
     "assetId": 85214479760346,
-    "hash": "2eda33e8cf2975b914a754b5075401625340169491746ba1e7b9dd77cc727696"
+    "hash": "1dc0600d7c794df31a2570417e02d55bf82f095c49636e062b8bd21da1048966"
   },
   "Neighbor01": {
     "assetId": 134957888385403,
@@ -49,11 +49,11 @@
   },
   "SheepBody": {
     "assetId": 106868780762695,
-    "hash": "e1172dc8270fd82434829fb2d071a28ee1b5acf62e9f7cfddba3b6b0309e2bbb"
+    "hash": "37b2f80c2c96a39c749e9a91a5e2cf2493efdee25c87dd534473da3897ca44d3"
   },
   "SheepLeg": {
     "assetId": 113291761400692,
-    "hash": "7ab01a0f63cb8ab82a792882e8034dd0899e76ea07405025ef6a2854b772674d"
+    "hash": "705531c7bce07d28d8c7c74ba877b6ba7a3e6671d817a2ea032b0d5d5b6b0468"
   },
   "Tree01": {
     "assetId": 110182506336395,

@@ -1,12 +1,13 @@
 --!strict
--- MinigameController: drives the Personal Trainer pose-memory minigame UI. The server owns the
--- game (it fires one TrainerShowStep per arrow, then TrainerInputPhase when it accepts inputs);
--- this controller lights the arrow buttons during the show, then lets the player answer with the
--- same buttons or the keyboard arrow keys. Also toasts NPC unlocks.
+-- MinigameController: the generic pre-game UI shell shared by every NPC minigame. The server drives
+-- the flow: MinigameAwaitReady asks the player to step onto the green ready-zone in front of the
+-- NPC; MinigameInstructions shows the rules with a Start button (the NPC also says them in a speech
+-- bubble); MinigameConfirmStart tells the server to begin; MinigameAborted dismisses this UI if the
+-- player took too long. The game-specific UI (e.g. SimonSaysController's arrows) takes over from
+-- there. Also toasts NPC unlocks.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 
 local Net = require(ReplicatedStorage.Shared.Net)
 
@@ -14,87 +15,36 @@ local MinigameController = {}
 
 local player = Players.LocalPlayer
 
-local ARROWS = { "Left", "Up", "Down", "Right" } -- on-screen button order
-local GLYPHS = { Left = "◀", Up = "▲", Down = "▼", Right = "▶" }
-local KEY_ARROWS: { [Enum.KeyCode]: string } = {
-	[Enum.KeyCode.Left] = "Left",
-	[Enum.KeyCode.Up] = "Up",
-	[Enum.KeyCode.Down] = "Down",
-	[Enum.KeyCode.Right] = "Right",
-}
-
-local BUTTON_IDLE = Color3.fromRGB(60, 120, 200)
-local BUTTON_LIT = Color3.fromRGB(255, 220, 80)
-local HIGHLIGHT_SECONDS = 0.4
-
-local trainerShowStep: RemoteEvent
-local trainerInputPhase: RemoteEvent
-local trainerPoseInput: RemoteEvent
-local trainerRoundResult: RemoteEvent
-local trainerGameOver: RemoteEvent
+local awaitReady: RemoteEvent
+local instructionsEvent: RemoteEvent
+local confirmStart: RemoteEvent
+local aborted: RemoteEvent
 local unlockNpc: RemoteEvent
 
-local gameFrame: Frame
-local roundLabel: TextLabel
-local statusLabel: TextLabel
-local arrowButtons: { [string]: TextButton } = {}
+local readyBanner: TextLabel
+local instructionPanel: Frame
+local instructionLabel: TextLabel
 local toast: TextLabel
 
-local inputEnabled = false
-
--- Lights an arrow button briefly (show phase and input echo share the same flash).
-local function flashArrow(arrow: string)
-	local button = arrowButtons[arrow]
-	if not button then
-		return
-	end
-	button.BackgroundColor3 = BUTTON_LIT
-	task.delay(HIGHLIGHT_SECONDS, function()
-		button.BackgroundColor3 = BUTTON_IDLE
-	end)
+local function hidePregame()
+	readyBanner.Visible = false
+	instructionPanel.Visible = false
 end
 
-local function sendArrow(arrow: string)
-	if not inputEnabled then
-		return
-	end
-	flashArrow(arrow)
-	trainerPoseInput:FireServer(arrow)
+local function onAwaitReady()
+	instructionPanel.Visible = false
+	readyBanner.Visible = true
 end
 
-local function onTrainerShowStep(arrow: string, round: number, maxRounds: number)
-	gameFrame.Visible = true
-	inputEnabled = false
-	roundLabel.Text = `Round {round} / {maxRounds}`
-	statusLabel.Text = "Watch the trainer..."
-	flashArrow(arrow)
+local function onInstructions(instructions: string)
+	readyBanner.Visible = false
+	instructionLabel.Text = instructions
+	instructionPanel.Visible = true
 end
 
-local function onTrainerInputPhase(_timeoutSeconds: number)
-	inputEnabled = true
-	statusLabel.Text = "Your turn — repeat the moves!"
-end
-
-local function onTrainerRoundResult(correct: boolean, reward: number)
-	if not correct then
-		inputEnabled = false
-		statusLabel.Text = "Wrong move!"
-	elseif reward > 0 then
-		inputEnabled = false
-		statusLabel.Text = `Round cleared! +{reward} followers`
-	else
-		statusLabel.Text = "Nice!"
-	end
-end
-
-local function onTrainerGameOver(totalReward: number, roundsCompleted: number, cleared: boolean)
-	inputEnabled = false
-	statusLabel.Text = if cleared
-		then `Training complete! +{totalReward} followers`
-		else `Session over — {roundsCompleted} rounds, +{totalReward} followers`
-	task.delay(2.5, function()
-		gameFrame.Visible = false
-	end)
+local function onConfirm()
+	hidePregame()
+	confirmStart:FireServer()
 end
 
 local function onUnlockNpc(npcId: string)
@@ -106,74 +56,70 @@ local function onUnlockNpc(npcId: string)
 end
 
 function MinigameController:Init()
-	trainerShowStep = Net.Event("TrainerShowStep")
-	trainerInputPhase = Net.Event("TrainerInputPhase")
-	trainerPoseInput = Net.Event("TrainerPoseInput")
-	trainerRoundResult = Net.Event("TrainerRoundResult")
-	trainerGameOver = Net.Event("TrainerGameOver")
+	awaitReady = Net.Event("MinigameAwaitReady")
+	instructionsEvent = Net.Event("MinigameInstructions")
+	confirmStart = Net.Event("MinigameConfirmStart")
+	aborted = Net.Event("MinigameAborted")
 	unlockNpc = Net.Event("UnlockNpc")
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Minigame"
 	gui.ResetOnSpawn = false
 
-	gameFrame = Instance.new("Frame")
-	gameFrame.AnchorPoint = Vector2.new(0.5, 1)
-	gameFrame.Position = UDim2.fromScale(0.5, 0.92)
-	gameFrame.Size = UDim2.fromOffset(340, 180)
-	gameFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-	gameFrame.Visible = false
-	gameFrame.Parent = gui
+	-- "Head to the green circle" banner near the top.
+	readyBanner = Instance.new("TextLabel")
+	readyBanner.AnchorPoint = Vector2.new(0.5, 0)
+	readyBanner.Position = UDim2.fromScale(0.5, 0.22)
+	readyBanner.Size = UDim2.fromOffset(420, 40)
+	readyBanner.BackgroundColor3 = Color3.fromRGB(40, 120, 60)
+	readyBanner.TextColor3 = Color3.fromRGB(255, 255, 255)
+	readyBanner.Font = Enum.Font.GothamBold
+	readyBanner.TextScaled = true
+	readyBanner.Text = "Step onto the green circle to begin!"
+	readyBanner.Visible = false
+	readyBanner.Parent = gui
+	local bannerCorner = Instance.new("UICorner")
+	bannerCorner.CornerRadius = UDim.new(0, 8)
+	bannerCorner.Parent = readyBanner
 
-	roundLabel = Instance.new("TextLabel")
-	roundLabel.Size = UDim2.new(1, -16, 0, 28)
-	roundLabel.Position = UDim2.fromOffset(8, 8)
-	roundLabel.BackgroundTransparency = 1
-	roundLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	roundLabel.Font = Enum.Font.GothamBold
-	roundLabel.TextScaled = true
-	roundLabel.Text = ""
-	roundLabel.Parent = gameFrame
+	-- Instructions panel with a Start button, centred.
+	instructionPanel = Instance.new("Frame")
+	instructionPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+	instructionPanel.Position = UDim2.fromScale(0.5, 0.4)
+	instructionPanel.Size = UDim2.fromOffset(420, 220)
+	instructionPanel.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+	instructionPanel.Visible = false
+	instructionPanel.Parent = gui
+	local panelCorner = Instance.new("UICorner")
+	panelCorner.CornerRadius = UDim.new(0, 10)
+	panelCorner.Parent = instructionPanel
 
-	local arrowRow = Instance.new("Frame")
-	arrowRow.AnchorPoint = Vector2.new(0.5, 0)
-	arrowRow.Position = UDim2.new(0.5, 0, 0, 44)
-	arrowRow.Size = UDim2.fromOffset(296, 64)
-	arrowRow.BackgroundTransparency = 1
-	arrowRow.Parent = gameFrame
+	instructionLabel = Instance.new("TextLabel")
+	instructionLabel.AnchorPoint = Vector2.new(0.5, 0)
+	instructionLabel.Position = UDim2.new(0.5, 0, 0, 16)
+	instructionLabel.Size = UDim2.new(1, -32, 1, -84)
+	instructionLabel.BackgroundTransparency = 1
+	instructionLabel.TextColor3 = Color3.fromRGB(235, 235, 235)
+	instructionLabel.Font = Enum.Font.Gotham
+	instructionLabel.TextWrapped = true
+	instructionLabel.TextScaled = true
+	instructionLabel.Text = ""
+	instructionLabel.Parent = instructionPanel
 
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.Padding = UDim.new(0, 12)
-	layout.Parent = arrowRow
-
-	for order, arrow in ARROWS do
-		local button = Instance.new("TextButton")
-		button.LayoutOrder = order
-		button.Size = UDim2.fromOffset(64, 64)
-		button.BackgroundColor3 = BUTTON_IDLE
-		button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		button.Font = Enum.Font.GothamBold
-		button.TextScaled = true
-		button.Text = GLYPHS[arrow]
-		button.Parent = arrowRow
-		button.Activated:Connect(function()
-			sendArrow(arrow)
-		end)
-		arrowButtons[arrow] = button
-	end
-
-	statusLabel = Instance.new("TextLabel")
-	statusLabel.AnchorPoint = Vector2.new(0.5, 1)
-	statusLabel.Position = UDim2.new(0.5, 0, 1, -8)
-	statusLabel.Size = UDim2.new(1, -16, 0, 28)
-	statusLabel.BackgroundTransparency = 1
-	statusLabel.TextColor3 = Color3.fromRGB(220, 220, 120)
-	statusLabel.Font = Enum.Font.Gotham
-	statusLabel.TextScaled = true
-	statusLabel.Text = ""
-	statusLabel.Parent = gameFrame
+	local startButton = Instance.new("TextButton")
+	startButton.AnchorPoint = Vector2.new(0.5, 1)
+	startButton.Position = UDim2.new(0.5, 0, 1, -16)
+	startButton.Size = UDim2.fromOffset(180, 48)
+	startButton.BackgroundColor3 = Color3.fromRGB(60, 180, 90)
+	startButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	startButton.Font = Enum.Font.GothamBold
+	startButton.TextScaled = true
+	startButton.Text = "Start"
+	startButton.Parent = instructionPanel
+	local startCorner = Instance.new("UICorner")
+	startCorner.CornerRadius = UDim.new(0, 8)
+	startCorner.Parent = startButton
+	startButton.Activated:Connect(onConfirm)
 
 	toast = Instance.new("TextLabel")
 	toast.AnchorPoint = Vector2.new(0.5, 0)
@@ -191,24 +137,10 @@ function MinigameController:Init()
 end
 
 function MinigameController:Start()
-	trainerShowStep.OnClientEvent:Connect(onTrainerShowStep)
-	trainerInputPhase.OnClientEvent:Connect(onTrainerInputPhase)
-	trainerRoundResult.OnClientEvent:Connect(onTrainerRoundResult)
-	trainerGameOver.OnClientEvent:Connect(onTrainerGameOver)
+	awaitReady.OnClientEvent:Connect(onAwaitReady)
+	instructionsEvent.OnClientEvent:Connect(onInstructions)
+	aborted.OnClientEvent:Connect(hidePregame)
 	unlockNpc.OnClientEvent:Connect(onUnlockNpc)
-
-	-- The arrow keys double as Roblox's default movement, so they arrive with
-	-- gameProcessed=true; guarding on a focused TextBox (not gameProcessed) is what lets the
-	-- player answer with the keyboard. sendArrow no-ops unless the input phase is open.
-	UserInputService.InputBegan:Connect(function(input: InputObject)
-		if UserInputService:GetFocusedTextBox() ~= nil then
-			return
-		end
-		local arrow = KEY_ARROWS[input.KeyCode]
-		if arrow then
-			sendArrow(arrow)
-		end
-	end)
 end
 
 return MinigameController

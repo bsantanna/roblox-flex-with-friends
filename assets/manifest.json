@@ -31,6 +31,78 @@
       "description": "Stylized cloud-canopy tree. scatter:true — uploaded by the pipeline but placed by ForestService, which clones it across the Home island's grass (Config.Forest)."
     },
     {
+      "id": "CowBody",
+      "kind": "mesh",
+      "source": "source/CowBody/CowBody.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Cow Body",
+      "description": "Low-poly cow torso+neck+head+tail mesh. scatter:true — uploaded by the pipeline but NOT auto-placed; FarmService loads it as the root of a Motor6D cow rig and colours it in code."
+    },
+    {
+      "id": "CowLeg",
+      "kind": "mesh",
+      "source": "source/CowLeg/CowLeg.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Cow Leg",
+      "description": "Low-poly cow leg mesh (thigh+shank+hoof). scatter:true — uploaded but not auto-placed; FarmService clones it four times, joints each to the cow body with a Motor6D, and swings them for the walk cycle."
+    },
+    {
+      "id": "SheepBody",
+      "kind": "mesh",
+      "source": "source/SheepBody/SheepBody.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Sheep Body",
+      "description": "Low-poly woolly sheep body+head mesh. scatter:true — uploaded but not auto-placed; FarmService assembles it into a wandering animal."
+    },
+    {
+      "id": "SheepLeg",
+      "kind": "mesh",
+      "source": "source/SheepLeg/SheepLeg.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Sheep Leg",
+      "description": "Short low-poly sheep leg mesh. scatter:true — cloned four times and swung by FarmService."
+    },
+    {
+      "id": "ChickenBody",
+      "kind": "mesh",
+      "source": "source/ChickenBody/ChickenBody.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Chicken Body",
+      "description": "Low-poly chicken body with comb, beak and upright tail. scatter:true — uploaded but not auto-placed; FarmService assembles it into a wandering animal."
+    },
+    {
+      "id": "ChickenLeg",
+      "kind": "mesh",
+      "source": "source/ChickenLeg/ChickenLeg.glb",
+      "zone": "Home",
+      "offset": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1,
+      "scatter": true,
+      "displayName": "Chicken Leg",
+      "description": "Thin low-poly chicken leg mesh. scatter:true — cloned twice and swung by FarmService."
+    },
+    {
       "id": "Neighbor01",
       "kind": "mesh",
       "source": "source/Neighbor01/Neighbor01.glb",

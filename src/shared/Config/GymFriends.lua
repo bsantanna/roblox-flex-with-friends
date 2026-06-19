@@ -33,15 +33,11 @@ GymFriends.EquipmentGroup = "GymProp" -- the gym equipment group friends pass th
 GymFriends.PromptDistance = 12 -- studs the Talk prompt is reachable from
 GymFriends.DialogTimeout = 30 -- seconds of inactivity before a conversation closes itself
 
--- Arrival + footing. Friends spawn along the gym's south entry edge (by their station's X column) and
--- their first mission is to walk to their station. The gym's real floor is a 1-stud mesh slab that
--- walking NPCs tunnel through, so an invisible solid collision pad is laid over it (top at the station
--- height Y=23), covering the station + lounge area and staying north of the stairwell hole (Z in
--- [-37.5, -19.1]) so it never blocks the stairs. A watchdog reseats any friend that still falls.
-GymFriends.EntryZ = -40 -- spawn line at the gym's south entry edge (on the pad, north of the stair hole)
-GymFriends.WalkFloor = { Center = Vector3.new(-27.5, 19, -87), Size = Vector3.new(53, 8, 96) }
-GymFriends.RespawnInterval = 10 -- seconds between watchdog sweeps that reseat any fallen friend
-GymFriends.FallY = 18 -- a friend whose root drops below this Y has fallen off/through the floor
+-- Spawn line. Friends spawn along the gym's south entry edge (by their station's X column) and their
+-- first mission is to walk to their station, staying north of the stairwell hole (Z in [-37.5, -19.1])
+-- so the straight walk never crosses the shaft. Movement is anchored CFrame walking on a fixed Y plane
+-- (see Agent.walkTo), so they never fall through the floor and need no walk pad or fall watchdog.
+GymFriends.EntryZ = -40 -- spawn line at the gym's south entry edge (north of the stair hole)
 
 -- Placeholder workout animations: confirmed-loadable Roblox defaults/emotes (already used by the
 -- trainer) standing in for real push-up/cycling/lifting uploads -- swap the ids when those exist.
@@ -222,12 +218,16 @@ GymFriends.Friends = {
 		},
 	},
 	-- ===== Cyclists (bikes) =====
+	-- A bike's flywheel juts toward the saddle, so a friend standing on the bike's centre clips the
+	-- wheel. Their station sits ~2.5 studs behind the saddle (the bikes face +Z, saddle on the -Z
+	-- side) so they stand just behind their bike facing it (Yaw 180) -- clear of the wheel. Bike
+	-- centres are at Z = -47 / -83 (see Config.Gym.Stations); these are offset to -49.5 / -85.5.
 	{
 		Id = "lucas",
 		Name = "Lucas",
 		Gender = "male",
 		Type = "Cyclist",
-		Station = Vector3.new(-50, 23, -47),
+		Station = Vector3.new(-50, 23, -49.5),
 		Yaw = 180,
 		Intro = {
 			start = "hi",
@@ -275,7 +275,7 @@ GymFriends.Friends = {
 		Name = "Sofia",
 		Gender = "female",
 		Type = "Cyclist",
-		Station = Vector3.new(-5, 23, -47),
+		Station = Vector3.new(-5, 23, -49.5),
 		Yaw = 180,
 		Intro = {
 			start = "hi",
@@ -323,7 +323,7 @@ GymFriends.Friends = {
 		Name = "Marcus",
 		Gender = "male",
 		Type = "Cyclist",
-		Station = Vector3.new(-28, 23, -83),
+		Station = Vector3.new(-28, 23, -85.5),
 		Yaw = 180,
 		Intro = {
 			start = "hi",

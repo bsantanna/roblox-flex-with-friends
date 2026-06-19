@@ -3,7 +3,7 @@
 -- The NPC's lines render in a server-side speech bubble (a BillboardGui in Workspace), so every
 -- nearby player sees the conversation; only the interacting player gets the on-screen choices
 -- (DialogLine/DialogAdvance/DialogChoose/DialogEnd). Picking Train hands off to
--- MinigameService:StartGame. The flow itself is pure logic in Shared.Logic.Dialog; the bubble is
+-- MinigameService:Request. The flow itself is pure logic in Shared.Logic.Dialog; the bubble is
 -- the shared Shared.Util.SpeechBubble (the gym friends use the same one).
 
 local Players = game:GetService("Players")
@@ -140,7 +140,7 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	local train = s.qualified and choiceIndex == 1
 	endSession()
 	if train then
-		MinigameService:StartGame(player, npcModel)
+		MinigameService:Request(player, "PersonalTrainer", npcModel)
 	end
 end
 

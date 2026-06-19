@@ -22,6 +22,12 @@ local EVENTS = {
 	"DialogChoose", -- client -> server: (choiceIndex: number) -- pick a branch-line choice
 	"DialogEnd", -- server -> client: () -- dismiss the dialog UI
 	"SetFollowers", -- client -> server: (value: number) -- dev cheat; server accepts in Studio only
+	-- Generic NPC-minigame pre-game flow (MinigameService); every minigame reuses these.
+	"MinigameAwaitReady", -- server -> client: () -- pre-game: head to the green ready-zone in front of the NPC
+	"MinigameInstructions", -- server -> client: (instructions: string) -- show the rules + a Start button
+	"MinigameConfirmStart", -- client -> server: () -- player confirmed the instructions; begin play
+	"MinigameAborted", -- server -> client: () -- pre-game timed out / cancelled; dismiss the pre-game UI
+	-- Simon Says gameplay (the PersonalTrainer minigame plugin owns these).
 	"TrainerShowStep", -- server -> client: (arrow: string, round: number, maxRounds: number) -- light this arrow during the show
 	"TrainerInputPhase", -- server -> client: (timeoutSeconds: number) -- show done; server now accepts inputs
 	"TrainerPoseInput", -- client -> server: (arrow: string) -- one arrow per fire during the input phase

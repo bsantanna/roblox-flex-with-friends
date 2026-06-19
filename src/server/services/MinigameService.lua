@@ -1,319 +1,252 @@
 --!strict
--- MinigameService: runs the Personal Trainer pose-memory minigame (Simon Says). The server owns
--- the clock and the sequence: the show phase fires one TrainerShowStep per arrow while posing the
--- NPC (visible to everyone), then the input phase grades each TrainerPoseInput, posing the
--- player's character on correct moves. Cleared rounds pay followers via FollowerService; the
--- first mistake or an input timeout ends the game with no penalty. DialogService starts a game
--- via StartGame after the trainer dialog's Train choice; the unlock guard inside stays as defense
--- in depth. Sequence/grading/reward math is pure logic in Shared.Logic.SimonSays.
+-- MinigameService: the generic NPC-minigame framework. It owns the shared lifecycle every NPC
+-- minigame follows and hands off only the game-specific play to a plugin:
+--
+--   Request(player, npcId, model)
+--     1. validate: profile · no active session (one game at a time) · unlock gate
+--     2. NpcActor walks the NPC to its arena, facing the approach
+--     3. ReadyZone: a green disc appears in front of the NPC; the player must step onto it
+--        (MinigameAwaitReady -> client hint; ReadyTimeoutSeconds to arrive or the game aborts)
+--     4. the NPC explains the rules in a speech bubble (visible to all) and the player gets a Start
+--        button (MinigameInstructions -> MinigameConfirmStart; ConfirmTimeoutSeconds or it aborts)
+--     5. game:begin(session) — the plugin runs its rounds, awards followers, fires its own UI remotes
+--     6. the plugin calls session.finish() (or a disconnect/timeout aborts) -> NPC walks home, clear
+--
+-- Plugins live under minigame/games/ and are auto-registered by their NpcId; each owns its gameplay
+-- remotes/logic and implements only begin()/abort(). Shared NPC motion/posing is minigame/NpcActor;
+-- the ready-zone is minigame/ReadyZone. Tunables: Config.Minigame (cross-game) + Config.Npc[npcId].
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
-local SimonSays = require(ReplicatedStorage.Shared.Logic.SimonSays)
+local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
-local FollowerService = require(script.Parent.FollowerService)
+local NpcActor = require(script.Parent.minigame.NpcActor)
+local ReadyZone = require(script.Parent.minigame.ReadyZone)
 
 local MinigameService = {}
 
-local trainerShowStep: RemoteEvent
-local trainerInputPhase: RemoteEvent
-local trainerPoseInput: RemoteEvent
-local trainerRoundResult: RemoteEvent
-local trainerGameOver: RemoteEvent
-
-local rng = Random.new()
-
-type Session = {
-	phase: "show" | "input",
-	round: number,
-	sequence: { string },
-	inputIndex: number, -- next expected position in sequence
-	totalReward: number,
-	model: Model?, -- the trainer model, walked to the arena and back
-	npcAnimator: Animator?,
-	deadline: number, -- os.clock() cutoff for the current input phase
+-- A plugin: declares which NPC hosts it and runs the actual game when handed a session.
+export type Game = {
+	Id: string,
+	NpcId: string,
+	begin: (self: any, session: Session) -> (),
+	abort: (self: any, session: Session) -> (),
 }
--- One game at a time: the trainer is a single shared model that physically walks to the arena.
-local sessions: { [Player]: Session } = {}
 
--- One reusable Animation instance per asset id; tracks are loaded per play.
-local animations: { [string]: Animation } = {}
+export type Session = {
+	player: Player,
+	npcId: string,
+	model: Model?,
+	actor: NpcActor.NpcActor?,
+	game: Game,
+	homePosition: Vector3, -- where the NPC walks back to when the session ends
+	homeYaw: number,
+	phase: "pregame" | "instructions" | "playing",
+	confirmed: boolean,
+	alive: boolean, -- flipped false the moment the session ends; plugin loops check it to stop
+	state: any, -- plugin-private gameplay state
+	finish: () -> (), -- the plugin calls this on normal game over -> NPC walks home, session clears
+}
 
-local function getAnimation(animationId: string): Animation
-	local cached = animations[animationId]
-	if cached then
-		return cached
-	end
-	local animation = Instance.new("Animation")
-	animation.AnimationId = animationId
-	animations[animationId] = animation
-	return animation
-end
+local awaitReady: RemoteEvent
+local instructionsEvent: RemoteEvent
+local confirmStart: RemoteEvent
+local aborted: RemoteEvent
 
--- Plays the arrow's pose on an Animator for `seconds`; skips silently when the rig has no
--- Animator (e.g. the NPC's red-box fallback body).
-local function playPose(animator: Animator?, arrow: string, seconds: number)
-	if not animator then
-		return
-	end
-	local animationId = Config.Npc.PersonalTrainer.SimonSays.Poses[arrow]
-	if not animationId then
-		return
-	end
-	local track = animator:LoadAnimation(getAnimation(animationId))
-	track.Priority = Enum.AnimationPriority.Action
-	track:Play()
-	task.delay(seconds, function()
-		track:Stop()
-	end)
-end
+-- One game at a time: the NPC is a single shared model that physically walks to the arena.
+local active: Session? = nil
+-- npcId -> plugin, built from minigame/games/ at Init.
+local gamesByNpc: { [string]: Game } = {}
 
-local function getPlayerAnimator(player: Player): Animator?
-	local character = player.Character
-	if not character then
+local function npcRoot(model: Model?): BasePart?
+	if not model then
 		return nil
 	end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return nil
-	end
-	return humanoid:FindFirstChildOfClass("Animator")
+	return model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
 end
 
-local function getNpcAnimator(model: Model): Animator?
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	return humanoid and humanoid:FindFirstChildOfClass("Animator")
-end
-
-local TURN_SECONDS = 0.3 -- time to pivot to the final facing after arriving
-
--- A bumped generation supersedes any in-flight walk, so the latest destination always wins (e.g.
--- a return-home triggered while still walking to the arena). One looped walk track at a time.
-local moveGen = 0
-local walkTrack: AnimationTrack? = nil
-
-local function stopWalk()
-	if walkTrack then
-		walkTrack:Stop()
-		walkTrack = nil
-	end
-end
-
--- Glides the anchored trainer (the root is anchored; PivotTo carries the jointed limbs) from its
--- current spot to targetFeet on the same flat floor, facing the direction of travel with a walk
--- animation, then turns to finalYaw. The model's pivot Y is preserved (floor is level).
-local function walkTrainer(model: Model, animator: Animator?, targetFeet: Vector3, finalYaw: number)
-	moveGen += 1
-	local myGen = moveGen
-	stopWalk()
-
-	local def = Config.Npc.PersonalTrainer.SimonSays
-	local startCF = model:GetPivot()
-	local startPos = startCF.Position
-	local endPos = Vector3.new(targetFeet.X, startPos.Y, targetFeet.Z)
-	local moveDir = endPos - startPos
-	local moving = moveDir.Magnitude > 0.5
-	local travelRot = if moving then CFrame.lookAt(Vector3.zero, moveDir).Rotation else startCF.Rotation
-	local finalRot = CFrame.Angles(0, math.rad(finalYaw), 0)
-
-	if animator and moving then
-		local track = animator:LoadAnimation(getAnimation(def.WalkAnimation))
-		track.Looped = true
-		track.Priority = Enum.AnimationPriority.Movement
-		track:Play()
-		walkTrack = track
-	end
-
-	local t = 0
-	while t < def.MoveSeconds do
-		local dt = task.wait()
-		if myGen ~= moveGen then
-			return
-		end
-		t = math.min(t + dt, def.MoveSeconds)
-		model:PivotTo(CFrame.new(startPos:Lerp(endPos, t / def.MoveSeconds)) * travelRot)
-	end
-	stopWalk()
-
-	-- Turn in place to the final facing (no-op when already aligned, e.g. walking home).
-	t = 0
-	while t < TURN_SECONDS do
-		local dt = task.wait()
-		if myGen ~= moveGen then
-			return
-		end
-		t = math.min(t + dt, TURN_SECONDS)
-		model:PivotTo(CFrame.new(endPos) * travelRot:Lerp(finalRot, t / TURN_SECONDS))
-	end
-	if myGen == moveGen then
-		model:PivotTo(CFrame.new(endPos) * finalRot)
-	end
-end
-
--- Sends the trainer back to its post (also used on disconnect); skipped for the fallback body.
-local function returnTrainerHome(session: Session)
-	local model = session.model
-	if model then
-		local def = Config.Npc.PersonalTrainer
-		task.spawn(walkTrainer, model, session.npcAnimator, def.SpawnPosition, def.SpawnYaw)
-	end
-end
-
-local function endGame(player: Player, roundsCompleted: number, cleared: boolean)
-	local session = sessions[player]
-	if not session then
+-- Ends the session: stops the plugin if it was mid-play (interrupted), walks the NPC home, clears
+-- the slot. interrupted=false is the plugin's own normal game-over; true is a timeout/disconnect.
+local function endSession(session: Session, interrupted: boolean)
+	if active ~= session then
 		return
 	end
-	sessions[player] = nil
-	if player.Parent then
-		trainerGameOver:FireClient(player, session.totalReward, roundsCompleted, cleared)
+	active = nil
+	session.alive = false
+
+	if interrupted and session.phase == "playing" then
+		session.game:abort(session)
 	end
-	returnTrainerHome(session)
+
+	local actor = session.actor
+	if actor then
+		task.spawn(function()
+			actor:walkTo(session.homePosition, session.homeYaw)
+		end)
+	end
 end
 
--- The show phase: fires one step per arrow to the player while the NPC poses along, then opens
--- the input phase with a server-side deadline. Runs in its own thread (it sleeps); every step
--- re-checks the session so a disconnect mid-show stops it.
-local function runShowPhase(player: Player, session: Session)
-	local def = Config.Npc.PersonalTrainer.SimonSays
-	if session.round > 1 then
-		task.wait(def.RoundDelaySeconds)
-	end
+-- The pre-game flow (runs in its own thread; it yields). Each step re-checks session.alive so a
+-- disconnect mid-flow stops it.
+local function runPregame(session: Session, def)
+	local mg = Config.Minigame
 
-	for _, arrow in session.sequence do
-		if sessions[player] ~= session then
-			return
-		end
-		trainerShowStep:FireClient(player, arrow, session.round, def.MaxRounds)
-		playPose(session.npcAnimator, arrow, def.ShowStepSeconds)
-		task.wait(def.ShowStepSeconds + def.ShowGapSeconds)
+	-- 1. Walk the NPC out to its arena.
+	if session.actor then
+		session.actor:walkTo(def.ArenaPosition, def.SpawnYaw)
 	end
-
-	if sessions[player] ~= session then
+	if not session.alive then
 		return
 	end
-	session.phase = "input"
-	session.deadline = os.clock() + def.InputTimeoutSeconds
-	trainerInputPhase:FireClient(player, def.InputTimeoutSeconds)
 
-	-- Round-scoped timeout watcher: a later round refreshes the deadline, so a stale watcher
-	-- (deadline check fails) does nothing.
-	local deadline = session.deadline
-	task.delay(def.InputTimeoutSeconds + 0.5, function()
-		if sessions[player] == session and session.phase == "input" and session.deadline == deadline then
-			endGame(player, session.round - 1, false)
+	-- 2. Ready-zone: a disc in front of the NPC (along its facing) the player must step onto.
+	local facing = CFrame.Angles(0, math.rad(def.SpawnYaw), 0).LookVector
+	local center = def.ArenaPosition + facing * mg.ReadyZone.Offset
+	local zone = ReadyZone.create(center, mg.ReadyZone.Radius, mg.ReadyZone.Color, mg.ReadyZone.Height)
+	if session.player.Parent then
+		awaitReady:FireClient(session.player)
+	end
+
+	local entered = false
+	local deadline = os.clock() + mg.ReadyTimeoutSeconds
+	while session.alive and os.clock() < deadline do
+		local character = session.player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and zone:contains((root :: BasePart).Position) then
+			entered = true
+			break
 		end
-	end)
+		task.wait(0.1)
+	end
+	zone:destroy()
+	if not session.alive then
+		return
+	end
+	if not entered then
+		if session.player.Parent then
+			aborted:FireClient(session.player)
+		end
+		endSession(session, true)
+		return
+	end
+
+	-- 3. Instructions in the NPC's speech bubble (all see) + a Start button on the player's screen.
+	local root = npcRoot(session.model)
+	local bubble = if root then SpeechBubble.create(root) else nil
+	if bubble then
+		bubble:setText(def.Instructions)
+		bubble:show()
+	end
+	if session.player.Parent then
+		instructionsEvent:FireClient(session.player, def.Instructions)
+	end
+
+	session.phase = "instructions"
+	local confirmDeadline = os.clock() + mg.ConfirmTimeoutSeconds
+	while session.alive and not session.confirmed and os.clock() < confirmDeadline do
+		task.wait(0.1)
+	end
+	if bubble then
+		bubble:hide()
+	end
+	if not session.alive then
+		return
+	end
+	if not session.confirmed then
+		if session.player.Parent then
+			aborted:FireClient(session.player)
+		end
+		endSession(session, true)
+		return
+	end
+
+	-- 4. Play: hand off to the plugin. It awards followers and fires its own UI remotes, then calls
+	-- session.finish() (already wired to endSession) when the game is over.
+	session.phase = "playing"
+	session.game:begin(session)
 end
 
-local function startRound(player: Player, session: Session)
-	local def = Config.Npc.PersonalTrainer.SimonSays
-	session.phase = "show"
-	session.inputIndex = 1
-	session.sequence = SimonSays.generate(function(min: number, max: number)
-		return rng:NextInteger(min, max)
-	end, def.Arrows, SimonSays.sequenceLength(def.StartLength, session.round))
-	task.spawn(runShowPhase, player, session)
-end
-
--- Starts a game. Called by DialogService when the player picks Train; the unlock check repeats
--- here so no other path can start an ungated session. The trainer walks to the arena, runs the
--- rounds there, then returns. `model` is the trainer (nil-safe; the fallback body just won't
--- animate or walk). Only one game runs at a time — the trainer is a single shared model.
-function MinigameService:StartGame(player: Player, model: Model?)
+-- Starts a minigame for `player` at NPC `npcId`. Called by DialogService after the Train choice;
+-- the unlock check repeats here as defense in depth. `model` is the NPC (nil-safe: a fallback body
+-- just won't walk/pose). No-op if a game is already running.
+function MinigameService:Request(player: Player, npcId: string, model: Model?)
+	if active then
+		return
+	end
+	local plugin = gamesByNpc[npcId]
+	local def = Config.Npc[npcId]
+	if not plugin or not def then
+		return
+	end
 	local profile = DataService:GetProfile(player)
-	if not profile or next(sessions) ~= nil then
-		return
-	end
-	if not table.find(profile.Data.UnlockedNpcs, "PersonalTrainer") then
+	if not profile or not table.find(profile.Data.UnlockedNpcs, npcId) then
 		return
 	end
 
-	local def = Config.Npc.PersonalTrainer
 	local session: Session = {
-		phase = "show",
-		round = 1,
-		sequence = {},
-		inputIndex = 1,
-		totalReward = 0,
+		player = player,
+		npcId = npcId,
 		model = model,
-		npcAnimator = if model then getNpcAnimator(model) else nil,
-		deadline = 0,
+		actor = if model then NpcActor.new(model, def.MoveSeconds, def.WalkAnimation) else nil,
+		game = plugin,
+		homePosition = def.SpawnPosition,
+		homeYaw = def.SpawnYaw,
+		phase = "pregame",
+		confirmed = false,
+		alive = true,
+		state = nil,
+		finish = nil :: any,
 	}
-	sessions[player] = session
+	session.finish = function()
+		endSession(session, false)
+	end
+	active = session
 
-	task.spawn(function()
-		if model then
-			walkTrainer(model, session.npcAnimator, def.ArenaPosition, def.SpawnYaw)
-		end
-		if sessions[player] ~= session then
-			return -- player left during the walk; returnTrainerHome already took over
-		end
-		startRound(player, session)
-	end)
+	task.spawn(runPregame, session, def)
 end
 
-local function onTrainerPoseInput(player: Player, arrow: unknown)
-	local session = sessions[player]
-	if not session or session.phase ~= "input" then
-		return
-	end
-	local def = Config.Npc.PersonalTrainer.SimonSays
-	if type(arrow) ~= "string" or not table.find(def.Arrows, arrow) then
-		return
-	end
-	if os.clock() > session.deadline then
-		endGame(player, session.round - 1, false)
-		return
-	end
-
-	local grade = SimonSays.grade(session.sequence, session.inputIndex, arrow)
-	if grade == "wrong" then
-		trainerRoundResult:FireClient(player, false, 0)
-		endGame(player, session.round - 1, false)
-		return
-	end
-
-	playPose(getPlayerAnimator(player), arrow, def.ShowStepSeconds)
-
-	if grade == "correct" then
-		session.inputIndex += 1
-		trainerRoundResult:FireClient(player, true, 0)
-		return
-	end
-
-	-- Round cleared.
-	local reward = SimonSays.roundReward(def.BaseReward, def.RewardPerRound, session.round)
-	session.totalReward += reward
-	FollowerService:Award(player, reward, "trainer-pose")
-	trainerRoundResult:FireClient(player, true, reward)
-
-	if session.round >= def.MaxRounds then
-		endGame(player, session.round, true)
-	else
-		session.round += 1
-		startRound(player, session)
+local function onConfirmStart(player: Player)
+	local s = active
+	if s and s.player == player and s.phase == "instructions" then
+		s.confirmed = true
 	end
 end
 
 function MinigameService:Init()
-	trainerShowStep = Net.Event("TrainerShowStep")
-	trainerInputPhase = Net.Event("TrainerInputPhase")
-	trainerPoseInput = Net.Event("TrainerPoseInput")
-	trainerRoundResult = Net.Event("TrainerRoundResult")
-	trainerGameOver = Net.Event("TrainerGameOver")
+	awaitReady = Net.Event("MinigameAwaitReady")
+	instructionsEvent = Net.Event("MinigameInstructions")
+	confirmStart = Net.Event("MinigameConfirmStart")
+	aborted = Net.Event("MinigameAborted")
+
+	-- Register every plugin under minigame/games/ by its NpcId, and Init it (generic loader, so the
+	-- dynamic require is cast like Bootstrap does).
+	for _, child in script.Parent.minigame.games:GetChildren() do
+		if child:IsA("ModuleScript") then
+			local plugin: Game = (require :: any)(child)
+			gamesByNpc[plugin.NpcId] = plugin
+			if type((plugin :: any).Init) == "function" then
+				(plugin :: any):Init()
+			end
+		end
+	end
 end
 
 function MinigameService:Start()
-	trainerPoseInput.OnServerEvent:Connect(onTrainerPoseInput)
+	confirmStart.OnServerEvent:Connect(onConfirmStart)
+
+	for _, plugin in gamesByNpc do
+		if type((plugin :: any).Start) == "function" then
+			(plugin :: any):Start()
+		end
+	end
+
 	Players.PlayerRemoving:Connect(function(player: Player)
-		local session = sessions[player]
-		if session then
-			sessions[player] = nil
-			returnTrainerHome(session)
+		local s = active
+		if s and s.player == player then
+			endSession(s, true)
 		end
 	end)
 end

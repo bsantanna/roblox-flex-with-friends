@@ -20,6 +20,7 @@ local SCREEN = Color3.fromRGB(40, 120, 160) -- console screens
 local MAT = Color3.fromRGB(58, 130, 200) -- exercise mats
 local GLASS = Color3.fromRGB(184, 210, 224) -- mirror glass
 local WHITE = Color3.fromRGB(238, 240, 242) -- water cooler body
+local FLOOR = Color3.fromRGB(32, 34, 44) -- #20222C painted studio floor for the gym hall
 
 type PartOpts = {
 	material: Enum.Material?,
@@ -165,6 +166,13 @@ function GymService:Start()
 		gym.Name = "Gym"
 		gym.Parent = Workspace
 	end
+
+	-- Paint the hall floor: a thin slab laid flush over the CentralBuilding's first-floor mesh surface
+	-- (top y=23.02), sized to the gym-hall floor footprint measured in Studio. CanCollide off so players
+	-- still stand on the mesh floor beneath; it only recolours what they see.
+	local floor = add(gym, CFrame.new(-27.7, 22.89, -89.2), Vector3.new(62.3, 0.3, 102.9), FLOOR)
+	floor.Name = "GymFloor"
+	floor.CanCollide = false
 
 	for i, station in Config.Gym.Stations do
 		local builder = BUILDERS[station.Kind]

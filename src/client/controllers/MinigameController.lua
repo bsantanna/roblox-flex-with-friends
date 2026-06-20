@@ -56,7 +56,7 @@ local function onUnlockNpc(npcId: string)
 	end)
 end
 
-local function onTrophyUnlocked(Id: string, Name: string, Emoji: string)
+local function onTrophyUnlocked(_Id: string, Name: string, Emoji: string)
 	toast.Text = `${Emoji} {Name}`
 	toast.Visible = true
 	task.delay(3, function()

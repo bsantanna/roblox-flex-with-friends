@@ -36,6 +36,14 @@ local function treeSites(): { Vector2 }
 		local th = (k / R.Oval.Ramps) * 2 * math.pi
 		table.insert(rampDirs, Vector2.new(math.cos(th), math.sin(th)))
 	end
+
+	-- Farm zone: keep trees out of the fenced paddock (plus a clearance margin).
+	local farm = Config.Farm
+	local farmMinX = farm.Center.X - farm.Size.X / 2
+	local farmMaxX = farm.Center.X + farm.Size.X / 2
+	local farmMinZ = farm.Center.Z - farm.Size.Y / 2
+	local farmMaxZ = farm.Center.Z + farm.Size.Y / 2
+
 	local x = -ax
 	while x <= ax do
 		local z = -az
@@ -53,7 +61,8 @@ local function treeSites(): { Vector2 }
 					break
 				end
 			end
-			if onIsland and not inTown and not nearRamp then
+			local nearFarm = px >= farmMinX and px <= farmMaxX and pz >= farmMinZ and pz <= farmMaxZ
+			if onIsland and not inTown and not nearRamp and not nearFarm then
 				table.insert(sites, Vector2.new(px, pz))
 			end
 			z += F.Spacing

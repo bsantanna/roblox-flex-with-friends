@@ -1,9 +1,8 @@
 --!strict
 -- WorldService: constructs the static world in code so the place is reproducible from src
 -- (Rojo doesn't manage Workspace; make build produces an empty Workspace). Phase 1 builds the
--- Home zone: a floor, a SpawnLocation, and the Phone / Computer interaction anchors, each
--- carrying a named ProximityPrompt. Grey-box geometry for now; visual ProceduralModels can
--- replace these parts later without changing the interaction contract (the prompt names).
+-- Home zone: a floor and a SpawnLocation. Grey-box geometry for now; visual ProceduralModels
+-- can replace these parts later.
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
@@ -12,14 +11,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 
 local WorldService = {}
-
--- Interaction anchors: name -> { offset from zone origin, prompt action/object text }. Placed in
--- the plaza forecourt south of the CentralBuilding mesh (whose front facade sits at z -16.5),
--- so they're reachable moments after the player walks out of the main entrance.
-local HOME_INTERACTIONS = {
-	{ name = "Phone", offset = Vector3.new(-4, 2, 26), action = "Use", object = "Phone" },
-	{ name = "Computer", offset = Vector3.new(20, 2, 26), action = "Use", object = "Computer" },
-}
 
 local function makePart(name: string, size: Vector3, position: Vector3, color: Color3, parent: Instance): Part
 	local part = Instance.new("Part")
@@ -30,17 +21,6 @@ local function makePart(name: string, size: Vector3, position: Vector3, color: C
 	part.Color = color
 	part.Parent = parent
 	return part
-end
-
-local function addPrompt(part: BasePart, name: string, actionText: string, objectText: string)
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = name
-	prompt.ActionText = actionText
-	prompt.ObjectText = objectText
-	prompt.HoldDuration = 0
-	prompt.RequiresLineOfSight = false
-	prompt.MaxActivationDistance = 12
-	prompt.Parent = part
 end
 
 local ZONE_FLOOR_COLOR = {
@@ -218,16 +198,6 @@ function WorldService:Start()
 		task.spawn(function()
 			player:LoadCharacter()
 		end)
-	end
-
-	-- Interaction anchors with named ProximityPrompts.
-	local interactions = Instance.new("Folder")
-	interactions.Name = "Interactions"
-	interactions.Parent = home
-	for _, def in HOME_INTERACTIONS do
-		local part =
-			makePart(def.name, Vector3.new(3, 4, 3), origin + def.offset, Color3.fromRGB(200, 170, 90), interactions)
-		addPrompt(part, def.name, def.action, def.object)
 	end
 
 	buildHomeGrid(home, origin)

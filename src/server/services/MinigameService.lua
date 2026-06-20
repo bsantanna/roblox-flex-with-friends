@@ -213,6 +213,9 @@ function MinigameService:Request(player: Player, npcId: string, model: Model?)
 	end
 	active = session
 
+	-- Hide the NPC's "Talk" prompt for the whole session; endSession restores it on any outcome.
+	NpcPromptService:Hide(npcId)
+
 	task.spawn(runPregame, session, def)
 end
 

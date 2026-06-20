@@ -136,9 +136,8 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	local train = session.qualified and choiceIndex == 1
 	endSession()
 	if train and modelData then
+		-- MinigameService hides this NPC's prompt for the session and restores it on any outcome.
 		MinigameService:Request(player, npcId, modelData.model)
-		-- Hide the NPC prompt so the player cannot start concurrent minigames.
-		NpcPromptService:Hide(npcId)
 	end
 end
 

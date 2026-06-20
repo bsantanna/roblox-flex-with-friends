@@ -12,11 +12,11 @@ function NpcPromptService.Register(npcId: string, prompt: ProximityPrompt)
 	prompts[npcId] = prompt
 end
 
--- Hide the "Talk" prompt on an NPC.
+-- Hide the "Talk" prompt on an NPC (disables it: no UI and not triggerable).
 function NpcPromptService:Hide(npcId: string)
 	local prompt = prompts[npcId]
 	if prompt then
-		(prompt :: any).Visible = false
+		prompt.Enabled = false
 	end
 end
 
@@ -24,7 +24,7 @@ end
 function NpcPromptService:Show(npcId: string)
 	local prompt = prompts[npcId]
 	if prompt then
-		(prompt :: any).Visible = true
+		prompt.Enabled = true
 	end
 end
 

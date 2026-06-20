@@ -29,6 +29,7 @@ type SimonSaysDef = {
 	MaxRounds: number, -- the game is cleared after this many rounds
 	ShowStepSeconds: number, -- how long each arrow shows (and each pose plays)
 	ShowGapSeconds: number, -- blank gap between shown arrows
+	StepLeadSeconds: number, -- pause after showing step number before the arrow lights up
 	RoundDelaySeconds: number, -- pause between a cleared round and the next show phase
 	InputTimeoutSeconds: number, -- server-side deadline for a round's whole input phase
 	BaseReward: number, -- followers for clearing round 1
@@ -84,9 +85,10 @@ Npc.Npc = {
 		SimonSays = {
 			StartLength = 1,
 			MaxRounds = 5,
-			ShowStepSeconds = 1.0,
-			ShowGapSeconds = 0.25,
-			RoundDelaySeconds = 1.2,
+			ShowStepSeconds = 2.0,
+			ShowGapSeconds = 0.5,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
 			InputTimeoutSeconds = 12,
 			BaseReward = 25,
 			RewardPerRound = 10,
@@ -125,9 +127,10 @@ Npc.Npc = {
 		SimonSays = {
 			StartLength = 1,
 			MaxRounds = 5,
-			ShowStepSeconds = 1.0,
-			ShowGapSeconds = 0.25,
-			RoundDelaySeconds = 1.2,
+			ShowStepSeconds = 2.0,
+			ShowGapSeconds = 0.5,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
 			InputTimeoutSeconds = 12,
 			BaseReward = 25,
 			RewardPerRound = 10,

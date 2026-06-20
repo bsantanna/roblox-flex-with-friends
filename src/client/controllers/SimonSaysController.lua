@@ -26,7 +26,7 @@ local KEY_ARROWS: { [Enum.KeyCode]: string } = {
 
 local BUTTON_IDLE = Color3.fromRGB(60, 120, 200)
 local BUTTON_LIT = Color3.fromRGB(255, 220, 80)
-local HIGHLIGHT_SECONDS = 0.4
+local HIGHLIGHT_SECONDS = 2.0
 
 local trainerShowStepNumber: RemoteEvent
 local trainerShowStep: RemoteEvent
@@ -37,9 +37,13 @@ local trainerGameOver: RemoteEvent
 
 local gameFrame: Frame
 local roundLabel: TextLabel
-local stepLabel: TextLabel
 local statusLabel: TextLabel
 local arrowButtons: { [string]: TextButton } = {}
+
+-- Big centered overlay for the current step number.
+local stepOverlayGui: ScreenGui
+local stepOverlayLabel: TextLabel
+local stepOverlayVisible: TextLabel -- gates the overlay (ScreenGui.Visible is untyped in luau-lsp)
 
 local inputEnabled = false
 
@@ -66,14 +70,17 @@ end
 local function onTrainerShowStep(arrow: string, round: number, maxRounds: number)
 	gameFrame.Visible = true
 	inputEnabled = false
-	stepLabel.Text = ""
+	-- Hide the overlay; it will be shown per-step by onTrainerShowStepNumber.
+	stepOverlayVisible.Visible = false
+
 	roundLabel.Text = `Round {round} / {maxRounds}`
 	statusLabel.Text = "Watch the trainer..."
 	flashArrow(arrow)
 end
 
 local function onTrainerShowStepNumber(stepNumber: number, _round: number, _maxRounds: number)
-	stepLabel.Text = tostring(stepNumber)
+	stepOverlayLabel.Text = tostring(stepNumber)
+	stepOverlayVisible.Visible = true
 end
 
 local function onTrainerInputPhase(_timeoutSeconds: number)
@@ -98,6 +105,7 @@ local function onTrainerGameOver(totalReward: number, roundsCompleted: number, c
 	statusLabel.Text = if cleared
 		then `Training complete! +{totalReward} followers`
 		else `Session over — {roundsCompleted} rounds, +{totalReward} followers`
+	stepOverlayVisible.Visible = false
 	task.delay(2.5, function()
 		gameFrame.Visible = false
 	end)
@@ -173,18 +181,28 @@ function SimonSaysController:Init()
 	statusLabel.Text = ""
 	statusLabel.Parent = gameFrame
 
-	-- Step number label: big number centered at the top of the dialog.
-	stepLabel = Instance.new("TextLabel")
-	stepLabel.Size = UDim2.fromOffset(80, 50)
-	stepLabel.Position = UDim2.new(0.5, -40, 0, 6)
-	stepLabel.AnchorPoint = Vector2.new(0.5, 0)
-	stepLabel.BackgroundTransparency = 1
-	stepLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
-	stepLabel.Font = Enum.Font.GothamBlack
-	stepLabel.TextSize = 48
-	stepLabel.Text = ""
-	stepLabel.TextXAlignment = Enum.TextXAlignment.Center
-	stepLabel.Parent = gameFrame
+	-- Big centered step-number overlay (fullscreen, appears during show phase).
+	stepOverlayGui = Instance.new("ScreenGui")
+	stepOverlayGui.Name = "SimonSaysStepOverlay"
+	stepOverlayGui.ResetOnSpawn = false
+
+	stepOverlayLabel = Instance.new("TextLabel")
+	stepOverlayLabel.Size = UDim2.fromScale(1, 1)
+	stepOverlayLabel.BackgroundTransparency = 1
+	stepOverlayLabel.Text = ""
+	stepOverlayLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
+	stepOverlayLabel.Font = Enum.Font.GothamBlack
+	stepOverlayLabel.TextScaled = true
+	stepOverlayLabel.ZIndex = 10
+	stepOverlayLabel.TextXAlignment = Enum.TextXAlignment.Center
+	stepOverlayLabel.TextYAlignment = Enum.TextYAlignment.Center
+	stepOverlayLabel.Parent = stepOverlayGui
+
+	-- Invisible label that gates the overlay's visibility (ScreenGui.Visible is untyped in luau-lsp).
+	stepOverlayVisible = Instance.new("TextLabel")
+	stepOverlayVisible.Text = ""
+	stepOverlayVisible.Visible = false
+	stepOverlayVisible.Parent = stepOverlayGui
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

@@ -67,7 +67,7 @@ function SimonSaysModule.create(npcId: string)
 				end
 				-- Show the step number before the arrow.
 				Net.Event("TrainerShowStepNumber"):FireClient(session.player, index, st2.round, d.MaxRounds)
-				task.wait(0.35)
+				task.wait(d.StepLeadSeconds)
 				-- Light the arrow and pose the NPC.
 				Net.Event("TrainerShowStep"):FireClient(session.player, arrow, st2.round, d.MaxRounds)
 				if session.actor then

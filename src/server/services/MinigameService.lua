@@ -24,6 +24,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local NpcActor = require(script.Parent.minigame.NpcActor)
+local NpcPromptService = require(script.Parent.NpcPromptService)
 local ReadyZone = require(script.Parent.minigame.ReadyZone)
 
 local MinigameService = {}
@@ -80,6 +81,9 @@ local function endSession(session: Session, interrupted: boolean)
 	end
 	active = nil
 	session.alive = false
+
+	-- Restore the NPC's "Talk" prompt so the player can interact again.
+	NpcPromptService:Show(session.npcId)
 
 	if interrupted and session.phase == "playing" then
 		session.game:abort(session)

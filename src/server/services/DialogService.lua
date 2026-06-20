@@ -16,9 +16,9 @@ local Log = require(ReplicatedStorage.Shared.Util.Log)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local MinigameService = require(script.Parent.MinigameService)
+local NpcPromptService = require(script.Parent.NpcPromptService)
 
 local DialogService = {}
-
 local dialogLine: any
 local dialogAdvance: any
 local dialogChoose: any
@@ -137,6 +137,8 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	endSession()
 	if train and modelData then
 		MinigameService:Request(player, npcId, modelData.model)
+		-- Hide the NPC prompt so the player cannot start concurrent minigames.
+		NpcPromptService:Hide(npcId)
 	end
 end
 
@@ -203,8 +205,8 @@ local function spawnNpc(npcId: string, def: any)
 		onPromptTriggered(player, npcId)
 	end)
 	prompt.Parent = root
-
 	model.Parent = zoneFolder
+	NpcPromptService.Register(npcId, prompt)
 	npcModels[npcId] = { root = root, model = model }
 end
 

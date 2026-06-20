@@ -86,7 +86,7 @@ local function populateTrophies(gridFrame: Frame)
 	end
 
 	local slotIndex = 1
-	local maxSlots = 9
+	local maxSlots = 12
 
 	-- Place each earned trophy in order.
 	for trophyId, _ in earnedTrophies do
@@ -100,38 +100,41 @@ local function populateTrophies(gridFrame: Frame)
 
 		local cell = Instance.new("Frame")
 		cell.Name = "TrophySlot"
-		cell.Size = UDim2.fromOffset(52, 52)
+		cell.Size = UDim2.fromOffset(180, 140)
 		cell.BackgroundColor3 = Color3.fromRGB(40, 55, 30)
 		cell.BackgroundTransparency = 0.25
 		cell.BorderSizePixel = 0
 		cell.Parent = gridFrame
 
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6)
+		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = cell
 
-		-- Emoji label (large, centered).
+		-- Emoji label (large, centered, ~65% height from top).
 		local emoji = Instance.new("TextLabel")
 		emoji.Name = "TrophyEmoji"
-		emoji.Size = UDim2.fromScale(1, 0.6)
-		emoji.Position = UDim2.fromOffset(0, 4)
+		emoji.Size = UDim2.fromScale(1, 0.65)
+		emoji.Position = UDim2.fromOffset(0, 2)
 		emoji.BackgroundTransparency = 1
 		emoji.Text = def.Emoji
-		emoji.TextSize = 24
+		emoji.TextSize = 120
 		emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
 		emoji.Font = Enum.Font.GothamBold
+		emoji.TextXAlignment = Enum.TextXAlignment.Center
+		emoji.TextYAlignment = Enum.TextYAlignment.Center
 		emoji.Parent = cell
 
-		-- Name label below emoji.
+		-- Name label below emoji (90% width, 25% height, positioned from top).
 		local nameLabel = Instance.new("TextLabel")
 		nameLabel.Name = "TrophyName"
-		nameLabel.Size = UDim2.new(1, -8, 0, 16)
-		nameLabel.Position = UDim2.fromOffset(4, 34)
+		nameLabel.Size = UDim2.fromScale(0.9, 0.25)
+		nameLabel.Position = UDim2.fromScale(0.05, 0.68)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Text = def.Name
-		nameLabel.TextSize = 10
+		nameLabel.TextSize = 32
 		nameLabel.TextColor3 = Color3.fromRGB(180, 220, 160)
-		nameLabel.Font = Enum.Font.Gotham
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextWrapped = true
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
 		nameLabel.Parent = cell
@@ -143,14 +146,14 @@ local function populateTrophies(gridFrame: Frame)
 	for _ = slotIndex, maxSlots do
 		local cell = Instance.new("Frame")
 		cell.Name = "TrophySlot"
-		cell.Size = UDim2.fromOffset(52, 52)
+		cell.Size = UDim2.fromOffset(180, 140)
 		cell.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
 		cell.BackgroundTransparency = 0.3
 		cell.BorderSizePixel = 0
 		cell.Parent = gridFrame
 
 		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 6)
+		corner.CornerRadius = UDim.new(0, 12)
 		corner.Parent = cell
 	end
 end
@@ -194,6 +197,14 @@ local function showSocialModal()
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = m
 
+	-- Padding so content doesn't touch the modal edge.
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 12)
+	padding.PaddingBottom = UDim.new(0, 12)
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = m
+
 	-- Vertical list layout for followers, trophies, close button.
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.FillDirection = Enum.FillDirection.Vertical
@@ -219,7 +230,7 @@ local function showSocialModal()
 	local fl = Instance.new("TextLabel")
 	fl.Name = "Followers"
 	fl.LayoutOrder = 1
-	fl.Size = UDim2.fromScale(1, 0.12)
+	fl.Size = UDim2.fromOffset(200, 30)
 	fl.BackgroundTransparency = 1
 	fl.Text = `❤ {followersValue}`
 	fl.TextScaled = true
@@ -232,7 +243,7 @@ local function showSocialModal()
 	local flSub = Instance.new("TextLabel")
 	flSub.Name = "FollowersSub"
 	flSub.LayoutOrder = 2
-	flSub.Size = UDim2.fromScale(1, 0.06)
+	flSub.Size = UDim2.fromOffset(200, 20)
 	flSub.BackgroundTransparency = 1
 	flSub.Text = "Followers"
 	flSub.TextScaled = true
@@ -241,32 +252,32 @@ local function showSocialModal()
 	flSub.Font = Enum.Font.Gotham
 	flSub.Parent = m
 
-	-- Trophies grid: 3 columns x 3 rows of empty cells.
+	-- Trophies grid: 3 columns x 4 rows of empty cells.
 	local gridFrame = Instance.new("Frame")
 	gridFrame.Name = "TrophiesGrid"
 	gridFrame.LayoutOrder = 3
-	gridFrame.Size = UDim2.fromScale(0.85, 0.52)
+	gridFrame.Size = UDim2.fromScale(0.85, 0.62)
 	gridFrame.BackgroundTransparency = 1
 	gridFrame.Parent = m
 
 	local gridLayout = Instance.new("UIGridLayout")
 	gridLayout.FillDirection = Enum.FillDirection.Horizontal
 	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	gridLayout.CellSize = UDim2.fromOffset(52, 52)
-	gridLayout.CellPadding = UDim2.fromOffset(8, 8)
+	gridLayout.CellSize = UDim2.fromOffset(180, 140)
+	gridLayout.CellPadding = UDim2.fromOffset(12, 12)
 	gridLayout.Parent = gridFrame
 
-	-- 9 empty trophy slots — will be overwritten by populateTrophies.
-	for _ = 1, 9 do
+	-- 12 empty trophy slots — will be overwritten by populateTrophies.
+	for _ = 1, 12 do
 		local cell = Instance.new("Frame")
 		cell.Name = "TrophySlot"
-		cell.Size = UDim2.fromOffset(52, 52)
+		cell.Size = UDim2.fromOffset(180, 140)
 		cell.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
 		cell.BackgroundTransparency = 0.3
 		cell.BorderSizePixel = 0
 		cell.Parent = gridFrame
 		local cellCorner = Instance.new("UICorner")
-		cellCorner.CornerRadius = UDim.new(0, 6)
+		cellCorner.CornerRadius = UDim.new(0, 12)
 		cellCorner.Parent = cell
 	end
 

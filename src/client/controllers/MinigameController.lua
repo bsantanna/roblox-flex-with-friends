@@ -20,6 +20,7 @@ local instructionsEvent: RemoteEvent
 local confirmStart: RemoteEvent
 local aborted: RemoteEvent
 local unlockNpc: RemoteEvent
+local trophyUnlocked: RemoteEvent
 
 local readyBanner: TextLabel
 local instructionPanel: Frame
@@ -55,12 +56,21 @@ local function onUnlockNpc(npcId: string)
 	end)
 end
 
+local function onTrophyUnlocked(Id: string, Name: string, Emoji: string)
+	toast.Text = `${Emoji} {Name}`
+	toast.Visible = true
+	task.delay(3, function()
+		toast.Visible = false
+	end)
+end
+
 function MinigameController:Init()
 	awaitReady = Net.Event("MinigameAwaitReady")
 	instructionsEvent = Net.Event("MinigameInstructions")
 	confirmStart = Net.Event("MinigameConfirmStart")
 	aborted = Net.Event("MinigameAborted")
 	unlockNpc = Net.Event("UnlockNpc")
+	trophyUnlocked = Net.Event("TrophyUnlocked")
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Minigame"
@@ -141,6 +151,7 @@ function MinigameController:Start()
 	instructionsEvent.OnClientEvent:Connect(onInstructions)
 	aborted.OnClientEvent:Connect(hidePregame)
 	unlockNpc.OnClientEvent:Connect(onUnlockNpc)
+	trophyUnlocked.OnClientEvent:Connect(onTrophyUnlocked)
 end
 
 return MinigameController

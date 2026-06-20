@@ -36,6 +36,7 @@ local EVENTS = {
 	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean)
 	-- Trophy rewards (TrophyService).
 	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
+	"TrophyUnlocked", -- server -> client: (Id: string, Name: string, Emoji: string) -- one-shot toast for new trophy
 	"FriendDialogLine", -- server -> client: (text: string, choices: {string}) -- gym-friend line + answer options
 	"FriendDialogChoose", -- client -> server: (choiceIndex: number) -- pick an answer
 	"FriendDialogEnd", -- server -> client: () -- dismiss the friend dialog UI

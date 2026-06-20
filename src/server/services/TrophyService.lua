@@ -30,9 +30,11 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 }
 
 local trophyEarned: RemoteEvent
+local trophyUnlocked: RemoteEvent
 
 function TrophyService:Init()
 	trophyEarned = Net.Event("TrophyEarned")
+	trophyUnlocked = Net.Event("TrophyUnlocked")
 end
 
 function TrophyService:Start()
@@ -73,6 +75,9 @@ function TrophyService:AwardTrophy(player: Player, npcId: string)
 
 	-- Notify client so the grid updates in real-time.
 	trophyEarned:FireClient(player, profile.Data.Trophies :: { [string]: true })
+
+	-- One-shot toast notification with trophy definition.
+	trophyUnlocked:FireClient(player, def.Id, def.Name, def.Emoji)
 end
 
 return TrophyService

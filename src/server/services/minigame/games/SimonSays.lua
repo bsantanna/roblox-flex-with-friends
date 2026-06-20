@@ -14,6 +14,7 @@ local NpcActor = require(script.Parent.Parent.NpcActor)
 
 local servicesFolder = script.Parent.Parent.Parent
 local FollowerService = require(servicesFolder.FollowerService)
+local TrophyService = require(servicesFolder.TrophyService)
 
 local rng = Random.new()
 
@@ -36,6 +37,9 @@ function SimonSaysModule.create(npcId: string)
 		if current ~= session then
 			return
 		end
+		if cleared then
+			TrophyService:AwardTrophy(session.player, session.npcId)
+		end
 		current = nil
 		if session.player.Parent then
 			Net.Event("TrainerGameOver"):FireClient(session.player, session.state.totalReward, roundsCompleted, cleared)
@@ -57,10 +61,14 @@ function SimonSaysModule.create(npcId: string)
 			if st2.round > 1 then
 				task.wait(d.RoundDelaySeconds)
 			end
-			for _, arrow in st2.sequence do
+			for index, arrow in st2.sequence do
 				if not session.alive or current ~= session then
 					return
 				end
+				-- Show the step number before the arrow.
+				Net.Event("TrainerShowStepNumber"):FireClient(session.player, index, st2.round, d.MaxRounds)
+				task.wait(0.35)
+				-- Light the arrow and pose the NPC.
 				Net.Event("TrainerShowStep"):FireClient(session.player, arrow, st2.round, d.MaxRounds)
 				if session.actor then
 					session.actor:poseNpc(d.Poses[arrow], d.ShowStepSeconds)

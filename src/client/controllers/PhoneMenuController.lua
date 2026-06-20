@@ -26,7 +26,7 @@ local player = Players.LocalPlayer
 local PHONE = Config.UI.Phone
 local SCREEN_TEAL = Color3.fromRGB(134, 226, 231)
 local SCREEN_TEXT = Color3.fromRGB(28, 30, 46)
-local NAV_GLYPHS = { Close = "✖", Left = "◀", Ok = "OK", Right = "▶" }
+local NAV_GLYPHS = { Close = "\u{2716}", Left = "\u{25C0}", Ok = "OK", Right = "\u{25B6}" }
 
 local launcher: TextButton
 local phone: ImageLabel
@@ -36,6 +36,15 @@ local titleLabel: TextLabel
 local modal: Frame?
 local gui: ScreenGui
 local followerLabel: TextLabel?
+
+-- Trophy state: trophyId -> true. Populated on join and on TrophyEarned events.
+local earnedTrophies: { [string]: true } = {}
+
+-- Trophy definitions mirrored from server TrophyService.
+local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
+	["personal_trainer_strength"] = { Id = "personal_trainer_strength", Name = "Strength", Emoji = "\u{1F4AA}" },
+	["farmer_farmhand"] = { Id = "farmer_farmhand", Name = "Farmer", Emoji = "\u{1F95B}" },
+}
 
 local index = 1
 local mode: "carousel" | "social" = "carousel"
@@ -66,6 +75,96 @@ end
 local function close()
 	phone.Visible = false
 	launcher.Visible = true
+end
+
+local function populateTrophies(gridFrame: Frame)
+	-- Clear any existing cells.
+	for _, child in gridFrame:GetChildren() do
+		if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("UICorner") or child:IsA("UIPadding") then
+			child:Destroy()
+		end
+	end
+
+	local slotIndex = 1
+	local maxSlots = 9
+
+	-- Place each earned trophy in order.
+	for trophyId, _ in earnedTrophies do
+		if slotIndex > maxSlots then
+			break
+		end
+		local def = TROPHY_DEFS[trophyId]
+		if not def then
+			continue
+		end
+
+		local cell = Instance.new("Frame")
+		cell.Name = "TrophySlot"
+		cell.Size = UDim2.fromOffset(52, 52)
+		cell.BackgroundColor3 = Color3.fromRGB(40, 55, 30)
+		cell.BackgroundTransparency = 0.25
+		cell.BorderSizePixel = 0
+		cell.Parent = gridFrame
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = cell
+
+		-- Emoji label (large, centered).
+		local emoji = Instance.new("TextLabel")
+		emoji.Name = "TrophyEmoji"
+		emoji.Size = UDim2.fromScale(1, 0.6)
+		emoji.Position = UDim2.fromOffset(0, 4)
+		emoji.BackgroundTransparency = 1
+		emoji.Text = def.Emoji
+		emoji.TextSize = 24
+		emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
+		emoji.Font = Enum.Font.GothamBold
+		emoji.Parent = cell
+
+		-- Name label below emoji.
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "TrophyName"
+		nameLabel.Size = UDim2.new(1, -8, 0, 16)
+		nameLabel.Position = UDim2.fromOffset(4, 34)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = def.Name
+		nameLabel.TextSize = 10
+		nameLabel.TextColor3 = Color3.fromRGB(180, 220, 160)
+		nameLabel.Font = Enum.Font.Gotham
+		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+		nameLabel.Parent = cell
+
+		slotIndex += 1
+	end
+
+	-- Fill remaining slots with empty placeholders.
+	for _ = slotIndex, maxSlots do
+		local cell = Instance.new("Frame")
+		cell.Name = "TrophySlot"
+		cell.Size = UDim2.fromOffset(52, 52)
+		cell.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
+		cell.BackgroundTransparency = 0.3
+		cell.BorderSizePixel = 0
+		cell.Parent = gridFrame
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = cell
+	end
+end
+
+local function onTrophyEarned(trophies: { [string]: true })
+	earnedTrophies = trophies
+
+	-- If the social modal is open, re-populate the grid immediately.
+	if modal ~= nil then
+		local gridFrame = modal:FindFirstChild("TrophiesGrid") :: Frame?
+		if gridFrame then
+			populateTrophies(gridFrame)
+		end
+	end
 end
 
 local function updateFollowerLabel(count: number)
@@ -157,7 +256,7 @@ local function showSocialModal()
 	gridLayout.CellPadding = UDim2.fromOffset(8, 8)
 	gridLayout.Parent = gridFrame
 
-	-- 9 empty trophy slots.
+	-- 9 empty trophy slots — will be overwritten by populateTrophies.
 	for _ = 1, 9 do
 		local cell = Instance.new("Frame")
 		cell.Name = "TrophySlot"
@@ -170,6 +269,8 @@ local function showSocialModal()
 		cellCorner.CornerRadius = UDim.new(0, 6)
 		cellCorner.Parent = cell
 	end
+
+	populateTrophies(gridFrame)
 
 	-- Bottom-centered Close button, matching DialogController's button style.
 	local closeBtn = Instance.new("TextButton")
@@ -357,6 +458,9 @@ function PhoneMenuController:Start()
 	local followers = leaderstats:WaitForChild("Followers") :: IntValue
 	updateFollowerLabel(followers.Value)
 	Net.Event("FollowerChanged").OnClientEvent:Connect(updateFollowerLabel)
+
+	-- Trophies: listen for initial seed and new awards from the server.
+	Net.Event("TrophyEarned").OnClientEvent:Connect(onTrophyEarned)
 
 	-- Keyboard shortcuts while the phone is open.
 	UserInputService.InputBegan:Connect(function(input: InputObject)

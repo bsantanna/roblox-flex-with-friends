@@ -28,11 +28,14 @@ local EVENTS = {
 	"MinigameConfirmStart", -- client -> server: () -- player confirmed the instructions; begin play
 	"MinigameAborted", -- server -> client: () -- pre-game timed out / cancelled; dismiss the pre-game UI
 	-- Simon Says gameplay (the PersonalTrainer minigame plugin owns these).
+	"TrainerShowStepNumber", -- server -> client: (stepNumber: number, round: number, maxRounds: number) -- show the step number (1-based index)
 	"TrainerShowStep", -- server -> client: (arrow: string, round: number, maxRounds: number) -- light this arrow during the show
 	"TrainerInputPhase", -- server -> client: (timeoutSeconds: number) -- show done; server now accepts inputs
 	"TrainerPoseInput", -- client -> server: (arrow: string) -- one arrow per fire during the input phase
 	"TrainerRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
 	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean)
+	-- Trophy rewards (TrophyService).
+	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
 	"FriendDialogLine", -- server -> client: (text: string, choices: {string}) -- gym-friend line + answer options
 	"FriendDialogChoose", -- client -> server: (choiceIndex: number) -- pick an answer
 	"FriendDialogEnd", -- server -> client: () -- dismiss the friend dialog UI

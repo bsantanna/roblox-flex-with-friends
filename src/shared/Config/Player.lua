@@ -20,6 +20,7 @@ Player.ProfileTemplate = {
 		TripsTaken = 0,
 		FriendsInvited = 0,
 	},
+	Trophies = {},
 	LastSeen = 0,
 	-- CompanionNpc defaults to nil (no companion).
 	InvitedFriends = {},

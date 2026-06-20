@@ -28,6 +28,7 @@ local BUTTON_IDLE = Color3.fromRGB(60, 120, 200)
 local BUTTON_LIT = Color3.fromRGB(255, 220, 80)
 local HIGHLIGHT_SECONDS = 0.4
 
+local trainerShowStepNumber: RemoteEvent
 local trainerShowStep: RemoteEvent
 local trainerInputPhase: RemoteEvent
 local trainerPoseInput: RemoteEvent
@@ -36,6 +37,7 @@ local trainerGameOver: RemoteEvent
 
 local gameFrame: Frame
 local roundLabel: TextLabel
+local stepLabel: TextLabel
 local statusLabel: TextLabel
 local arrowButtons: { [string]: TextButton } = {}
 
@@ -64,9 +66,14 @@ end
 local function onTrainerShowStep(arrow: string, round: number, maxRounds: number)
 	gameFrame.Visible = true
 	inputEnabled = false
+	stepLabel.Text = ""
 	roundLabel.Text = `Round {round} / {maxRounds}`
 	statusLabel.Text = "Watch the trainer..."
 	flashArrow(arrow)
+end
+
+local function onTrainerShowStepNumber(stepNumber: number, _round: number, _maxRounds: number)
+	stepLabel.Text = tostring(stepNumber)
 end
 
 local function onTrainerInputPhase(_timeoutSeconds: number)
@@ -97,6 +104,7 @@ local function onTrainerGameOver(totalReward: number, roundsCompleted: number, c
 end
 
 function SimonSaysController:Init()
+	trainerShowStepNumber = Net.Event("TrainerShowStepNumber")
 	trainerShowStep = Net.Event("TrainerShowStep")
 	trainerInputPhase = Net.Event("TrainerInputPhase")
 	trainerPoseInput = Net.Event("TrainerPoseInput")
@@ -165,10 +173,24 @@ function SimonSaysController:Init()
 	statusLabel.Text = ""
 	statusLabel.Parent = gameFrame
 
+	-- Step number label: big number centered at the top of the dialog.
+	stepLabel = Instance.new("TextLabel")
+	stepLabel.Size = UDim2.fromOffset(80, 50)
+	stepLabel.Position = UDim2.new(0.5, -40, 0, 6)
+	stepLabel.AnchorPoint = Vector2.new(0.5, 0)
+	stepLabel.BackgroundTransparency = 1
+	stepLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
+	stepLabel.Font = Enum.Font.GothamBlack
+	stepLabel.TextSize = 48
+	stepLabel.Text = ""
+	stepLabel.TextXAlignment = Enum.TextXAlignment.Center
+	stepLabel.Parent = gameFrame
+
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
 function SimonSaysController:Start()
+	trainerShowStepNumber.OnClientEvent:Connect(onTrainerShowStepNumber)
 	trainerShowStep.OnClientEvent:Connect(onTrainerShowStep)
 	trainerInputPhase.OnClientEvent:Connect(onTrainerInputPhase)
 	trainerRoundResult.OnClientEvent:Connect(onTrainerRoundResult)

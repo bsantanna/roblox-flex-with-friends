@@ -30,6 +30,7 @@ export type ProfileData = {
 	UnlockedPlaces: { string },
 	UnlockedNpcs: { string },
 	Stats: Stats,
+	Trophies: { [string]: true }, -- trophyId -> true (earned)
 	LastSeen: number, -- os.time(), for offline decay
 	CompanionNpc: string?, -- NPC currently traveling with the player
 	InvitedFriends: { number }, -- userIds this player has already been rewarded for inviting

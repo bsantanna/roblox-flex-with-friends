@@ -43,7 +43,7 @@ local earnedTrophies: { [string]: true } = {}
 -- Trophy definitions mirrored from server TrophyService.
 local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	["personal_trainer_strength"] = { Id = "personal_trainer_strength", Name = "Strength", Emoji = "\u{1F4AA}" },
-	["farmer_farmhand"] = { Id = "farmer_farmhand", Name = "Farmer", Emoji = "\u{1F95B}" },
+	["farmer_farmhand"] = { Id = "farmer_farmhand", Name = "Fresh Milk", Emoji = "\u{1F95B}" },
 }
 
 local index = 1

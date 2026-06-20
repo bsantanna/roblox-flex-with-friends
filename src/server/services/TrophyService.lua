@@ -24,7 +24,7 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	},
 	Farmer = {
 		Id = "farmer_farmhand",
-		Name = "Farmer",
+		Name = "Fresh Milk",
 		Emoji = "\u{1F95B}", -- milk bottle emoji
 	},
 }

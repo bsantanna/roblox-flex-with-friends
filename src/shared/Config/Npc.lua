@@ -37,6 +37,18 @@ type SimonSaysDef = {
 	Arrows: { string }, -- input directions, each a key of Poses
 	Poses: { [string]: string }, -- arrow -> animation asset id played on NPC and player
 }
+type RockPaperScissorsDef = {
+	WinsNeeded: number, -- first to this many round wins takes the match (ties replay)
+	InputTimeoutSeconds: number, -- server-side deadline for the player to pick a hand
+	ReelSeconds: number, -- how long the client reel spins before locking on the opponent's hand
+	RevealSeconds: number, -- pause showing the result before the next round
+	RoundDelaySeconds: number, -- pause before a round's pick phase opens
+	BaseReward: number, -- followers for each round the player wins
+	MatchBonus: number, -- extra followers for winning the match
+	Choices: { string }, -- canonical move keys (each a key of Emoji/Poses)
+	Emoji: { [string]: string }, -- move -> emoji shown to the player
+	Poses: { [string]: string }, -- move -> animation asset id played on the NPC at reveal
+}
 type NpcDialog = {
 	Lines: { string }, -- plain lines, advanced with Next
 	QualifiedLine: string, -- branch line when the player has the unlock
@@ -56,7 +68,8 @@ type NpcDef = {
 	WalkAnimation: string, -- animation asset id played on the NPC while it walks
 	Instructions: string, -- pre-game rules the NPC explains (speech bubble + client Start prompt)
 	Dialog: NpcDialog,
-	SimonSays: SimonSaysDef,
+	SimonSays: SimonSaysDef?, -- present iff this NPC hosts the Simon Says minigame
+	RockPaperScissors: RockPaperScissorsDef?, -- present iff this NPC hosts the Rock-Paper-Scissors minigame
 }
 
 Npc.Npc = {
@@ -140,6 +153,49 @@ Npc.Npc = {
 				Up = "rbxassetid://507770677",
 				Right = "rbxassetid://507770453",
 				Down = "rbxassetid://507771019",
+			},
+		},
+	},
+	Cowboy = {
+		Zone = "Farm",
+		UnlockFollowers = 0, -- no follower gate: anyone can challenge the cowboy
+		SpawnPosition = Vector3.new(300, 0, -120), -- inside the paddock, on grass north-east of the Farmer
+		SpawnYaw = 90, -- same facing as the Farmer (toward the pen approach)
+		AvatarUserId = 1, -- Roblox's own avatar as stand-in look
+		ArenaPosition = Vector3.new(322, 0, -120), -- a short walk to clear pen floor for the duel
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Howdy, partner! It's a game o' chance — Rock, Paper, Scissors.\n  Pick yer hand, I'll throw mine. Best two outta three takes the pot. Step on the mark when yer ready!",
+		Dialog = {
+			Lines = {
+				"Well howdy there, partner!",
+				"Name's Cole — I wrangle cattle by day an' play Roshambo by night.",
+			},
+			QualifiedLine = "Fancy a friendly game o' Rock, Paper, Scissors? Best two outta three!",
+			GateLine = "Mosey on over anytime fer a game, partner.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Howdy" },
+			TimeoutSeconds = 30,
+		},
+		RockPaperScissors = {
+			WinsNeeded = 2,
+			InputTimeoutSeconds = 15,
+			ReelSeconds = 2,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1,
+			BaseReward = 40,
+			MatchBonus = 80,
+			Choices = { "Rock", "Paper", "Scissors" },
+			Emoji = {
+				Rock = "\u{270A}", -- raised fist
+				Paper = "\u{270B}", -- raised hand
+				Scissors = "\u{270C}\u{FE0F}", -- victory hand
+			},
+			Poses = {
+				-- Roblox default emotes as stand-in throws; swap for custom uploads later.
+				Rock = "rbxassetid://507770677", -- cheer (fist up)
+				Paper = "rbxassetid://507770239", -- wave (open hand)
+				Scissors = "rbxassetid://507770453", -- point
 			},
 		},
 	},

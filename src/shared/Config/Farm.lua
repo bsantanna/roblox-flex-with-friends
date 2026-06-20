@@ -23,8 +23,8 @@ local Farm = {
 	Animals = {
 		Seed = 11, -- deterministic spawn points + wander, like the forest
 		Roster = { -- Kind names a Species below; only built species spawn (others are skipped)
-			{ Kind = "Cow", Count = 3 },
-			{ Kind = "Sheep", Count = 3 },
+			{ Kind = "Cow", Count = 2 },
+			{ Kind = "Sheep", Count = 2 },
 			{ Kind = "Chicken", Count = 2 },
 		},
 		WanderSpeed = 4, -- studs/second while walking to a target

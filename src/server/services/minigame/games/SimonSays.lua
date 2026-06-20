@@ -19,6 +19,8 @@ local TrophyService = require(servicesFolder.TrophyService)
 local rng = Random.new()
 
 local SimonSaysModule = {}
+-- MinigameService registers this factory only for NPCs whose Config has a SimonSays subtable.
+SimonSaysModule.ConfigKey = "SimonSays"
 
 function SimonSaysModule.create(npcId: string)
 	local SimonSaysGame = {}
@@ -30,7 +32,8 @@ function SimonSaysModule.create(npcId: string)
 	local current: any? = nil
 
 	local function def()
-		return Config.Npc[npcId].SimonSays
+		-- Registered only for NPCs whose Config has a SimonSays subtable, so this is never nil.
+		return assert(Config.Npc[npcId].SimonSays, "SimonSays def missing for " .. npcId)
 	end
 
 	local function endGame(session: any, roundsCompleted: number, cleared: boolean)

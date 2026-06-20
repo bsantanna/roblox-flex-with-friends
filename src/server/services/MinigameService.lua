@@ -239,12 +239,17 @@ function MinigameService:Init()
 		if child:IsA("ModuleScript") then
 			local plugin: any = (require :: any)(child)
 			if type(plugin.create) == "function" then
-				-- Factory module: instantiate one game per NPC.
-				for npcId, _ in Config.Npc do
-					local game = plugin.create(npcId)
-					gamesByNpc[npcId] = game
-					if type((game :: any).Init) == "function" then
-						(game :: any).Init()
+				-- Factory module: instantiate one game per NPC whose Config has the factory's subtable
+				-- (plugin.ConfigKey). This keeps two factories from clobbering each other in gamesByNpc —
+				-- each only claims the NPCs it's actually configured for. A nil key means "every NPC".
+				local key = plugin.ConfigKey
+				for npcId, npcDef in Config.Npc do
+					if key == nil or (npcDef :: any)[key] ~= nil then
+						local game = plugin.create(npcId)
+						gamesByNpc[npcId] = game
+						if type((game :: any).Init) == "function" then
+							(game :: any).Init()
+						end
 					end
 				end
 			else

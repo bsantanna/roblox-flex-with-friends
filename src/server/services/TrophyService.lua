@@ -27,6 +27,11 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Fresh Milk",
 		Emoji = "\u{1F95B}", -- milk bottle emoji
 	},
+	Cowboy = {
+		Id = "cowboy_roundup",
+		Name = "Cowboy",
+		Emoji = "\u{1F404}", -- cow emoji
+	},
 }
 
 local trophyEarned: RemoteEvent

@@ -23,7 +23,7 @@ Traffic.Traffic = {
 -- runway heading (+X). With Planes staggered evenly across TotalCycle, exactly one plane begins its
 -- takeoff every TotalCycle/Planes seconds. The runway runs along X, centred on Zones.Airport.
 Traffic.AirTraffic = {
-	Planes = 5, -- fleet size; staggered evenly -> a takeoff every TotalCycle/Planes (60s)
+	Planes = 3, -- fleet size; staggered evenly -> a takeoff every TotalCycle/Planes (100s)
 	TotalCycle = 300, -- seconds for one plane's full lifecycle (5 minutes)
 	Runway = {
 		Length = 500, -- studs along X, centred on Zones.Airport

@@ -29,11 +29,15 @@ local ReadyZone = require(script.Parent.minigame.ReadyZone)
 local MinigameService = {}
 
 -- A plugin: declares which NPC hosts it and runs the actual game when handed a session.
+-- Init/Start are optional — some modules (like the SimonSays factory) don't need them.
+-- We always guard with type() before calling.
 export type Game = {
 	Id: string,
 	NpcId: string,
 	begin: (self: any, session: Session) -> (),
 	abort: (self: any, session: Session) -> (),
+	Init: () -> (),
+	Start: () -> (),
 }
 
 export type Session = {
@@ -222,13 +226,27 @@ function MinigameService:Init()
 	aborted = Net.Event("MinigameAborted")
 
 	-- Register every plugin under minigame/games/ by its NpcId, and Init it (generic loader, so the
-	-- dynamic require is cast like Bootstrap does).
+	-- dynamic require is cast like Bootstrap does). Some modules export a `create` factory function
+	-- (e.g. SimonSays) — call it for every Config.Npc entry to get a game instance per NPC.
 	for _, child in script.Parent.minigame.games:GetChildren() do
 		if child:IsA("ModuleScript") then
-			local plugin: Game = (require :: any)(child)
-			gamesByNpc[plugin.NpcId] = plugin
-			if type((plugin :: any).Init) == "function" then
-				(plugin :: any):Init()
+			local plugin: any = (require :: any)(child)
+			if type(plugin.create) == "function" then
+				-- Factory module: instantiate one game per NPC.
+				for npcId, _ in Config.Npc do
+					local game = plugin.create(npcId)
+					gamesByNpc[npcId] = game
+					if type((game :: any).Init) == "function" then
+						(game :: any).Init()
+					end
+				end
+			else
+				-- Direct game module: register as-is.
+				local game: Game = plugin
+				gamesByNpc[game.NpcId] = game
+				if type((game :: any).Init) == "function" then
+					(game :: any).Init()
+				end
 			end
 		end
 	end

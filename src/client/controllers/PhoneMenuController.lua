@@ -3,12 +3,10 @@
 -- phone — the uploaded Phone01 art with a carousel of functionalities on its screen. The art's
 -- close / left / ok / right buttons are baked into the image, so invisible TextButtons are overlaid
 -- on them (rects from Config.UI.Phone.Zones, measured from the art). Selecting a carousel item runs
--- its action: Take Photo and Call a Cab hand off to PhotoController / TravelController, Invite Friends
--- to FriendController, and Social Media opens an in-phone view of the live follower count plus a
--- placeholder feed (real feed is Phase 4). Followers used to live in HudController (now removed);
--- they show here only. Navigation: the on-screen buttons, or ←/→ to cycle, Enter to select, Esc to
--- close. Before Phone01 is uploaded the art is absent, so the shell falls back to a plain frame with
--- visible button glyphs — the carousel still works for testing.
+-- its action: Take Photo, Invite Friends, and Social Media. Navigation: the on-screen buttons, or
+-- ←/→ to cycle, Enter to select, Esc to close. Before Phone01 is uploaded the art is absent, so
+-- the shell falls back to a plain frame with visible button glyphs — the carousel still works for
+-- testing.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,7 +16,6 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PhotoController = require(script.Parent.PhotoController)
 local FriendController = require(script.Parent.FriendController)
-local TravelController = require(script.Parent.TravelController)
 
 local AssetIds = require(ReplicatedStorage.Shared.SceneryAssetIds) :: { [string]: number }
 
@@ -29,14 +26,25 @@ local player = Players.LocalPlayer
 local PHONE = Config.UI.Phone
 local SCREEN_TEAL = Color3.fromRGB(134, 226, 231)
 local SCREEN_TEXT = Color3.fromRGB(28, 30, 46)
-local NAV_GLYPHS = { Close = "✖", Left = "◀", Ok = "OK", Right = "▶" }
+local NAV_GLYPHS = { Close = "\u{2716}", Left = "\u{25C0}", Ok = "OK", Right = "\u{25B6}" }
 
 local launcher: TextButton
 local phone: ImageLabel
+local screenFrame: Frame
 local emojiLabel: TextLabel
 local titleLabel: TextLabel
-local socialFrame: Frame
-local followerLabel: TextLabel
+local modal: Frame?
+local gui: ScreenGui
+local followerLabel: TextLabel?
+
+-- Trophy state: trophyId -> true. Populated on join and on TrophyEarned events.
+local earnedTrophies: { [string]: true } = {}
+
+-- Trophy definitions mirrored from server TrophyService.
+local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
+	["personal_trainer_strength"] = { Id = "personal_trainer_strength", Name = "Strength", Emoji = "\u{1F4AA}" },
+	["farmer_farmhand"] = { Id = "farmer_farmhand", Name = "Fresh Milk", Emoji = "\u{1F95B}" },
+}
 
 local index = 1
 local mode: "carousel" | "social" = "carousel"
@@ -51,7 +59,6 @@ end
 local function setMode(m: "carousel" | "social")
 	mode = m
 	local social = m == "social"
-	socialFrame.Visible = social
 	emojiLabel.Visible = not social
 	titleLabel.Visible = not social
 	if not social then
@@ -70,10 +77,264 @@ local function close()
 	launcher.Visible = true
 end
 
+local function populateTrophies(gridFrame: Frame)
+	-- Clear any existing cells.
+	for _, child in gridFrame:GetChildren() do
+		if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("UICorner") or child:IsA("UIPadding") then
+			child:Destroy()
+		end
+	end
+
+	local slotIndex = 1
+	local maxSlots = 12
+
+	-- Place each earned trophy in order.
+	for trophyId, _ in earnedTrophies do
+		if slotIndex > maxSlots then
+			break
+		end
+		local def = TROPHY_DEFS[trophyId]
+		if not def then
+			continue
+		end
+
+		local cell = Instance.new("Frame")
+		cell.Name = "TrophySlot"
+		cell.Size = UDim2.fromOffset(180, 140)
+		cell.BackgroundColor3 = Color3.fromRGB(40, 55, 30)
+		cell.BackgroundTransparency = 0.25
+		cell.BorderSizePixel = 0
+		cell.Parent = gridFrame
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 12)
+		corner.Parent = cell
+
+		-- Emoji label (large, centered, ~65% height from top).
+		local emoji = Instance.new("TextLabel")
+		emoji.Name = "TrophyEmoji"
+		emoji.Size = UDim2.fromScale(1, 0.65)
+		emoji.Position = UDim2.fromOffset(0, 2)
+		emoji.BackgroundTransparency = 1
+		emoji.Text = def.Emoji
+		emoji.TextSize = 120
+		emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
+		emoji.Font = Enum.Font.GothamBold
+		emoji.TextXAlignment = Enum.TextXAlignment.Center
+		emoji.TextYAlignment = Enum.TextYAlignment.Center
+		emoji.Parent = cell
+
+		-- Name label below emoji (90% width, 25% height, positioned from top).
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "TrophyName"
+		nameLabel.Size = UDim2.fromScale(0.9, 0.25)
+		nameLabel.Position = UDim2.fromScale(0.05, 0.68)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = def.Name
+		nameLabel.TextSize = 32
+		nameLabel.TextColor3 = Color3.fromRGB(180, 220, 160)
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextWrapped = true
+		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+		nameLabel.Parent = cell
+
+		slotIndex += 1
+	end
+
+	-- Fill remaining slots with empty placeholders.
+	for _ = slotIndex, maxSlots do
+		local cell = Instance.new("Frame")
+		cell.Name = "TrophySlot"
+		cell.Size = UDim2.fromOffset(180, 140)
+		cell.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
+		cell.BackgroundTransparency = 0.3
+		cell.BorderSizePixel = 0
+		cell.Parent = gridFrame
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 12)
+		corner.Parent = cell
+	end
+end
+
+local function onTrophyEarned(trophies: { [string]: true })
+	earnedTrophies = trophies
+
+	-- If the social modal is open, re-populate the grid immediately.
+	if modal ~= nil then
+		local gridFrame = modal:FindFirstChild("TrophiesGrid") :: Frame?
+		if gridFrame then
+			populateTrophies(gridFrame)
+		end
+	end
+end
+
+local function updateFollowerLabel(count: number)
+	if followerLabel ~= nil then
+		followerLabel.Text = `❤ {count}`
+	end
+end
+
+local function showSocialModal()
+	if modal ~= nil then
+		modal:Destroy()
+		modal = nil
+	end
+	followerLabel = nil
+
+	local m = Instance.new("Frame")
+	m.Name = "SocialModal"
+	m.Size = UDim2.fromScale(0.9, 0.85)
+	m.AnchorPoint = Vector2.new(0.5, 0.5)
+	m.Position = UDim2.fromScale(0.5, 0.5)
+	m.BackgroundColor3 = Color3.fromRGB(36, 38, 52)
+	m.BackgroundTransparency = 0.15
+	m.BorderSizePixel = 0
+	m.Parent = gui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = m
+
+	-- Padding so content doesn't touch the modal edge.
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 12)
+	padding.PaddingBottom = UDim.new(0, 12)
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = m
+
+	-- Vertical list layout for followers, trophies, close button.
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.FillDirection = Enum.FillDirection.Vertical
+	listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 16)
+	listLayout.Parent = m
+
+	-- Read current follower count from leaderstat.
+	local followersValue = 0
+	local ok, leaderstats = pcall(function()
+		return player:FindFirstChild("leaderstats")
+	end)
+	if ok and leaderstats then
+		local followers = leaderstats:FindFirstChild("Followers")
+		if followers then
+			followersValue = followers.Value
+		end
+	end
+
+	-- Followers header: ❤ count.
+	local fl = Instance.new("TextLabel")
+	fl.Name = "Followers"
+	fl.LayoutOrder = 1
+	fl.Size = UDim2.fromOffset(200, 30)
+	fl.BackgroundTransparency = 1
+	fl.Text = `❤ {followersValue}`
+	fl.TextScaled = true
+	fl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	fl.Font = Enum.Font.GothamBold
+	fl.Parent = m
+	followerLabel = fl
+
+	-- "Followers" subtitle label.
+	local flSub = Instance.new("TextLabel")
+	flSub.Name = "FollowersSub"
+	flSub.LayoutOrder = 2
+	flSub.Size = UDim2.fromOffset(200, 20)
+	flSub.BackgroundTransparency = 1
+	flSub.Text = "Followers"
+	flSub.TextScaled = true
+	flSub.TextColor3 = Color3.fromRGB(255, 255, 255)
+	flSub.TextTransparency = 0.3
+	flSub.Font = Enum.Font.Gotham
+	flSub.Parent = m
+
+	-- Trophies grid: 3 columns x 4 rows of empty cells.
+	local gridFrame = Instance.new("Frame")
+	gridFrame.Name = "TrophiesGrid"
+	gridFrame.LayoutOrder = 3
+	gridFrame.Size = UDim2.fromScale(0.85, 0.62)
+	gridFrame.BackgroundTransparency = 1
+	gridFrame.Parent = m
+
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.FillDirection = Enum.FillDirection.Horizontal
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	gridLayout.CellSize = UDim2.fromOffset(180, 140)
+	gridLayout.CellPadding = UDim2.fromOffset(12, 12)
+	gridLayout.Parent = gridFrame
+
+	-- 12 empty trophy slots — will be overwritten by populateTrophies.
+	for _ = 1, 12 do
+		local cell = Instance.new("Frame")
+		cell.Name = "TrophySlot"
+		cell.Size = UDim2.fromOffset(180, 140)
+		cell.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
+		cell.BackgroundTransparency = 0.3
+		cell.BorderSizePixel = 0
+		cell.Parent = gridFrame
+		local cellCorner = Instance.new("UICorner")
+		cellCorner.CornerRadius = UDim.new(0, 12)
+		cellCorner.Parent = cell
+	end
+
+	populateTrophies(gridFrame)
+
+	-- Bottom-centered Close button, matching DialogController's button style.
+	local closeBtn = Instance.new("TextButton")
+	closeBtn.Name = "CloseBtn"
+	closeBtn.LayoutOrder = 4
+	closeBtn.Size = UDim2.fromOffset(140, 40)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(55, 60, 72)
+	closeBtn.Text = "Close"
+	closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	closeBtn.Font = Enum.Font.GothamBold
+	closeBtn.TextScaled = true
+	closeBtn.BorderSizePixel = 0
+	closeBtn.Parent = m
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 8)
+	btnCorner.Parent = closeBtn
+
+	local btnPadding = Instance.new("UIPadding")
+	btnPadding.PaddingTop = UDim.new(0, 8)
+	btnPadding.PaddingBottom = UDim.new(0, 8)
+	btnPadding.PaddingLeft = UDim.new(0, 14)
+	btnPadding.PaddingRight = UDim.new(0, 14)
+	btnPadding.Parent = closeBtn
+
+	local btnStroke = Instance.new("UIStroke")
+	btnStroke.Color = Color3.fromRGB(90, 98, 116)
+	btnStroke.Thickness = 1
+	btnStroke.Parent = closeBtn
+
+	closeBtn.Activated:Connect(function()
+		m:Destroy()
+		modal = nil
+		followerLabel = nil
+		setMode("carousel")
+	end)
+
+	modal = m
+	setMode("social")
+end
+
+local function closeModal()
+	if modal ~= nil then
+		modal:Destroy()
+		modal = nil
+	end
+	setMode("carousel")
+end
+
 -- The social view is a leaf: any nav (left/right/ok) backs out to the carousel; only close exits.
 local function cycle(delta: number)
 	if mode == "social" then
-		setMode("carousel")
+		closeModal()
 		return
 	end
 	index = (index - 1 + delta) % #PHONE.Items + 1
@@ -82,7 +343,7 @@ end
 
 local function activate()
 	if mode == "social" then
-		setMode("carousel")
+		closeModal()
 		return
 	end
 	local action = PHONE.Items[index].action
@@ -91,11 +352,8 @@ local function activate()
 		PhotoController:Capture()
 	elseif action == "Invite" then
 		FriendController:PromptInvite()
-	elseif action == "Cab" then
-		close()
-		TravelController:OpenPicker()
 	elseif action == "Social" then
-		setMode("social")
+		showSocialModal()
 	end
 end
 
@@ -121,7 +379,7 @@ function PhoneMenuController:Init()
 	local phoneAssetId = AssetIds[PHONE.Asset]
 	hasArt = phoneAssetId ~= nil
 
-	local gui = Instance.new("ScreenGui")
+	gui = Instance.new("ScreenGui")
 	gui.Name = "Cellphone"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 5
@@ -134,7 +392,7 @@ function PhoneMenuController:Init()
 	launcher.Size = UDim2.fromOffset(64, 64)
 	launcher.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
 	launcher.BackgroundTransparency = 0.2
-	launcher.Text = "📱"
+	launcher.Text = "📲"
 	launcher.TextScaled = true
 	launcher.Font = Enum.Font.GothamBold
 	launcher.Parent = gui
@@ -162,7 +420,7 @@ function PhoneMenuController:Init()
 	aspect.Parent = phone
 
 	-- Screen content sits over the art's teal screen.
-	local screenFrame = Instance.new("Frame")
+	screenFrame = Instance.new("Frame")
 	screenFrame.Name = "Screen"
 	screenFrame.Position = UDim2.fromScale(PHONE.Screen[1], PHONE.Screen[2])
 	screenFrame.Size = UDim2.fromScale(PHONE.Screen[3], PHONE.Screen[4])
@@ -190,70 +448,6 @@ function PhoneMenuController:Init()
 	titleLabel.Font = Enum.Font.GothamBold
 	titleLabel.Parent = screenFrame
 
-	-- Social Media view: live follower count + a placeholder feed (Phase 4 builds the real one).
-	socialFrame = Instance.new("Frame")
-	socialFrame.Name = "Social"
-	socialFrame.Size = UDim2.fromScale(1, 1)
-	socialFrame.BackgroundTransparency = 1
-	socialFrame.Visible = false
-	socialFrame.Parent = screenFrame
-	local socialLayout = Instance.new("UIListLayout")
-	socialLayout.FillDirection = Enum.FillDirection.Vertical
-	socialLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	socialLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	-- Order by LayoutOrder (count, feed, caption); the default SortOrder.Name would sort alphabetically.
-	socialLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	socialLayout.Padding = UDim.new(0.04, 0)
-	socialLayout.Parent = socialFrame
-
-	followerLabel = Instance.new("TextLabel")
-	followerLabel.Name = "Followers"
-	followerLabel.LayoutOrder = 1
-	followerLabel.Size = UDim2.fromScale(0.9, 0.34)
-	followerLabel.BackgroundTransparency = 1
-	followerLabel.Text = "❤ 0"
-	followerLabel.TextScaled = true
-	followerLabel.TextColor3 = SCREEN_TEXT
-	followerLabel.Font = Enum.Font.GothamBold
-	followerLabel.Parent = socialFrame
-
-	local feedRow = Instance.new("Frame")
-	feedRow.Name = "FeedRow"
-	feedRow.LayoutOrder = 2
-	feedRow.Size = UDim2.fromScale(0.9, 0.3)
-	feedRow.BackgroundTransparency = 1
-	feedRow.Parent = socialFrame
-	local feedLayout = Instance.new("UIListLayout")
-	feedLayout.FillDirection = Enum.FillDirection.Horizontal
-	feedLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	feedLayout.Padding = UDim.new(0.06, 0)
-	feedLayout.Parent = feedRow
-	for i = 1, 2 do
-		local cell = Instance.new("TextLabel")
-		cell.Name = `Cell{i}`
-		cell.Size = UDim2.fromScale(0.42, 1)
-		cell.BackgroundColor3 = Color3.fromRGB(36, 38, 52)
-		cell.Text = "▶"
-		cell.TextScaled = true
-		cell.TextColor3 = Color3.fromRGB(235, 235, 240)
-		cell.Font = Enum.Font.GothamBold
-		cell.Parent = feedRow
-		local cellCorner = Instance.new("UICorner")
-		cellCorner.CornerRadius = UDim.new(0.12, 0)
-		cellCorner.Parent = cell
-	end
-
-	local feedCaption = Instance.new("TextLabel")
-	feedCaption.Name = "Caption"
-	feedCaption.LayoutOrder = 3
-	feedCaption.Size = UDim2.fromScale(0.95, 0.18)
-	feedCaption.BackgroundTransparency = 1
-	feedCaption.Text = "Feed — coming soon"
-	feedCaption.TextScaled = true
-	feedCaption.TextColor3 = SCREEN_TEXT
-	feedCaption.Font = Enum.Font.Gotham
-	feedCaption.Parent = socialFrame
-
 	-- Invisible hit zones over the art's baked-in buttons.
 	makeZone("Close", PHONE.Zones.Close, close)
 	makeZone("Left", PHONE.Zones.Left, function()
@@ -270,18 +464,16 @@ function PhoneMenuController:Init()
 end
 
 function PhoneMenuController:Start()
-	-- Followers: seed from the replicated leaderstat, then track the FollowerChanged remote (same
-	-- source the removed HudController used).
+	-- Followers: seed from the replicated leaderstat, then track FollowerChanged.
 	local leaderstats = player:WaitForChild("leaderstats")
 	local followers = leaderstats:WaitForChild("Followers") :: IntValue
-	local function renderFollowers(count: number)
-		followerLabel.Text = `❤ {count}`
-	end
-	renderFollowers(followers.Value)
-	Net.Event("FollowerChanged").OnClientEvent:Connect(renderFollowers)
+	updateFollowerLabel(followers.Value)
+	Net.Event("FollowerChanged").OnClientEvent:Connect(updateFollowerLabel)
 
-	-- Keyboard shortcuts while the phone is open. Arrow keys also drive movement (they arrive with
-	-- gameProcessed=true), so guard only on a focused TextBox — matching MinigameController.
+	-- Trophies: listen for initial seed and new awards from the server.
+	Net.Event("TrophyEarned").OnClientEvent:Connect(onTrophyEarned)
+
+	-- Keyboard shortcuts while the phone is open.
 	UserInputService.InputBegan:Connect(function(input: InputObject)
 		if not phone.Visible or UserInputService:GetFocusedTextBox() ~= nil then
 			return
@@ -294,7 +486,11 @@ function PhoneMenuController:Start()
 		elseif key == Enum.KeyCode.Return or key == Enum.KeyCode.KeypadEnter then
 			activate()
 		elseif key == Enum.KeyCode.Escape then
-			close()
+			if modal ~= nil then
+				closeModal()
+			else
+				close()
+			end
 		end
 	end)
 end

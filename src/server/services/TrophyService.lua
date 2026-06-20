@@ -1,0 +1,88 @@
+--!strict
+-- TrophyService: manages earned trophies per player profile and notifies the client
+-- so the Social Modal grid can display them. A trophy is defined by an npcId that maps to
+-- a trophy id, display name, and emoji. When a minigame is fully cleared the SimonSays
+-- plugin calls AwardTrophy(player, npcId).
+--
+-- Trophy IDs are unique strings (e.g. "personal_trainer_strength", "farmer_farmhand")
+-- that survive across sessions because they are stored in Profile.Data.Trophies.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local DataService = require(script.Parent.DataService)
+local Net = require(ReplicatedStorage.Shared.Net)
+
+local TrophyService = {}
+
+-- Trophy definitions keyed by npcId. Each defines the reward a player earns on full clearance.
+local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
+	PersonalTrainer = {
+		Id = "personal_trainer_strength",
+		Name = "Strength",
+		Emoji = "\u{1F4AA}", -- strong-arm emoji
+	},
+	Farmer = {
+		Id = "farmer_farmhand",
+		Name = "Fresh Milk",
+		Emoji = "\u{1F95B}", -- milk bottle emoji
+	},
+	Cowboy = {
+		Id = "cowboy_roundup",
+		Name = "Cowboy",
+		Emoji = "\u{1F404}", -- cow emoji
+	},
+}
+
+local trophyEarned: RemoteEvent
+local trophyUnlocked: RemoteEvent
+
+function TrophyService:Init()
+	trophyEarned = Net.Event("TrophyEarned")
+	trophyUnlocked = Net.Event("TrophyUnlocked")
+end
+
+function TrophyService:Start()
+	-- Seed any already-online players with their existing trophies so the UI populates.
+	for _, player in Players:GetPlayers() do
+		task.spawn(TrophyService._seedPlayer, self, player)
+	end
+end
+
+function TrophyService:_seedPlayer(player: Player)
+	local profile = DataService:GetProfile(player)
+	if not profile then
+		return
+	end
+	-- Fire the trophy list so the client can populate the grid immediately.
+	trophyEarned:FireClient(player, profile.Data.Trophies :: { [string]: true })
+end
+
+--- Award a trophy to `player` for completing the minigame hosted by NPC `npcId`.
+--- If the player already has this trophy (or the npcId is unknown), this is a no-op.
+function TrophyService:AwardTrophy(player: Player, npcId: string)
+	local def = TROPHY_DEFS[npcId]
+	if not def then
+		return
+	end
+
+	local profile = DataService:GetProfile(player)
+	if not profile then
+		return
+	end
+
+	-- Already earned — no-op.
+	if profile.Data.Trophies[def.Id] then
+		return
+	end
+
+	profile.Data.Trophies[def.Id] = true
+
+	-- Notify client so the grid updates in real-time.
+	trophyEarned:FireClient(player, profile.Data.Trophies :: { [string]: true })
+
+	-- One-shot toast notification with trophy definition.
+	trophyUnlocked:FireClient(player, def.Id, def.Name, def.Emoji)
+end
+
+return TrophyService

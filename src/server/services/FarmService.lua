@@ -33,6 +33,30 @@ local maxX = center.X + Config.Farm.Size.X / 2
 local minZ = center.Z - Config.Farm.Size.Y / 2
 local maxZ = center.Z + Config.Farm.Size.Y / 2
 
+-- ===== Trees =====================================================================================
+
+-- Remove all trees from Scenery/Forest within 5m of the farm fence perimeter.
+local function clearTreesNearFence()
+	local scenery = Workspace:FindFirstChild("Scenery")
+	local forest = scenery and scenery:FindFirstChild("Forest")
+	if not forest then
+		return
+	end
+	for _, tree in forest:GetChildren() do
+		if tree:IsA("Model") then
+			local pivot = tree:GetPivot()
+			local px, pz = pivot.X, pivot.Z
+			-- Clamp to fence bounds to find closest point on perimeter
+			local cx = math.clamp(px, minX, maxX)
+			local cz = math.clamp(pz, minZ, maxZ)
+			local dx, dz = px - cx, pz - cz
+			if math.sqrt(dx * dx + dz * dz) <= FENCE.ClearanceRadius then
+				tree:Destroy()
+			end
+		end
+	end
+end
+
 -- ===== Fence =====================================================================================
 
 local function makePart(farm: Instance, cframe: CFrame, size: Vector3): Part
@@ -439,6 +463,7 @@ function FarmService:Start()
 		farm = folder
 	end
 	buildFence(farm)
+	clearTreesNearFence()
 	populate(farm)
 end
 

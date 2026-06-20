@@ -1,8 +1,7 @@
 --!strict
--- NpcService: tracks which NPCs a player has unlocked. The Personal Trainer unlock is recorded
--- once the player reaches the Config follower threshold (persists) and the player is notified;
--- the trainer itself always stands in the world (spawned by DialogService) and its dialog
--- branches on this unlock. See doc/002_implementation_plan.md (1.6).
+-- NpcService: tracks which NPCs a player has unlocked across all Config.Npc entries.
+-- When a player reaches the follower threshold for any NPC, the unlock is recorded (persisted)
+-- and the player is notified. See doc/002_implementation_plan.md (1.6).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,19 +13,20 @@ local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 
 local NpcService = {}
 
-local unlockNpc: RemoteEvent
+local unlockNpc: any
 
-local function checkUnlock(player: Player, followers: number)
+local function checkUnlocks(player: Player, followers: number)
 	local profile = DataService:GetProfile(player)
 	if not profile then
 		return
 	end
 
-	local def = Config.Npc.PersonalTrainer
-	if followers >= def.UnlockFollowers and not table.find(profile.Data.UnlockedNpcs, "PersonalTrainer") then
-		table.insert(profile.Data.UnlockedNpcs, "PersonalTrainer")
-		unlockNpc:FireClient(player, "PersonalTrainer")
-		Analytics.event(player, "NpcUnlocked", nil, "PersonalTrainer")
+	for npcId, def in Config.Npc do
+		if followers >= def.UnlockFollowers and not table.find(profile.Data.UnlockedNpcs, npcId) then
+			table.insert(profile.Data.UnlockedNpcs, npcId)
+			unlockNpc:FireClient(player, npcId)
+			Analytics.event(player, "NpcUnlocked", nil, npcId)
+		end
 	end
 end
 
@@ -36,11 +36,11 @@ end
 
 function NpcService:Start()
 	DataService:OnProfileLoaded(function(player: Player, profile)
-		checkUnlock(player, profile.Data.Followers)
+		checkUnlocks(player, profile.Data.Followers)
 	end)
 
 	FollowerService:OnChanged(function(player: Player, followers: number)
-		checkUnlock(player, followers)
+		checkUnlocks(player, followers)
 	end)
 end
 

@@ -24,16 +24,21 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local NpcActor = require(script.Parent.minigame.NpcActor)
+local NpcPromptService = require(script.Parent.NpcPromptService)
 local ReadyZone = require(script.Parent.minigame.ReadyZone)
 
 local MinigameService = {}
 
 -- A plugin: declares which NPC hosts it and runs the actual game when handed a session.
+-- Init/Start are optional — some modules (like the SimonSays factory) don't need them.
+-- We always guard with type() before calling.
 export type Game = {
 	Id: string,
 	NpcId: string,
 	begin: (self: any, session: Session) -> (),
 	abort: (self: any, session: Session) -> (),
+	Init: () -> (),
+	Start: () -> (),
 }
 
 export type Session = {
@@ -76,6 +81,9 @@ local function endSession(session: Session, interrupted: boolean)
 	end
 	active = nil
 	session.alive = false
+
+	-- Restore the NPC's "Talk" prompt so the player can interact again.
+	NpcPromptService:Show(session.npcId)
 
 	if interrupted and session.phase == "playing" then
 		session.game:abort(session)
@@ -205,6 +213,9 @@ function MinigameService:Request(player: Player, npcId: string, model: Model?)
 	end
 	active = session
 
+	-- Hide the NPC's "Talk" prompt for the whole session; endSession restores it on any outcome.
+	NpcPromptService:Hide(npcId)
+
 	task.spawn(runPregame, session, def)
 end
 
@@ -222,13 +233,32 @@ function MinigameService:Init()
 	aborted = Net.Event("MinigameAborted")
 
 	-- Register every plugin under minigame/games/ by its NpcId, and Init it (generic loader, so the
-	-- dynamic require is cast like Bootstrap does).
+	-- dynamic require is cast like Bootstrap does). Some modules export a `create` factory function
+	-- (e.g. SimonSays) — call it for every Config.Npc entry to get a game instance per NPC.
 	for _, child in script.Parent.minigame.games:GetChildren() do
 		if child:IsA("ModuleScript") then
-			local plugin: Game = (require :: any)(child)
-			gamesByNpc[plugin.NpcId] = plugin
-			if type((plugin :: any).Init) == "function" then
-				(plugin :: any):Init()
+			local plugin: any = (require :: any)(child)
+			if type(plugin.create) == "function" then
+				-- Factory module: instantiate one game per NPC whose Config has the factory's subtable
+				-- (plugin.ConfigKey). This keeps two factories from clobbering each other in gamesByNpc —
+				-- each only claims the NPCs it's actually configured for. A nil key means "every NPC".
+				local key = plugin.ConfigKey
+				for npcId, npcDef in Config.Npc do
+					if key == nil or (npcDef :: any)[key] ~= nil then
+						local game = plugin.create(npcId)
+						gamesByNpc[npcId] = game
+						if type((game :: any).Init) == "function" then
+							(game :: any).Init()
+						end
+					end
+				end
+			else
+				-- Direct game module: register as-is.
+				local game: Game = plugin
+				gamesByNpc[game.NpcId] = game
+				if type((game :: any).Init) == "function" then
+					(game :: any).Init()
+				end
 			end
 		end
 	end

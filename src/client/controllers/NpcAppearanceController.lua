@@ -15,6 +15,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local Types = require(ReplicatedStorage.Shared.Types)
 local OutfitBuilder = require(ReplicatedStorage.Shared.Util.OutfitBuilder)
 local GymFriendsCfg = require(ReplicatedStorage.Shared.Config.GymFriends)
+local Config = require(ReplicatedStorage.Shared.Config)
 
 type OutfitData = Types.OutfitData
 
@@ -169,6 +170,10 @@ function NpcAppearanceController:Init()
 	npcOutfitSync = Net.Event("NpcOutfitSync")
 	for _, def in GymFriendsCfg.Friends do
 		nameById[def.Id] = def.Name
+	end
+	-- Register all dialog NPCs (the key is already a suitable display name).
+	for npcId in Config.Npc do
+		nameById[npcId] = npcId
 	end
 	container = Instance.new("Folder")
 	container.Name = "LocalNpcSkins"

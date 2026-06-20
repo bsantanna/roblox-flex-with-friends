@@ -1,10 +1,9 @@
 --!strict
--- DialogService: spawns the always-present Personal Trainer NPC and runs its Zelda-like dialog.
--- The NPC's lines render in a server-side speech bubble (a BillboardGui in Workspace), so every
--- nearby player sees the conversation; only the interacting player gets the on-screen choices
--- (DialogLine/DialogAdvance/DialogChoose/DialogEnd). Picking Train hands off to
--- MinigameService:Request. The flow itself is pure logic in Shared.Logic.Dialog; the bubble is
--- the shared Shared.Util.SpeechBubble (the gym friends use the same one).
+-- DialogService: spawns every NPC defined in Config.Npc, one per zone folder under World.<Zone>.
+-- Each NPC runs its own Zelda-like dialog flow. Lines render in a server-side speech bubble so every
+-- nearby player sees the conversation; only the interacting player gets the on-screen choices. Picking
+-- the training choice hands off to MinigameService:Request with the correct npcId.
+-- The flow is pure logic in Shared.Logic.Dialog; the bubble is Shared.Util.SpeechBubble.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,37 +16,34 @@ local Log = require(ReplicatedStorage.Shared.Util.Log)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local MinigameService = require(script.Parent.MinigameService)
+local NpcPromptService = require(script.Parent.NpcPromptService)
 
 local DialogService = {}
+local dialogLine: any
+local dialogAdvance: any
+local dialogChoose: any
+local dialogEnd: any
 
-local dialogLine: RemoteEvent
-local dialogAdvance: RemoteEvent
-local dialogChoose: RemoteEvent
-local dialogEnd: RemoteEvent
-
-local npcRoot: BasePart? = nil
-local npcModel: Model? = nil -- the trainer model, handed to MinigameService to pose and walk it
-
--- One session at a time: the bubble is a single shared world object. A trigger while busy is
--- ignored — bystanders watch the running conversation instead (and can talk right after).
+-- All spawned NPC models: npcId -> { root: BasePart, model: Model }
+local npcModels: { [string]: { root: BasePart, model: Model } } = {}
+-- Dialog sessions: one at a time. If a new NPC is talked to, the old session ends.
 type Session = {
 	player: Player,
-	def: Dialog.Def, -- with {threshold} already substituted
+	npcId: string,
+	def: Dialog.Def,
 	qualified: boolean,
 	index: number,
-	choices: { string }?, -- the branch line's choices once reached; nil while lines advance
-	bubble: SpeechBubble.SpeechBubble,
-	timeout: thread?,
+	choices: { string }?,
+	bubble: any,
+	timeout: any?,
 }
 local session: Session? = nil
 
--- Ends the running session: cancels the timeout, fades the bubble away, dismisses the
--- interacting player's choice UI. Safe to call from the timeout thread itself.
 local function endSession()
-	local s = session
-	if not s then
+	if not session then
 		return
 	end
+	local s = session
 	session = nil
 
 	if s.timeout and coroutine.status(s.timeout) == "suspended" then
@@ -61,15 +57,13 @@ local function endSession()
 	end
 end
 
--- (Re-)arms the idle timeout; a session the player abandons mid-line closes itself.
 local function armTimeout(s: Session)
 	if s.timeout and coroutine.status(s.timeout) == "suspended" then
 		task.cancel(s.timeout)
 	end
-	s.timeout = task.delay(Config.Npc.PersonalTrainer.Dialog.TimeoutSeconds, endSession)
+	s.timeout = task.delay(Config.Npc[s.npcId].Dialog.TimeoutSeconds, endSession)
 end
 
--- Shows the session's current step in the bubble and sends it (with any choices) to the player.
 local function sendStep(s: Session)
 	local step = Dialog.step(s.def, s.qualified, s.index)
 	if not step then
@@ -82,8 +76,8 @@ local function sendStep(s: Session)
 	armTimeout(s)
 end
 
-local function onPromptTriggered(player: Player)
-	if session or not npcRoot then
+local function onPromptTriggered(player: Player, npcId: string)
+	if session or not npcModels[npcId] then
 		return
 	end
 	local profile = DataService:GetProfile(player)
@@ -91,7 +85,7 @@ local function onPromptTriggered(player: Player)
 		return
 	end
 
-	local npcDef = Config.Npc.PersonalTrainer
+	local npcDef = Config.Npc[npcId]
 	local d = npcDef.Dialog
 	local threshold = tostring(npcDef.UnlockFollowers)
 	local lines = table.create(#d.Lines)
@@ -106,11 +100,13 @@ local function onPromptTriggered(player: Player)
 		gateChoices = d.GateChoices,
 	}
 
-	local bubble = SpeechBubble.create(npcRoot)
+	local modelData = npcModels[npcId]
+	local bubble = SpeechBubble.create(modelData.root)
 	local s: Session = {
 		player = player,
+		npcId = npcId,
 		def = def,
-		qualified = table.find(profile.Data.UnlockedNpcs, "PersonalTrainer") ~= nil,
+		qualified = table.find(profile.Data.UnlockedNpcs, npcId) ~= nil,
 		index = 1,
 		bubble = bubble,
 	}
@@ -120,31 +116,31 @@ local function onPromptTriggered(player: Player)
 end
 
 local function onDialogAdvance(player: Player)
-	local s = session
-	if not s or s.player ~= player or s.choices ~= nil then
+	if not session or session.player ~= player or session.choices ~= nil then
 		return
 	end
-	s.index += 1
-	sendStep(s)
+	session.index += 1
+	sendStep(session)
 end
 
 local function onDialogChoose(player: Player, choiceIndex: unknown)
-	local s = session
-	if not s or s.player ~= player or s.choices == nil then
+	if not session or session.player ~= player or session.choices == nil then
 		return
 	end
-	if type(choiceIndex) ~= "number" or choiceIndex % 1 ~= 0 or choiceIndex < 1 or choiceIndex > #s.choices then
+	if type(choiceIndex) ~= "number" or choiceIndex % 1 ~= 0 or choiceIndex < 1 or choiceIndex > #session.choices then
 		return
 	end
 
-	local train = s.qualified and choiceIndex == 1
+	local npcId = session.npcId
+	local modelData = npcModels[npcId]
+	local train = session.qualified and choiceIndex == 1
 	endSession()
-	if train then
-		MinigameService:Request(player, "PersonalTrainer", npcModel)
+	if train and modelData then
+		-- MinigameService hides this NPC's prompt for the session and restores it on any outcome.
+		MinigameService:Request(player, npcId, modelData.model)
 	end
 end
 
--- The red-box stand-in used until (or instead of) the avatar copy.
 local function makeFallbackBody(): Model
 	local model = Instance.new("Model")
 	local body = Instance.new("Part")
@@ -157,12 +153,12 @@ local function makeFallbackBody(): Model
 	return model
 end
 
--- Builds the trainer (avatar copy of Config AvatarUserId, red box on failure), seats its feet on
--- SpawnPosition, and wires the Talk prompt. Runs in its own thread: the avatar fetch is a web
--- call and World/Home may not exist yet at Start.
-local function spawnTrainer()
-	local def = Config.Npc.PersonalTrainer
-	local home = Workspace:WaitForChild("World"):WaitForChild("Home")
+-- Spawns one NPC from Config.Npc.<npcId> in its World.<Zone> folder.
+local function spawnNpc(npcId: string, def: any)
+	local zoneName = def.Zone
+	local worldFolder = Workspace:WaitForChild("World", 30)
+	local zoneFolder = worldFolder:WaitForChild(zoneName, 30)
+	assert(zoneFolder, string.format("DialogService: zone %s not found under World/", zoneName))
 
 	local ok, result = pcall(function()
 		return Players:CreateHumanoidModelFromUserId(def.AvatarUserId)
@@ -171,28 +167,26 @@ local function spawnTrainer()
 	if ok and result then
 		model = result
 	else
-		Log.warn("DialogService", "avatar fetch failed; using fallback body", { userId = def.AvatarUserId })
+		Log.warn(
+			"DialogService",
+			"avatar fetch failed; using fallback body",
+			{ npcId = npcId, userId = def.AvatarUserId }
+		)
 		model = makeFallbackBody()
 	end
-	model.Name = "PersonalTrainer"
+	model.Name = npcId
 
 	local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-	assert(root, "DialogService: trainer model has no BasePart")
+	assert(root, string.format("DialogService: %s model has no BasePart", npcId))
 
-	-- Anchor only the root: the Motor6D joints hold the limbs to it. Anchoring every part
-	-- detaches the head/accessories when the Humanoid applies avatar scaling at parent time.
 	root.Anchored = true
 
-	-- Seat the model: pivot (with facing) to the spawn point, then lift so the bounding-box
-	-- bottom sits on it.
 	model:PivotTo(CFrame.new(def.SpawnPosition) * CFrame.Angles(0, math.rad(def.SpawnYaw), 0))
 	local boundsCFrame, boundsSize = model:GetBoundingBox()
 	local bottom = boundsCFrame.Position.Y - boundsSize.Y / 2
 	model:PivotTo(model:GetPivot() + Vector3.new(0, def.SpawnPosition.Y - bottom, 0))
 
-	-- The minigame poses and walks the trainer through its Animator (Animator:LoadAnimation needs
-	-- one; CreateHumanoidModelFromUserId does not guarantee it). Ensure it exists here; the
-	-- fallback body has no Humanoid, so the minigame just skips animation.
+	-- Ensure the NPC has an Animator for the minigame walk/pose animations.
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	if humanoid and not humanoid:FindFirstChildOfClass("Animator") then
 		local animator = Instance.new("Animator")
@@ -200,18 +194,19 @@ local function spawnTrainer()
 	end
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "Trainer"
+	prompt.Name = npcId
 	prompt.ActionText = "Talk"
-	prompt.ObjectText = "Personal Trainer"
+	prompt.ObjectText = npcId
 	prompt.HoldDuration = 0
 	prompt.RequiresLineOfSight = false
 	prompt.MaxActivationDistance = 12
-	prompt.Triggered:Connect(onPromptTriggered)
+	prompt.Triggered:Connect(function(player: Player)
+		onPromptTriggered(player, npcId)
+	end)
 	prompt.Parent = root
-
-	model.Parent = home
-	npcRoot = root
-	npcModel = model
+	model.Parent = zoneFolder
+	NpcPromptService.Register(npcId, prompt)
+	npcModels[npcId] = { root = root, model = model }
 end
 
 function DialogService:Init()
@@ -222,7 +217,10 @@ function DialogService:Init()
 end
 
 function DialogService:Start()
-	task.spawn(spawnTrainer)
+	-- Spawn all NPCs from Config.Npc, one per zone.
+	for npcId, def in Config.Npc do
+		task.spawn(spawnNpc, npcId, def)
+	end
 
 	dialogAdvance.OnServerEvent:Connect(onDialogAdvance)
 	dialogChoose.OnServerEvent:Connect(onDialogChoose)

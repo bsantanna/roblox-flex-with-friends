@@ -17,6 +17,7 @@ local player = Players.LocalPlayer
 
 local ARROWS = { "Left", "Up", "Down", "Right" } -- on-screen button order
 local GLYPHS = { Left = "◀", Up = "▲", Down = "▼", Right = "▶" }
+local EMOJI = { Left = "⬅️", Up = "⬆️", Down = "⬇️", Right = "➡️" } -- shown in round/end feedback
 local KEY_ARROWS: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.Left] = "Left",
 	[Enum.KeyCode.Up] = "Up",
@@ -26,12 +27,14 @@ local KEY_ARROWS: { [Enum.KeyCode]: string } = {
 
 local BUTTON_IDLE = Color3.fromRGB(60, 120, 200)
 local BUTTON_LIT = Color3.fromRGB(255, 220, 80)
-local HIGHLIGHT_SECONDS = 0.4
+local HIGHLIGHT_SECONDS = 2.5 -- matches Config ShowStepSeconds so the arrow stays lit for the whole show
 
+local trainerShowStepNumber: RemoteEvent
 local trainerShowStep: RemoteEvent
 local trainerInputPhase: RemoteEvent
 local trainerPoseInput: RemoteEvent
 local trainerRoundResult: RemoteEvent
+local trainerRoundFeedback: RemoteEvent
 local trainerGameOver: RemoteEvent
 
 local gameFrame: Frame
@@ -39,7 +42,60 @@ local roundLabel: TextLabel
 local statusLabel: TextLabel
 local arrowButtons: { [string]: TextButton } = {}
 
+-- Big centered overlay for the current step number.
+local stepOverlayGui: ScreenGui
+local stepOverlayLabel: TextLabel
+local stepOverlayVisible: TextLabel -- gates the overlay (ScreenGui.Visible is untyped in luau-lsp)
+
+-- Centered panel that recaps a round/game with the move sequence as emojis.
+local feedbackFrame: Frame
+local feedbackTitle: TextLabel
+local feedbackCaption: TextLabel
+local feedbackSequence: TextLabel
+local feedbackSubtitle: TextLabel
+
 local inputEnabled = false
+
+-- Renders an arrow-name sequence as a spaced emoji string (e.g. "⬆️   ⬅️   ➡️").
+local function emojiSequence(sequence: { string }): string
+	local parts = table.create(#sequence)
+	for index, arrow in sequence do
+		parts[index] = EMOJI[arrow] or "?"
+	end
+	return table.concat(parts, "   ")
+end
+
+local function hideFeedback()
+	feedbackFrame.Visible = false
+end
+
+-- Between-round success: congratulate and show the order the player just nailed.
+local function showRoundFeedback(sequence: { string })
+	feedbackTitle.Text = "🎉 Congratulations, you made it!"
+	feedbackTitle.TextColor3 = Color3.fromRGB(120, 240, 140)
+	feedbackCaption.Text = "Your moves:"
+	feedbackSequence.Text = emojiSequence(sequence)
+	feedbackSubtitle.Text = "Get ready for the next round!"
+	feedbackFrame.Visible = true
+end
+
+-- Game over: encouraging recap for both winning and losing, always showing the correct order.
+local function showEndFeedback(cleared: boolean, totalReward: number, sequence: { string })
+	if cleared then
+		feedbackTitle.Text = "🎉 You made it!"
+		feedbackTitle.TextColor3 = Color3.fromRGB(120, 240, 140)
+		feedbackCaption.Text = "Your moves:"
+		feedbackSubtitle.Text = `⭐ Training complete! +{totalReward} followers!`
+	else
+		feedbackTitle.Text = "😅 Oops, that wasn't correct!"
+		feedbackTitle.TextColor3 = Color3.fromRGB(255, 170, 90)
+		feedbackCaption.Text = "The correct order was:"
+		feedbackSubtitle.Text = `💪 Nice try! You earned +{totalReward} followers — come back and beat it!`
+	end
+	feedbackSequence.Text = emojiSequence(sequence)
+	feedbackFrame.Visible = true
+	task.delay(5, hideFeedback)
+end
 
 -- Lights an arrow button briefly (show phase and input echo share the same flash).
 local function flashArrow(arrow: string)
@@ -64,9 +120,22 @@ end
 local function onTrainerShowStep(arrow: string, round: number, maxRounds: number)
 	gameFrame.Visible = true
 	inputEnabled = false
+	-- Hide the overlay; it will be shown per-step by onTrainerShowStepNumber.
+	stepOverlayVisible.Visible = false
+
 	roundLabel.Text = `Round {round} / {maxRounds}`
 	statusLabel.Text = "Watch the trainer..."
 	flashArrow(arrow)
+end
+
+local function onTrainerShowStepNumber(stepNumber: number, _round: number, _maxRounds: number)
+	hideFeedback() -- the next round is starting; clear the between-round recap
+	stepOverlayLabel.Text = tostring(stepNumber)
+	stepOverlayVisible.Visible = true
+end
+
+local function onTrainerRoundFeedback(sequence: { string })
+	showRoundFeedback(sequence)
 end
 
 local function onTrainerInputPhase(_timeoutSeconds: number)
@@ -86,21 +155,25 @@ local function onTrainerRoundResult(correct: boolean, reward: number)
 	end
 end
 
-local function onTrainerGameOver(totalReward: number, roundsCompleted: number, cleared: boolean)
+local function onTrainerGameOver(totalReward: number, roundsCompleted: number, cleared: boolean, sequence: { string })
 	inputEnabled = false
 	statusLabel.Text = if cleared
 		then `Training complete! +{totalReward} followers`
 		else `Session over — {roundsCompleted} rounds, +{totalReward} followers`
+	stepOverlayVisible.Visible = false
+	showEndFeedback(cleared, totalReward, sequence)
 	task.delay(2.5, function()
 		gameFrame.Visible = false
 	end)
 end
 
 function SimonSaysController:Init()
+	trainerShowStepNumber = Net.Event("TrainerShowStepNumber")
 	trainerShowStep = Net.Event("TrainerShowStep")
 	trainerInputPhase = Net.Event("TrainerInputPhase")
 	trainerPoseInput = Net.Event("TrainerPoseInput")
 	trainerRoundResult = Net.Event("TrainerRoundResult")
+	trainerRoundFeedback = Net.Event("TrainerRoundFeedback")
 	trainerGameOver = Net.Event("TrainerGameOver")
 
 	local gui = Instance.new("ScreenGui")
@@ -165,13 +238,106 @@ function SimonSaysController:Init()
 	statusLabel.Text = ""
 	statusLabel.Parent = gameFrame
 
+	-- Big centered step-number overlay (fullscreen, appears during show phase).
+	stepOverlayGui = Instance.new("ScreenGui")
+	stepOverlayGui.Name = "SimonSaysStepOverlay"
+	stepOverlayGui.ResetOnSpawn = false
+
+	stepOverlayLabel = Instance.new("TextLabel")
+	stepOverlayLabel.Size = UDim2.fromScale(1, 1)
+	stepOverlayLabel.BackgroundTransparency = 1
+	stepOverlayLabel.Text = ""
+	stepOverlayLabel.TextColor3 = Color3.fromRGB(255, 230, 60)
+	stepOverlayLabel.Font = Enum.Font.GothamBlack
+	stepOverlayLabel.TextScaled = true
+	stepOverlayLabel.ZIndex = 10
+	stepOverlayLabel.TextXAlignment = Enum.TextXAlignment.Center
+	stepOverlayLabel.TextYAlignment = Enum.TextYAlignment.Center
+	stepOverlayLabel.Parent = stepOverlayGui
+
+	-- Invisible label that gates the overlay's visibility (ScreenGui.Visible is untyped in luau-lsp).
+	stepOverlayVisible = Instance.new("TextLabel")
+	stepOverlayVisible.Text = ""
+	stepOverlayVisible.Visible = false
+	stepOverlayVisible.Parent = stepOverlayGui
+
+	-- Centered feedback panel: between-round congrats and the encouraging game-over recap,
+	-- both showing the move sequence as emojis. Parented under `gui` so it shares its PlayerGui.
+	feedbackFrame = Instance.new("Frame")
+	feedbackFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	feedbackFrame.Position = UDim2.fromScale(0.5, 0.4)
+	feedbackFrame.Size = UDim2.fromOffset(460, 240)
+	feedbackFrame.BackgroundColor3 = Color3.fromRGB(24, 24, 32)
+	feedbackFrame.BackgroundTransparency = 0.05
+	feedbackFrame.Visible = false
+	feedbackFrame.ZIndex = 20
+	feedbackFrame.Parent = gui
+
+	local feedbackCorner = Instance.new("UICorner")
+	feedbackCorner.CornerRadius = UDim.new(0, 16)
+	feedbackCorner.Parent = feedbackFrame
+
+	local feedbackLayout = Instance.new("UIListLayout")
+	feedbackLayout.FillDirection = Enum.FillDirection.Vertical
+	feedbackLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	feedbackLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	feedbackLayout.Padding = UDim.new(0, 10)
+	feedbackLayout.Parent = feedbackFrame
+
+	feedbackTitle = Instance.new("TextLabel")
+	feedbackTitle.LayoutOrder = 1
+	feedbackTitle.Size = UDim2.fromOffset(420, 48)
+	feedbackTitle.BackgroundTransparency = 1
+	feedbackTitle.Font = Enum.Font.GothamBold
+	feedbackTitle.TextScaled = true
+	feedbackTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	feedbackTitle.ZIndex = 21
+	feedbackTitle.Text = ""
+	feedbackTitle.Parent = feedbackFrame
+
+	feedbackCaption = Instance.new("TextLabel")
+	feedbackCaption.LayoutOrder = 2
+	feedbackCaption.Size = UDim2.fromOffset(420, 24)
+	feedbackCaption.BackgroundTransparency = 1
+	feedbackCaption.Font = Enum.Font.Gotham
+	feedbackCaption.TextScaled = true
+	feedbackCaption.TextColor3 = Color3.fromRGB(190, 190, 200)
+	feedbackCaption.ZIndex = 21
+	feedbackCaption.Text = ""
+	feedbackCaption.Parent = feedbackFrame
+
+	feedbackSequence = Instance.new("TextLabel")
+	feedbackSequence.LayoutOrder = 3
+	feedbackSequence.Size = UDim2.fromOffset(420, 64)
+	feedbackSequence.BackgroundTransparency = 1
+	feedbackSequence.Font = Enum.Font.GothamBlack
+	feedbackSequence.TextScaled = true
+	feedbackSequence.TextColor3 = Color3.fromRGB(255, 255, 255)
+	feedbackSequence.ZIndex = 21
+	feedbackSequence.Text = ""
+	feedbackSequence.Parent = feedbackFrame
+
+	feedbackSubtitle = Instance.new("TextLabel")
+	feedbackSubtitle.LayoutOrder = 4
+	feedbackSubtitle.Size = UDim2.fromOffset(420, 48)
+	feedbackSubtitle.BackgroundTransparency = 1
+	feedbackSubtitle.Font = Enum.Font.Gotham
+	feedbackSubtitle.TextScaled = true
+	feedbackSubtitle.TextWrapped = true
+	feedbackSubtitle.TextColor3 = Color3.fromRGB(220, 220, 140)
+	feedbackSubtitle.ZIndex = 21
+	feedbackSubtitle.Text = ""
+	feedbackSubtitle.Parent = feedbackFrame
+
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
 function SimonSaysController:Start()
+	trainerShowStepNumber.OnClientEvent:Connect(onTrainerShowStepNumber)
 	trainerShowStep.OnClientEvent:Connect(onTrainerShowStep)
 	trainerInputPhase.OnClientEvent:Connect(onTrainerInputPhase)
 	trainerRoundResult.OnClientEvent:Connect(onTrainerRoundResult)
+	trainerRoundFeedback.OnClientEvent:Connect(onTrainerRoundFeedback)
 	trainerGameOver.OnClientEvent:Connect(onTrainerGameOver)
 
 	-- The arrow keys double as Roblox's default movement, so they arrive with gameProcessed=true;

@@ -28,11 +28,21 @@ local EVENTS = {
 	"MinigameConfirmStart", -- client -> server: () -- player confirmed the instructions; begin play
 	"MinigameAborted", -- server -> client: () -- pre-game timed out / cancelled; dismiss the pre-game UI
 	-- Simon Says gameplay (the PersonalTrainer minigame plugin owns these).
+	"TrainerShowStepNumber", -- server -> client: (stepNumber: number, round: number, maxRounds: number) -- show the step number (1-based index)
 	"TrainerShowStep", -- server -> client: (arrow: string, round: number, maxRounds: number) -- light this arrow during the show
 	"TrainerInputPhase", -- server -> client: (timeoutSeconds: number) -- show done; server now accepts inputs
 	"TrainerPoseInput", -- client -> server: (arrow: string) -- one arrow per fire during the input phase
 	"TrainerRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
-	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean)
+	"TrainerRoundFeedback", -- server -> client: (sequence: {string}) -- between-round success: the just-cleared order, shown as emojis
+	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean, sequence: {string}) -- sequence is the final/failed round's correct order
+	-- Rock-Paper-Scissors gameplay (the Cowboy minigame plugin owns these).
+	"RpsPickPhase", -- server -> client: (choices: {string}, timeoutSeconds: number) -- round open: show the hand buttons
+	"RpsPlayerChoice", -- client -> server: (choice: string) -- the player's hand for this round
+	"RpsReveal", -- server -> client: (playerChoice: string, opponentChoice: string, outcome: string, reelSeconds: number, playerWins: number, opponentWins: number, roundReward: number) -- spin the reel onto opponentChoice, then show the outcome/score
+	"RpsGameOver", -- server -> client: (won: boolean, playerWins: number, opponentWins: number, totalReward: number) -- match decided
+	-- Trophy rewards (TrophyService).
+	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
+	"TrophyUnlocked", -- server -> client: (Id: string, Name: string, Emoji: string) -- one-shot toast for new trophy
 	"FriendDialogLine", -- server -> client: (text: string, choices: {string}) -- gym-friend line + answer options
 	"FriendDialogChoose", -- client -> server: (choiceIndex: number) -- pick an answer
 	"FriendDialogEnd", -- server -> client: () -- dismiss the friend dialog UI

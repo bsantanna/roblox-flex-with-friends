@@ -157,6 +157,7 @@ Config.Farm = {
 		Color = Color3.fromRGB(244, 244, 238), -- white wood
 		Material = Enum.Material.WoodPlanks,
 		GateWidth = 10, -- width of the opening left in the west side
+		ClearanceRadius = 5, -- studs within which trees near the fence perimeter are removed
 	},
 	Animals = {
 		Seed = 11, -- deterministic spawn points + wander, like the forest

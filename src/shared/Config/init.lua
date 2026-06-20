@@ -429,14 +429,14 @@ Config.Npc = {
 		ArenaPosition = Vector3.new(310, 0, -140), -- inside the pen, along the same Z axis
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
-		Instructions = "Hey there! These animals need to learn a little dance. I'll show the moves —\n  repeat them in order with the on-screen buttons. Clear every round to earn followers!",
+		Instructions = "Alright! We got work to do on this farm. I'll show the chore moves —\n  repeat them in order with the on-screen buttons. Clear every round to earn followers!",
 		Dialog = {
 			Lines = {
 				"Howdy! I'm the farmer here.",
-				"These animals don't listen to me much...",
+				"This farm's been a mess since I left it... I need a hand.",
 			},
-			QualifiedLine = "Teach them a little dance? I'll show the moves!",
-			GateLine = "I'm looking for folks with at least {threshold} followers to teach my animals a dance.",
+			QualifiedLine = "Help me do the farm chores? I'll show the moves!",
+			GateLine = "I'm looking for folks with at least {threshold} followers to help me work this farm.",
 			QualifiedChoices = { "Show me!", "Maybe later" },
 			GateChoices = { "Got it" },
 			TimeoutSeconds = 30,

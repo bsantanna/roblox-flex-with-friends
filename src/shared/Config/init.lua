@@ -35,6 +35,7 @@ Config.Zones = {
 	Home = Vector3.new(0, 0, 0),
 	Airport = Vector3.new(0, 0, 560),
 	Beach = Vector3.new(0, 0, 760),
+	Farm = Vector3.new(320, 0, -140), -- zone origin; matches Config.Farm.Center
 } :: { [string]: Vector3 }
 
 -- Travel destinations selectable from the Cab picker. A place is travelable only if it is in
@@ -337,6 +338,7 @@ type NpcDialog = {
 	TimeoutSeconds: number, -- idle time before the server closes the session
 }
 type NpcDef = {
+	Zone: string, -- which World.<Zone> folder the NPC is parented to
 	UnlockFollowers: number,
 	SpawnPosition: Vector3, -- world position of the floor point the NPC stands on (its post)
 	SpawnYaw: number, -- facing, degrees around Y (0 looks -Z/north); also the arena facing
@@ -377,6 +379,7 @@ Config.Minigame = {
 
 Config.Npc = {
 	PersonalTrainer = {
+		Zone = "Home",
 		UnlockFollowers = 100,
 		SpawnPosition = Vector3.new(-10, 23, -32), -- CentralBuilding first floor, beside the spiral stair
 		SpawnYaw = 180, -- face south, toward the entrance forecourt where players approach
@@ -414,6 +417,45 @@ Config.Npc = {
 				Up = "rbxassetid://507770677", -- cheer
 				Right = "rbxassetid://507770453", -- point
 				Down = "rbxassetid://507771019", -- dance
+			},
+		},
+	},
+	Farmer = {
+		Zone = "Farm",
+		UnlockFollowers = 200,
+		SpawnPosition = Vector3.new(282, 0, -140), -- outside the west fence, near the gate
+		SpawnYaw = 90, -- face east, toward the farm entrance
+		AvatarUserId = 1, -- Roblox's own avatar as stand-in look
+		ArenaPosition = Vector3.new(310, 0, -140), -- inside the pen, along the same Z axis
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Hey there! These animals need to learn a little dance. I'll show the moves —\n  repeat them in order with the on-screen buttons. Clear every round to earn followers!",
+		Dialog = {
+			Lines = {
+				"Howdy! I'm the farmer here.",
+				"These animals don't listen to me much...",
+			},
+			QualifiedLine = "Teach them a little dance? I'll show the moves!",
+			GateLine = "I'm looking for folks with at least {threshold} followers to teach my animals a dance.",
+			QualifiedChoices = { "Show me!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 3,
+			MaxRounds = 5,
+			ShowStepSeconds = 0.6,
+			ShowGapSeconds = 0.25,
+			RoundDelaySeconds = 1.2,
+			InputTimeoutSeconds = 10,
+			BaseReward = 35,
+			RewardPerRound = 12,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				Left = "rbxassetid://507770239",
+				Up = "rbxassetid://507770677",
+				Right = "rbxassetid://507770453",
+				Down = "rbxassetid://507771019",
 			},
 		},
 	},

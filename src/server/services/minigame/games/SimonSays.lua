@@ -42,7 +42,8 @@ function SimonSaysModule.create(npcId: string)
 		end
 		current = nil
 		if session.player.Parent then
-			Net.Event("TrainerGameOver"):FireClient(session.player, session.state.totalReward, roundsCompleted, cleared)
+			Net.Event("TrainerGameOver")
+				:FireClient(session.player, session.state.totalReward, roundsCompleted, cleared, session.state.sequence)
 		end
 		session.finish()
 	end
@@ -134,6 +135,7 @@ function SimonSaysModule.create(npcId: string)
 		if st.round >= d.MaxRounds then
 			endGame(session, st.round, true)
 		else
+			Net.Event("TrainerRoundFeedback"):FireClient(player, st.sequence)
 			st.round += 1
 			startRound(session)
 		end

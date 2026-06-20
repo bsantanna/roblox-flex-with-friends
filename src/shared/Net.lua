@@ -33,7 +33,8 @@ local EVENTS = {
 	"TrainerInputPhase", -- server -> client: (timeoutSeconds: number) -- show done; server now accepts inputs
 	"TrainerPoseInput", -- client -> server: (arrow: string) -- one arrow per fire during the input phase
 	"TrainerRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
-	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean)
+	"TrainerRoundFeedback", -- server -> client: (sequence: {string}) -- between-round success: the just-cleared order, shown as emojis
+	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean, sequence: {string}) -- sequence is the final/failed round's correct order
 	-- Trophy rewards (TrophyService).
 	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
 	"TrophyUnlocked", -- server -> client: (Id: string, Name: string, Emoji: string) -- one-shot toast for new trophy

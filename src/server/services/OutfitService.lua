@@ -6,7 +6,7 @@
 -- and awards Config.GymFriends.BefriendReward followers, once each. Each player's map is replicated to
 -- their own client (NpcOutfitSync) so the client can render their custom NPCs. Other code asks here
 -- (IsFriend / GetOutfit / SaveOutfit); it never touches the map directly.
--- See docs/dev/npc/003_npc_char_creation.md.
+-- See docs/dev/npc/gym_friends.md.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AvatarEditorService = game:GetService("AvatarEditorService")

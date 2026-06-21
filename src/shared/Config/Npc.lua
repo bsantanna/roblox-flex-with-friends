@@ -199,6 +199,49 @@ Npc.Npc = {
 			},
 		},
 	},
+	Postman = {
+		Zone = "Home",
+		UnlockFollowers = 0, -- no follower gate: anyone can challenge the postman
+		SpawnPosition = Vector3.new(40, 0, -40), -- central plaza area, near the town green
+		SpawnYaw = 180, -- face south, toward the approach from the spawn plaza
+		AvatarUserId = 1, -- Roblox's own avatar as stand-in look
+		ArenaPosition = Vector3.new(60, 0, -40), -- a short walk north for the duel
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "G'day! I deliver the mail all across town. Bet ya can't beat me at Rock, Paper, Scissors!\n  Best two outta three. Step on the mark when yer ready!",
+		Dialog = {
+			Lines = {
+				"G'day! I'm the town postman.",
+				"I deliver mail all across the neighborhood — and I play a mean game o' Roshambo!",
+			},
+			QualifiedLine = "Fancy a quick game o' Rock, Paper, Scissors? Best two outta three!",
+			GateLine = "Catch me anytime — I'm always on the route.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "G'day" },
+			TimeoutSeconds = 30,
+		},
+		RockPaperScissors = {
+			WinsNeeded = 2,
+			InputTimeoutSeconds = 15,
+			ReelSeconds = 2,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1,
+			BaseReward = 40,
+			MatchBonus = 80,
+			Choices = { "Rock", "Paper", "Scissors" },
+			Emoji = {
+				Rock = "\u{270A}", -- raised fist
+				Paper = "\u{270B}", -- raised hand
+				Scissors = "\u{270C}\u{FE0F}", -- victory hand
+			},
+			Poses = {
+				-- Roblox default emotes as stand-in throws; swap for custom uploads later.
+				Rock = "rbxassetid://507770677", -- cheer (fist up)
+				Paper = "rbxassetid://507770239", -- wave (open hand)
+				Scissors = "rbxassetid://507770453", -- point
+			},
+		},
+	},
 } :: { [string]: NpcDef }
 
 return Npc

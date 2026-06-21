@@ -35,11 +35,11 @@ local EVENTS = {
 	"TrainerRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
 	"TrainerRoundFeedback", -- server -> client: (sequence: {string}) -- between-round success: the just-cleared order, shown as emojis
 	"TrainerGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean, sequence: {string}) -- sequence is the final/failed round's correct order
-	-- Rock-Paper-Scissors gameplay (the Cowboy minigame plugin owns these).
-	"RpsPickPhase", -- server -> client: (choices: {string}, timeoutSeconds: number) -- round open: show the hand buttons
+	-- Rock-Paper-Scissors gameplay (the minigame plugin owned by any npcId hosts these).
+	"RpsPickPhase", -- server -> client: (choices: {string}, timeoutSeconds: number, npcId: string) -- round open: show the hand buttons
 	"RpsPlayerChoice", -- client -> server: (choice: string) -- the player's hand for this round
 	"RpsReveal", -- server -> client: (playerChoice: string, opponentChoice: string, outcome: string, reelSeconds: number, playerWins: number, opponentWins: number, roundReward: number) -- spin the reel onto opponentChoice, then show the outcome/score
-	"RpsGameOver", -- server -> client: (won: boolean, playerWins: number, opponentWins: number, totalReward: number) -- match decided
+	"RpsGameOver", -- server -> client: (won: boolean, playerWins: number, opponentWins: number, totalReward: number, npcId: string) -- match decided
 	-- Trophy rewards (TrophyService).
 	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
 	"TrophyUnlocked", -- server -> client: (Id: string, Name: string, Emoji: string) -- one-shot toast for new trophy

@@ -48,8 +48,11 @@ local feedbackSubtitle: TextLabel
 local inputEnabled = false
 local reelToken: {}? = nil -- identity token so a new round/reveal cancels an in-flight spin
 
+local orderKey: string? = nil -- npcId received from the server, used for opponent name in UI
+
 local function setScore(playerWins: number, opponentWins: number)
-	scoreLabel.Text = `You {playerWins}  —  {opponentWins} Cowboy`
+	local name = orderKey or "Cowboy"
+	scoreLabel.Text = `You {playerWins}  —  {opponentWins} {name}`
 end
 
 local function resetButtons()
@@ -72,11 +75,12 @@ local function sendChoice(choice: string)
 	if button then
 		button.BackgroundColor3 = BUTTON_PICKED
 	end
-	statusLabel.Text = `You threw {EMOJI[choice]} — Cowboy is throwing...`
+	statusLabel.Text = `You threw {EMOJI[choice]} — {orderKey or "Cowboy"} is throwing...`
 	rpsPlayerChoice:FireServer(choice)
 end
 
-local function onPickPhase(_choices: { string }, _timeoutSeconds: number)
+local function onPickPhase(_choices: { string }, _timeoutSeconds: number, npcId: string)
+	orderKey = npcId
 	hideFeedback()
 	gameFrame.Visible = true
 	inputEnabled = true
@@ -116,34 +120,36 @@ local function onReveal(
 	roundReward: number
 )
 	inputEnabled = false
-	statusLabel.Text = "Cowboy is throwing..."
+	local name = orderKey or "Cowboy"
+	statusLabel.Text = `${name} is throwing...`
 	spinReel(opponentChoice, reelSeconds, function()
 		setScore(playerWins, opponentWins)
 		if outcome == "win" then
 			statusLabel.Text = `You win the round! +{roundReward} followers`
 		elseif outcome == "lose" then
-			statusLabel.Text = "Cowboy wins the round!"
+			statusLabel.Text = `${name} wins the round!`
 		else
 			statusLabel.Text = "Tie — throw again!"
 		end
 	end)
 end
 
-local function onGameOver(won: boolean, playerWins: number, opponentWins: number, totalReward: number)
+local function onGameOver(won: boolean, playerWins: number, opponentWins: number, totalReward: number, npcId: string)
 	inputEnabled = false
 	reelToken = nil
+	local name = npcId or "Cowboy"
 	if won then
 		feedbackTitle.Text = "\u{1F3C6} You won the match!"
 		feedbackTitle.TextColor3 = Color3.fromRGB(120, 240, 140)
-		feedbackSubtitle.Text = `\u{2B50} +{totalReward} followers and the Cowboy trophy!`
+		feedbackSubtitle.Text = `\u{2B50} +{totalReward} followers and the {name} trophy!`
 	else
 		feedbackTitle.Text = "\u{1F605} The cowboy got you!"
 		feedbackTitle.TextColor3 = Color3.fromRGB(255, 170, 90)
 		feedbackSubtitle.Text = if totalReward > 0
-			then `\u{1F920} +{totalReward} followers — come back and beat him!`
+			then `\u{1F920} +{totalReward} followers — catch {name} on the route!`
 			else "\u{1F920} Better luck next time, partner!"
 	end
-	feedbackScore.Text = `You {playerWins}  —  {opponentWins} Cowboy`
+	feedbackScore.Text = `You {playerWins}  —  {opponentWins} {name}`
 	feedbackFrame.Visible = true
 	task.delay(5, hideFeedback)
 	task.delay(2.5, function()
@@ -176,7 +182,7 @@ function RockPaperScissorsController:Init()
 	scoreLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	scoreLabel.Font = Enum.Font.GothamBold
 	scoreLabel.TextScaled = true
-	scoreLabel.Text = "You 0  —  0 Cowboy"
+	scoreLabel.Text = "You 0  —  0 ?"
 	scoreLabel.Parent = gameFrame
 
 	-- The opponent reel: a big emoji that spins like a wheel of fortune and lands on the throw.

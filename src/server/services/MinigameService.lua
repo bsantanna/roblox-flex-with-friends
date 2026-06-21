@@ -111,9 +111,11 @@ local function runPregame(session: Session, def)
 	end
 
 	-- 2. Ready-zone: a disc in front of the NPC (along its facing) the player must step onto.
+	print("[MinigameService] Creating ReadyZone for", session.npcId, "at:", tostring(def.ArenaPosition))
 	local facing = CFrame.Angles(0, math.rad(def.SpawnYaw), 0).LookVector
 	local center = def.ArenaPosition + facing * mg.ReadyZone.Offset
 	local zone = ReadyZone.create(center, mg.ReadyZone.Radius, mg.ReadyZone.Color, mg.ReadyZone.Height)
+	print("[MinigameService] ReadyZone created at:", tostring(center))
 	if session.player.Parent then
 		awaitReady:FireClient(session.player)
 	end

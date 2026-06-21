@@ -61,11 +61,15 @@ local function endSession()
 		dialogEnd:FireClient(s.player)
 	end
 
-	-- Resume chore patrol when dialog ends without leading to a minigame
-	-- (minigame service manages chore pause/resume on its own).
-	local choreActor = npcActors[s.npcId]
-	if not s.train and choreActor then
-		NpcActor.resumeChore(choreActor)
+	-- Resume chore or citizen walk when dialog ends without leading to a minigame
+	-- (minigame service manages chore/citizen walk pause/resume on its own).
+	local walkActor = npcActors[s.npcId]
+	if not s.train and walkActor then
+		if Config.Npc[s.npcId]["CitizenWalk"] then
+			NpcActor.resumeCitizenWalk(walkActor)
+		else
+			NpcActor.resumeChore(walkActor)
+		end
 	end
 end
 
@@ -127,10 +131,14 @@ local function onPromptTriggered(player: Player, npcId: string)
 	session = s
 	bubble:show()
 
-	-- Pause chore patrol so the NPC doesn't wander during dialog.
+	-- Pause chore or citizen walk so the NPC doesn't wander during dialog.
 	local actor = npcActors[npcId]
-	if actor and Config.Npc[npcId]["Chore"] then
-		NpcActor.pauseChore(actor)
+	if actor then
+		if Config.Npc[npcId]["Chore"] then
+			NpcActor.pauseChore(actor)
+		elseif Config.Npc[npcId]["CitizenWalk"] then
+			NpcActor.pauseCitizenWalk(actor)
+		end
 	end
 
 	sendStep(s)
@@ -155,12 +163,13 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	local npcId = session.npcId
 	local modelData = npcModels[npcId]
 	local choreActor = npcActors[npcId]
+	local citizenActor = npcActors[npcId]
 	local train = session.qualified and choiceIndex == 1
 	session.train = train
 	endSession()
 	if train and modelData then
 		-- MinigameService hides this NPC's prompt for the session and restores it on any outcome.
-		MinigameService:Request(player, npcId, modelData.model, choreActor)
+		MinigameService:Request(player, npcId, modelData.model, choreActor, citizenActor)
 	end
 end
 

@@ -8,6 +8,9 @@
 -- Farm chore patrol: NPCs with a chore config wander between chore points, playing chore animations
 -- (Action priority) when arrived, then gliding to the next chore or the home spawn. The chore cycle
 -- is a background task that can be paused/stopped by external callers (e.g. when a minigame starts).
+--
+-- Citizen walk: NPCs that patrol the town sidewalks wander between random waypoints. Like chore
+-- patrol, the walk can be paused (dialog/minigame starts) and resumed (game ends).
 
 local NpcActor = {}
 NpcActor.__index = NpcActor
@@ -64,6 +67,7 @@ export type NpcActor = typeof(setmetatable(
 		_choreIndex: number,
 		-- Citizen walk (sidewalk patrol for non-chore NPCs).
 		_citizenWalkId: thread?,
+		_citizenWalkPause: boolean,
 	},
 	NpcActor
 ))
@@ -89,6 +93,7 @@ function NpcActor.new(model: Model, moveSeconds: number, walkAnimationId: string
 		_choreIndex = 0,
 		-- Citizen walk.
 		_citizenWalkId = nil,
+		_citizenWalkPause = false,
 	}, NpcActor)
 end
 
@@ -180,6 +185,11 @@ local function glideTo(self: NpcActor, targetFeet: Vector3, durationSeconds: num
 
 	local t = 0
 	while t < durationSeconds do
+		-- Check pause flag so the NPC stops mid-glide when chore/citizen walk is paused.
+		if self._chorePause or self._citizenWalkPause then
+			self:_stopWalk()
+			return
+		end
 		local dt = task.wait()
 		t = math.min(t + dt, durationSeconds)
 		self.model:PivotTo(CFrame.new(startPos:Lerp(endPos, t / durationSeconds)) * travelRot)
@@ -284,16 +294,22 @@ end
 
 -- Internal: random-waypoint sidewalk walk. Glides to a random waypoint, pauses,
 -- then picks another random waypoint (avoiding the one just left). Runs forever
--- until stopCitizenWalk is called.
+-- until stopCitizenWalk is called. Can be paused/resumed with the API below.
 local function _citizenWalkLoop(
 	self: NpcActor,
 	waypoints: { Vector3 },
 	walkSpeed: number,
-	pauseMin: number,
+	_pauseMin: number,
 	pauseMax: number
 )
 	local prevIdx = 0
 	while true do
+		-- Yield while paused (same pattern as chore patrol) so the loop never
+		-- exits — it just blocks until resumed.
+		while self._citizenWalkPause do
+			task.wait(0.25)
+		end
+
 		-- Pick a random waypoint different from the one we just left.
 		local nextIdx
 		repeat
@@ -309,8 +325,15 @@ local function _citizenWalkLoop(
 		-- Glide to the waypoint.
 		glideTo(self, waypoints[nextIdx], duration)
 
-		-- Random pause at the waypoint.
-		task.wait(math.random(pauseMin, pauseMax))
+		-- Wait at the waypoint for a random duration, but yield so pause can interrupt.
+		local elapsed = 0
+		while elapsed < pauseMax do
+			if self._citizenWalkPause then
+				break
+			end
+			task.wait(0.25)
+			elapsed += 0.25
+		end
 	end
 end
 
@@ -331,17 +354,30 @@ function NpcActor.startCitizenWalk(
 		return
 	end
 
+	self._citizenWalkPause = false
 	self._citizenWalkId = task.spawn(function()
 		_citizenWalkLoop(self, waypoints, walkSpeed, pauseMin, pauseMax)
 	end)
 end
 
--- Stops the citizen walk loop.
+-- Pauses the citizen walk loop (e.g. when a minigame starts). The NPC stays where it is.
+-- The walk can be resumed with `resumeCitizenWalk`.
+function NpcActor.pauseCitizenWalk(self: NpcActor)
+	self._citizenWalkPause = true
+end
+
+-- Resumes the citizen walk after it was paused.
+function NpcActor.resumeCitizenWalk(self: NpcActor)
+	self._citizenWalkPause = false
+end
+
+-- Stops the citizen walk loop entirely (e.g. when the game shuts down).
 function NpcActor.stopCitizenWalk(self: NpcActor)
 	if self._citizenWalkId then
 		task.cancel(self._citizenWalkId)
 		self._citizenWalkId = nil
 	end
+	self._citizenWalkPause = false
 end
 
 return NpcActor

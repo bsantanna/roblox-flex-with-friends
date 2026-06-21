@@ -47,6 +47,7 @@ export type Session = {
 	model: Model?,
 	actor: NpcActor.NpcActor?,
 	choreActor: NpcActor.NpcActor?, -- chore patrol actor from DialogService (shared with chore)
+	citizenWalkActor: NpcActor.NpcActor?, -- citizen walk actor from DialogService (shared with citizen walk)
 	game: Game,
 	def: any, -- full Config.Npc entry (for chore check, etc.)
 	homePosition: Vector3, -- where the NPC walks back to when the session ends
@@ -98,6 +99,10 @@ local function endSession(session: Session, interrupted: boolean)
 			-- Resume chore patrol after the NPC walks home.
 			if session.choreActor then
 				NpcActor.resumeChore(session.choreActor)
+			end
+			-- Resume citizen walk after the NPC walks home.
+			if session.citizenWalkActor then
+				NpcActor.resumeCitizenWalk(session.citizenWalkActor)
 			end
 		end)
 	end
@@ -186,9 +191,16 @@ end
 -- Starts a minigame for `player` at NPC `npcId`. Called by DialogService after the Train choice;
 -- the unlock check repeats here as defense in depth. `model` is the NPC (nil-safe: a fallback body
 -- just won't walk/pose). `choreActor` is the chore patrol NpcActor from DialogService (for chore
--- pause/resume — the minigame's own actor instance is for walkTo/arena movement). No-op if a game
+-- pause/resume — the minigame's own actor instance is for walkTo/arena movement). `citizenActor` is
+-- the citizen walk NpcActor from DialogService (for citizen walk pause/resume). No-op if a game
 -- is already running.
-function MinigameService:Request(player: Player, npcId: string, model: Model?, choreActor: NpcActor.NpcActor?)
+function MinigameService:Request(
+	player: Player,
+	npcId: string,
+	model: Model?,
+	choreActor: NpcActor.NpcActor?,
+	citizenActor: NpcActor.NpcActor?
+)
 	if active then
 		return
 	end
@@ -209,6 +221,7 @@ function MinigameService:Request(player: Player, npcId: string, model: Model?, c
 		def = def,
 		actor = if model then NpcActor.new(model, def.MoveSeconds, def.WalkAnimation) else nil,
 		choreActor = choreActor,
+		citizenWalkActor = citizenActor,
 		game = plugin,
 		homePosition = def.SpawnPosition,
 		homeYaw = def.SpawnYaw,
@@ -229,6 +242,11 @@ function MinigameService:Request(player: Player, npcId: string, model: Model?, c
 	-- Pause chore patrol so the NPC doesn't wander while the minigame is running.
 	if def["Chore"] and session.choreActor then
 		NpcActor.pauseChore(session.choreActor)
+	end
+
+	-- Pause citizen walk so the NPC doesn't wander while the minigame is running.
+	if def["CitizenWalk"] and session.citizenWalkActor then
+		NpcActor.pauseCitizenWalk(session.citizenWalkActor)
 	end
 
 	task.spawn(runPregame, session, def)

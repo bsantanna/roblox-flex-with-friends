@@ -57,9 +57,18 @@ type NpcDialog = {
 	GateChoices: { string }, -- choice 1 leaves
 	TimeoutSeconds: number, -- idle time before the server closes the session
 }
+-- Fixed, code-configured profession outfit applied to the NPC on spawn (DialogService). The base
+-- model comes from AvatarUserId; this dresses it. Rigid headwear goes through HumanoidDescription's
+-- HatAccessory string property; layered clothing (shirts/pants/jackets) through SetAccessories. These
+-- are real Marketplace asset ids; not player-editable (that's the gym friends, a separate system).
+type NpcOutfit = {
+	Hats: { number }, -- rigid headwear asset ids (HumanoidDescription.HatAccessory); {} for none
+	Layered: { { AssetId: number, Type: Enum.AccessoryType } }, -- layered clothing; {} for none
+}
 type NpcDef = {
 	Zone: string, -- which World.<Zone> folder the NPC is parented to
 	UnlockFollowers: number,
+	Outfit: NpcOutfit?, -- profession look applied on spawn (omitted = bare AvatarUserId avatar)
 	SpawnPosition: Vector3, -- world position of the floor point the NPC stands on (its post)
 	SpawnYaw: number, -- facing, degrees around Y (0 looks -Z/north); also the arena facing
 	AvatarUserId: number, -- avatar copied for the NPC model (red-box fallback on failure)
@@ -78,7 +87,11 @@ Npc.Npc = {
 		UnlockFollowers = 100,
 		SpawnPosition = Vector3.new(-10, 23, -32), -- CentralBuilding first floor, beside the spiral stair
 		SpawnYaw = 180, -- face south, toward the entrance forecourt where players approach
-		AvatarUserId = 1, -- Roblox's own avatar as the stand-in trainer look
+		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
+		Outfit = { -- gym look: sweatband + athletic tank top
+			Hats = { 12871624213 }, -- Red Bandana Headband
+			Layered = { { AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt } }, -- White Tank Top
+		},
 		ArenaPosition = Vector3.new(-10, 23, -50), -- open floor north of the post, in clear view from it
 		MoveSeconds = 1.5, -- seconds for the trainer to walk between its post and the arena
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
@@ -121,7 +134,11 @@ Npc.Npc = {
 		UnlockFollowers = 200,
 		SpawnPosition = Vector3.new(282, 0, -140), -- outside the west fence, near the gate
 		SpawnYaw = 90, -- face east, toward the farm entrance
-		AvatarUserId = 1, -- Roblox's own avatar as stand-in look
+		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
+		Outfit = { -- farmhand look: straw hat + denim overalls
+			Hats = { 18358376553 }, -- Straw Hat
+			Layered = { { AssetId = 127189956586914, Type = Enum.AccessoryType.Pants } }, -- Classic Blue Denim Overalls
+		},
 		ArenaPosition = Vector3.new(310, 0, -140), -- inside the pen, along the same Z axis
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
@@ -161,7 +178,11 @@ Npc.Npc = {
 		UnlockFollowers = 0, -- no follower gate: anyone can challenge the cowboy
 		SpawnPosition = Vector3.new(300, 0, -120), -- inside the paddock, on grass north-east of the Farmer
 		SpawnYaw = 90, -- same facing as the Farmer (toward the pen approach)
-		AvatarUserId = 1, -- Roblox's own avatar as stand-in look
+		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
+		Outfit = { -- cowboy look: a wide-brim cowboy hat
+			Hats = { 10473499273 }, -- Cowboy Hat
+			Layered = {},
+		},
 		ArenaPosition = Vector3.new(322, 0, -120), -- a short walk to clear pen floor for the duel
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
@@ -204,7 +225,11 @@ Npc.Npc = {
 		UnlockFollowers = 0, -- no follower gate: anyone can challenge the postman
 		SpawnPosition = Vector3.new(40, 0, -40), -- central plaza area, near the town green
 		SpawnYaw = 180, -- face south, toward the approach from the spawn plaza
-		AvatarUserId = 1, -- Roblox's own avatar as stand-in look
+		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
+		Outfit = { -- postal look: a peaked uniform officer cap
+			Hats = { 13383061629 }, -- White Star Line Officer Cap
+			Layered = {},
+		},
 		ArenaPosition = Vector3.new(60, 0, -40), -- a short walk north for the duel
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk

@@ -59,16 +59,35 @@ cleared (Simon Says) or the match is won (Rock-Paper-Scissors). Trophies persist
 - **Client**: `PhoneMenuController` mirrors the definitions to render the grid + toast — **the two
   lists must stay identical** (same id / name / emoji per trophy).
 
-## Looks and poses
+## Looks
 
-Each minigame NPC's model is built from `AvatarUserId` (`Players:CreateHumanoidModelFromUserId`),
-with a red-box fallback if the fetch fails. Pose/throw/arrow animations are configured per NPC in its
-game subtable (`SimonSays.Poses`, `RockPaperScissors.Poses`).
+Each minigame NPC's model is built from `AvatarUserId` (`Players:CreateHumanoidModelFromUserId`,
+currently the Roblox avatar `1`), with a red-box fallback if the fetch fails. On top of that base,
+`DialogService` dresses it in a fixed, **code-configured** profession outfit from
+`Config.Npc.<npcId>.Outfit` — applied on spawn, **not** player-editable (that's the gym friends, a
+separate system).
 
-> **Current state:** every NPC uses `AvatarUserId = 1` (the same Roblox avatar) and the poses are
-> placeholder Roblox default emotes. Giving each NPC a fixed, profession-matched outfit (configured in
-> code, applied on spawn) and purpose-matched poses is in progress — this section will document the
-> outfit/pose config once it lands.
+An `Outfit` has two parts, both real Marketplace asset ids:
+
+- **`Hats`** — rigid headwear ids, applied through `HumanoidDescription.HatAccessory` (the string
+  property — rigid accessories are dropped by `SetAccessories`).
+- **`Layered`** — layered clothing (`{ AssetId, Type = Enum.AccessoryType.* }`), applied through
+  `HumanoidDescription:SetAccessories(list, false)` (`false` keeps the hats).
+
+Because `ApplyDescriptionAsync` requires the model to be in the DataModel, the outfit is applied
+**after** the NPC is parented into its zone. Current looks: Postman (officer cap), Cowboy (cowboy
+hat), Trainer (sweatband + tank top), Farmer (straw hat + denim overalls).
+
+## Poses
+
+Pose/throw/arrow animations are configured per NPC in its game subtable (`SimonSays.Poses`,
+`RockPaperScissors.Poses`).
+
+> **Placeholders:** the poses are Roblox **default** emote animation ids — they load for every player.
+> Truly profession/game-specific poses (squat, lift, draw…) must be **uploaded** to the place/group
+> owner's account, because the engine only plays animation assets the place owner owns (or Roblox
+> defaults); arbitrary catalog animation ids fail to load for other players. Once uploaded, swapping
+> is a one-line id change per pose in `Config.Npc`.
 
 ---
 

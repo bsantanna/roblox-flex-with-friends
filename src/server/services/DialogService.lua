@@ -141,6 +141,32 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	end
 end
 
+-- Dresses an NPC in its fixed profession outfit (Config.Npc.<npcId>.Outfit). The model must already
+-- be parented into the DataModel (ApplyDescription needs that). Rigid headwear goes through the
+-- HatAccessory string property; layered clothing (shirt/pants/jacket) through SetAccessories with
+-- includeRigidAccessories=false so the hats are preserved. Yields, so spawnNpc runs off the boot thread.
+local function applyOutfit(model: Model, outfit: any)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local desc = humanoid:GetAppliedDescription()
+
+	local hatIds = {}
+	for _, id in outfit.Hats do
+		table.insert(hatIds, tostring(id))
+	end
+	desc.HatAccessory = table.concat(hatIds, ",")
+
+	local layered = {}
+	for i, item in outfit.Layered do
+		table.insert(layered, { Order = i, AssetId = item.AssetId, AccessoryType = item.Type, IsLayered = true })
+	end
+	desc:SetAccessories(layered, false)
+
+	humanoid:ApplyDescriptionAsync(desc)
+end
+
 local function makeFallbackBody(): Model
 	local model = Instance.new("Model")
 	local body = Instance.new("Part")
@@ -205,6 +231,10 @@ local function spawnNpc(npcId: string, def: any)
 	end)
 	prompt.Parent = root
 	model.Parent = zoneFolder
+	-- Dress the NPC in its profession outfit once it's in the DataModel (ApplyDescription requires it).
+	if def.Outfit then
+		applyOutfit(model, def.Outfit)
+	end
 	NpcPromptService.Register(npcId, prompt)
 	npcModels[npcId] = { root = root, model = model }
 end

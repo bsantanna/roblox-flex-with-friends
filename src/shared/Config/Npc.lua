@@ -92,6 +92,10 @@ type NpcDef = {
 	SimonSays: SimonSaysDef?, -- present iff this NPC hosts the Simon Says minigame
 	RockPaperScissors: RockPaperScissorsDef?, -- present iff this NPC hosts the Rock-Paper-Scissors minigame
 	QuickDraw: QuickDrawDef?, -- present iff this NPC hosts the Quick Draw reaction minigame
+	Chore: {
+		HomePosition: Vector3, -- spawn / idle position where the NPC wanders from
+		Waypoints: { { position: Vector3, animationId: string, delaySeconds: number } }, -- ordered chore points
+	}?, -- present iff this NPC does farm chore patrol
 }
 
 Npc.Npc = {
@@ -185,6 +189,19 @@ Npc.Npc = {
 				Down = "rbxassetid://507771019",
 			},
 		},
+		-- Farm chore patrol: the Farmer wanders the paddock doing chores (wood-chopping, watering,
+		-- feeding, fence-mending, harvesting). Animations use Roblox default emote IDs as placeholders;
+		-- upload profession-specific animations and replace the IDs.
+		Chore = {
+			HomePosition = Vector3.new(282, 0, -140), -- spawn / idle position
+			Waypoints = {
+				{ position = Vector3.new(295, 0, -135), animationId = "rbxassetid://180734708", delaySeconds = 3 }, -- wood chop (axe swing)
+				{ position = Vector3.new(310, 0, -145), animationId = "rbxassetid://507770239", delaySeconds = 2.5 }, -- watering (wave/can)
+				{ position = Vector3.new(305, 0, -130), animationId = "rbxassetid://507770453", delaySeconds = 2 }, -- feeding (point/throw)
+				{ position = Vector3.new(290, 0, -148), animationId = "rbxassetid://507770677", delaySeconds = 3 }, -- fence mend (cheer/lift)
+				{ position = Vector3.new(315, 0, -132), animationId = "rbxassetid://180734708", delaySeconds = 2.5 }, -- harvest (chop)
+			},
+		},
 	},
 	Cowboy = {
 		Zone = "Farm",
@@ -230,6 +247,17 @@ Npc.Npc = {
 				Rock = "rbxassetid://507770677", -- cheer (fist up)
 				Paper = "rbxassetid://507770239", -- wave (open hand)
 				Scissors = "rbxassetid://507770453", -- point
+			},
+		},
+		-- Farm chore patrol: the Cowboy rides around the paddock doing ranch work (saddle, lasso,
+		-- resting, repairs). Animations use Roblox default emote IDs as placeholders.
+		Chore = {
+			HomePosition = Vector3.new(300, 0, -120), -- spawn / idle position
+			Waypoints = {
+				{ position = Vector3.new(315, 0, -125), animationId = "rbxassetid://180734708", delaySeconds = 3 }, -- saddle tightening (axe swing)
+				{ position = Vector3.new(325, 0, -130), animationId = "rbxassetid://507770453", delaySeconds = 2 }, -- lasso throw (point)
+				{ position = Vector3.new(310, 0, -115), animationId = "rbxassetid://507770239", delaySeconds = 2.5 }, -- resting by fence (wave)
+				{ position = Vector3.new(295, 0, -110), animationId = "rbxassetid://180734708", delaySeconds = 2.5 }, -- repairs (axe swing)
 			},
 		},
 	},

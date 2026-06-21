@@ -100,6 +100,21 @@ Pose/throw/arrow animations are configured per NPC in its game subtable (`SimonS
 > defaults); arbitrary catalog animation ids fail to load for other players. Once uploaded, swapping
 > is a one-line id change per pose in `Config.Npc`.
 
+## Farm chore patrol
+
+The Farmer and Cowboy NPCs walk around their zone doing chore animations when not in a minigame.
+Each chore point has a position (where the NPC glides to), an animation id, and a delay (how long
+the chore plays). The chore cycle loops: the NPC visits each point in order, then returns home and
+repeats.
+
+When a player talks to the NPC and starts a minigame, the chore patrol pauses (the NPC stays where
+it is) and the NPC walks to the arena. After the minigame ends, the NPC walks home and the chore
+patrol resumes automatically.
+
+**Chore config** lives in `Config.Npc.<npcId>.Chore` with `HomePosition` and an ordered
+`Waypoints` array. Animations use Roblox default emote IDs as placeholders — upload profession-specific
+animations and replace the IDs.
+
 ---
 
 **Procedural note for agents:** This file is the canonical reference for the minigame NPCs. **Always

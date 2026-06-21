@@ -4,6 +4,10 @@
 -- the same way (extracted from the trainer pose-memory game). The model's root must be anchored:
 -- PivotTo carries the jointed limbs, and the floor is assumed level (the pivot Y is preserved while
 -- walking). A later walkTo supersedes one still in flight, so the latest destination always wins.
+--
+-- Farm chore patrol: NPCs with a chore config wander between chore points, playing chore animations
+-- (Action priority) when arrived, then gliding to the next chore or the home spawn. The chore cycle
+-- is a background task that can be paused/stopped by external callers (e.g. when a minigame starts).
 
 local NpcActor = {}
 NpcActor.__index = NpcActor
@@ -53,6 +57,11 @@ export type NpcActor = typeof(setmetatable(
 		walkAnimationId: string,
 		_moveGen: number,
 		_walkTrack: AnimationTrack?,
+		-- Chore patrol state.
+		_choreCycleId: thread?,
+		_chorePause: boolean,
+		_choreWaypoints: { { position: Vector3, animationId: string, delaySeconds: number } }?,
+		_choreIndex: number,
 	},
 	NpcActor
 ))
@@ -71,6 +80,11 @@ function NpcActor.new(model: Model, moveSeconds: number, walkAnimationId: string
 		walkAnimationId = walkAnimationId,
 		_moveGen = 0,
 		_walkTrack = nil,
+		-- Chore patrol.
+		_choreCycleId = nil,
+		_chorePause = false,
+		_choreWaypoints = nil,
+		_choreIndex = 0,
 	}, NpcActor)
 end
 
@@ -133,6 +147,133 @@ function NpcActor.walkTo(self: NpcActor, targetFeet: Vector3, finalYaw: number)
 	if myGen == self._moveGen then
 		self.model:PivotTo(CFrame.new(endPos) * finalRot)
 	end
+end
+
+-- Chore patrol ---------------------------------------------------------------------------
+
+-- Moves the NPC from its current position to `targetFeet` (same Y plane, no turning).
+-- Used internally by chore patrol for short hops between chore points.
+local function glideTo(self: NpcActor, targetFeet: Vector3, durationSeconds: number)
+	self:_stopWalk()
+
+	local startCF = self.model:GetPivot()
+	local startPos = startCF.Position
+	local endPos = Vector3.new(targetFeet.X, startPos.Y, targetFeet.Z)
+	local moveDir = endPos - startPos
+	local moving = moveDir.Magnitude > 0.5
+	if not moving then
+		return
+	end
+	local travelRot = CFrame.lookAt(Vector3.zero, moveDir).Rotation
+
+	if self.animator then
+		local track = self.animator:LoadAnimation(getAnimation(self.walkAnimationId))
+		track.Looped = true
+		track.Priority = Enum.AnimationPriority.Movement
+		track:Play()
+		self._walkTrack = track
+	end
+
+	local t = 0
+	while t < durationSeconds do
+		local dt = task.wait()
+		t = math.min(t + dt, durationSeconds)
+		self.model:PivotTo(CFrame.new(startPos:Lerp(endPos, t / durationSeconds)) * travelRot)
+	end
+	self:_stopWalk()
+end
+
+-- Plays a chore animation at the given position. The NPC glides to the position, stops,
+-- plays the chore animation, then idles. Yields.
+local function performChore(
+	self: NpcActor,
+	chore: { position: Vector3, animationId: string, delaySeconds: number },
+	durationSeconds: number
+)
+	glideTo(self, chore.position, durationSeconds)
+
+	local choreAnim = getAnimation(chore.animationId)
+	if self.animator and choreAnim then
+		local track = self.animator:LoadAnimation(choreAnim)
+		track.Priority = Enum.AnimationPriority.Action
+		track:Play()
+		task.wait(chore.delaySeconds)
+		track:Stop()
+	end
+
+	task.wait(0.5) -- brief pause between chores
+end
+
+-- Runs the chore loop in the background. Yields when paused by `PauseChore`.
+local function choreLoop(self: NpcActor, homePos: Vector3)
+	-- Idling at the home position before starting chores
+	glideTo(self, homePos, 0.5)
+
+	local waypoints = self._choreWaypoints
+	if not waypoints or #waypoints == 0 then
+		return
+	end
+
+	while self._chorePause == false do
+		for i, chore in waypoints do
+			if self._chorePause then
+				break
+			end
+			self._choreIndex = i
+			performChore(self, chore, self.moveSeconds)
+		end
+
+		-- Pause at home position until unpause (e.g. minigame ends) or loop restarts.
+		-- Yield until the chore is resumed.
+		while self._chorePause do
+			task.wait(0.25)
+		end
+	end
+end
+
+-- Starts the chore patrol loop for this NPC. `homePos` is where the NPC idles;
+-- `waypoints` is an ordered list of chore points to visit. The loop runs in the
+-- background and can be paused/stopped with the methods below.
+-- No-op if the NPC has no animator or no waypoints.
+function NpcActor.startChorePatrol(
+	npcActor: NpcActor,
+	homePos: Vector3,
+	waypoints: { { position: Vector3, animationId: string, delaySeconds: number } }
+)
+	-- Cancel any existing chore cycle
+	npcActor:_stopChore()
+
+	npcActor._choreWaypoints = waypoints
+	npcActor._chorePause = false
+	npcActor._choreIndex = 1
+
+	if not npcActor.animator or not waypoints or #waypoints == 0 then
+		return
+	end
+
+	npcActor._choreCycleId = task.spawn(function()
+		choreLoop(npcActor, homePos)
+	end)
+end
+
+-- Pauses the chore loop (e.g. when a minigame starts). The NPC stays where it is.
+-- The loop can be resumed with `ResumeChore`.
+function NpcActor.pauseChore(npcActor: NpcActor)
+	npcActor._chorePause = true
+end
+
+-- Resumes the chore loop after it was paused.
+function NpcActor.resumeChore(npcActor: NpcActor)
+	npcActor._chorePause = false
+end
+
+-- Stops the chore loop entirely (e.g. when the game shuts down).
+function NpcActor._stopChore(npcActor: NpcActor)
+	if npcActor._choreCycleId then
+		task.cancel(npcActor._choreCycleId)
+		npcActor._choreCycleId = nil
+	end
+	npcActor._chorePause = false
 end
 
 return NpcActor

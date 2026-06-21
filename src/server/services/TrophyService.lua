@@ -32,10 +32,56 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Cowboy",
 		Emoji = "\u{1F404}", -- cow emoji
 	},
+	Postman = {
+		Id = "postman_swiftpost",
+		Name = "Swift Post",
+		Emoji = "\u{1F4E6}", -- letter emoji
+	},
+	Sage = {
+		Id = "sage_quickdraw",
+		Name = "Fast Hands",
+		Emoji = "\u{26A1}", -- high voltage / lightning emoji
+	},
+	TaxiDriver = {
+		Id = "taxi_driver_mobility",
+		Name = "Mobility",
+		Emoji = "\u{1F695}", -- taxi emoji
+	},
+	Policeman = {
+		Id = "policeman_protection",
+		Name = "Protection",
+		Emoji = "\u{1F46E}", -- police officer emoji
+	},
+	Firefighter = {
+		Id = "firefighter_bravery",
+		Name = "Bravery",
+		Emoji = "\u{1F692}", -- fire engine emoji
+	},
+	Gardener = {
+		Id = "gardener_caretaking",
+		Name = "Caretaking",
+		Emoji = "\u{1F331}", -- seedling emoji
+	},
+	HomeBuilder = {
+		Id = "home_builder_nicehome",
+		Name = "Nice Home",
+		Emoji = "\u{1F3E0}", -- house emoji
+	},
+	Nurse = {
+		Id = "nurse_healthy",
+		Name = "Healthy",
+		Emoji = "\u{1FA7A}", -- stethoscope emoji
+	},
+	TruckDriver = {
+		Id = "truck_driver_heavyduty",
+		Name = "Heavy Duty",
+		Emoji = "\u{1F69A}", -- delivery truck emoji
+	},
 }
 
 local trophyEarned: RemoteEvent
 local trophyUnlocked: RemoteEvent
+local awardedCallbacks: { (Player) -> () } = {}
 
 function TrophyService:Init()
 	trophyEarned = Net.Event("TrophyEarned")
@@ -83,6 +129,16 @@ function TrophyService:AwardTrophy(player: Player, npcId: string)
 
 	-- One-shot toast notification with trophy definition.
 	trophyUnlocked:FireClient(player, def.Id, def.Name, def.Emoji)
+
+	-- Let listeners (e.g. NpcService's trophy-gated unlocks) react to the new trophy.
+	for _, callback in awardedCallbacks do
+		task.spawn(callback, player)
+	end
+end
+
+-- Register a callback run with (player) whenever that player earns a new trophy.
+function TrophyService:OnAwarded(callback: (Player) -> ())
+	table.insert(awardedCallbacks, callback)
 end
 
 return TrophyService

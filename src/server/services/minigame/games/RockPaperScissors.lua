@@ -49,7 +49,8 @@ function RockPaperScissorsModule.create(npcId: string)
 		end
 		current = nil
 		if session.player.Parent then
-			Net.Event("RpsGameOver"):FireClient(session.player, won, st.playerWins, st.opponentWins, st.totalReward)
+			Net.Event("RpsGameOver")
+				:FireClient(session.player, won, st.playerWins, st.opponentWins, st.totalReward, npcId)
 		end
 		session.finish()
 	end
@@ -68,7 +69,7 @@ function RockPaperScissorsModule.create(npcId: string)
 			end
 			st.phase = "pick"
 			st.deadline = os.clock() + d.InputTimeoutSeconds
-			Net.Event("RpsPickPhase"):FireClient(session.player, d.Choices, d.InputTimeoutSeconds)
+			Net.Event("RpsPickPhase"):FireClient(session.player, d.Choices, d.InputTimeoutSeconds, npcId)
 
 			-- Round-scoped timeout: no pick in time ends the match as a loss.
 			local deadline = st.deadline

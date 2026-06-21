@@ -17,6 +17,7 @@ local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local MinigameService = require(script.Parent.MinigameService)
 local NpcPromptService = require(script.Parent.NpcPromptService)
+local NpcActor = require(script.Parent.minigame.NpcActor)
 
 local DialogService = {}
 local dialogLine: any
@@ -26,6 +27,8 @@ local dialogEnd: any
 
 -- All spawned NPC models: npcId -> { root: BasePart, model: Model }
 local npcModels: { [string]: { root: BasePart, model: Model } } = {}
+-- All spawned NPC actors (for chore patrol): npcId -> NpcActor
+local npcActors: { [string]: NpcActor.NpcActor? } = {}
 -- Dialog sessions: one at a time. If a new NPC is talked to, the old session ends.
 type Session = {
 	player: Player,
@@ -36,6 +39,8 @@ type Session = {
 	choices: { string }?,
 	bubble: any,
 	timeout: any?,
+	train: boolean, -- true if the dialog choice leads to a minigame
+	model: Model?, -- the NPC model (needed for chore resume)
 }
 local session: Session? = nil
 
@@ -55,6 +60,13 @@ local function endSession()
 	if s.player.Parent then
 		dialogEnd:FireClient(s.player)
 	end
+
+	-- Resume chore patrol when dialog ends without leading to a minigame
+	-- (minigame service manages chore pause/resume on its own).
+	local choreActor = npcActors[s.npcId]
+	if not s.train and choreActor then
+		NpcActor.resumeChore(choreActor)
+	end
 end
 
 local function armTimeout(s: Session)
@@ -72,7 +84,7 @@ local function sendStep(s: Session)
 	end
 	s.choices = step.choices
 	s.bubble:setText(step.text)
-	dialogLine:FireClient(s.player, step.text, step.index, step.total, step.choices)
+	dialogLine:FireClient(s.player, step.text, step.index, step.total, step.choices, s.npcId)
 	armTimeout(s)
 end
 
@@ -109,9 +121,18 @@ local function onPromptTriggered(player: Player, npcId: string)
 		qualified = table.find(profile.Data.UnlockedNpcs, npcId) ~= nil,
 		index = 1,
 		bubble = bubble,
+		train = false,
+		model = modelData.model,
 	}
 	session = s
 	bubble:show()
+
+	-- Pause chore patrol so the NPC doesn't wander during dialog.
+	local actor = npcActors[npcId]
+	if actor and Config.Npc[npcId]["Chore"] then
+		NpcActor.pauseChore(actor)
+	end
+
 	sendStep(s)
 end
 
@@ -133,12 +154,40 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 
 	local npcId = session.npcId
 	local modelData = npcModels[npcId]
+	local choreActor = npcActors[npcId]
 	local train = session.qualified and choiceIndex == 1
+	session.train = train
 	endSession()
 	if train and modelData then
 		-- MinigameService hides this NPC's prompt for the session and restores it on any outcome.
-		MinigameService:Request(player, npcId, modelData.model)
+		MinigameService:Request(player, npcId, modelData.model, choreActor)
 	end
+end
+
+-- Dresses an NPC in its fixed profession outfit (Config.Npc.<npcId>.Outfit). The model must already
+-- be parented into the DataModel (ApplyDescription needs that). Rigid headwear goes through the
+-- HatAccessory string property; layered clothing (shirt/pants/jacket) through SetAccessories with
+-- includeRigidAccessories=false so the hats are preserved. Yields, so spawnNpc runs off the boot thread.
+local function applyOutfit(model: Model, outfit: any)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local desc = humanoid:GetAppliedDescription()
+
+	local hatIds = {}
+	for _, id in outfit.Hats do
+		table.insert(hatIds, tostring(id))
+	end
+	desc.HatAccessory = table.concat(hatIds, ",")
+
+	local layered = {}
+	for i, item in outfit.Layered do
+		table.insert(layered, { Order = i, AssetId = item.AssetId, AccessoryType = item.Type, IsLayered = true })
+	end
+	desc:SetAccessories(layered, false)
+
+	humanoid:ApplyDescriptionAsync(desc)
 end
 
 local function makeFallbackBody(): Model
@@ -205,8 +254,33 @@ local function spawnNpc(npcId: string, def: any)
 	end)
 	prompt.Parent = root
 	model.Parent = zoneFolder
+	-- Dress the NPC in its profession outfit once it's in the DataModel (ApplyDescription requires it).
+	if def.Outfit then
+		applyOutfit(model, def.Outfit)
+	end
 	NpcPromptService.Register(npcId, prompt)
 	npcModels[npcId] = { root = root, model = model }
+
+	-- Start chore patrol for NPCs that have one; store the actor for chore pause/resume.
+	local defChore = def["Chore"]
+	if defChore then
+		local actor = NpcActor.new(model, def.MoveSeconds, def.WalkAnimation)
+		NpcActor.startChorePatrol(actor, defChore.HomePosition, defChore.Waypoints)
+		npcActors[npcId] = actor
+	end
+
+	-- Start citizen walk for NPCs that patrol the town sidewalks (no chore/minigame).
+	local defCitizen = def["CitizenWalk"]
+	if defCitizen then
+		local actor = NpcActor.new(model, def.MoveSeconds, def.WalkAnimation)
+		NpcActor.startCitizenWalk(
+			actor,
+			defCitizen.Waypoints,
+			defCitizen.WalkSpeed,
+			defCitizen.PauseMin,
+			defCitizen.PauseMax
+		)
+	end
 end
 
 function DialogService:Init()

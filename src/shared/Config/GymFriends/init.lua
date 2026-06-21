@@ -7,7 +7,7 @@
 -- own version, rendered client-side. GymFriendService spawns them, runs the exercise/break routine
 -- (Shared.Logic.Routine) with natural Humanoid walking, and runs the conversations
 -- (Shared.Logic.DialogTree). Positions and the placeholder animation ids are tuned by looking in
--- Studio and swapped for real workout uploads later (doc 002).
+-- Studio and swapped for real workout uploads later (see docs/dev/npc/gym_friends.md).
 --
 -- The roster itself lives in four per-workout modules (Runners/Cyclists/Lifters/Floor); the shared
 -- FriendDef/LoungeGroup types live in Defs (so those modules can annotate without a require cycle).

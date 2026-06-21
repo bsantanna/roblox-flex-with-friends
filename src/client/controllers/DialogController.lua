@@ -24,6 +24,26 @@ local friendDialogChoose: RemoteEvent
 local friendDialogEnd: RemoteEvent
 
 local buttonRow: Frame
+local npcNameLabel: TextLabel -- displays the NPC name at the top of the dialog UI
+
+local function updateNpcName(npcId: string)
+	-- Map npcId to a display name
+	local displayName: string
+	if npcId == "Postman" then
+		displayName = "Postman"
+	elseif npcId == "Cowboy" then
+		displayName = "Cowboy"
+	elseif npcId == "PersonalTrainer" then
+		displayName = "Trainer"
+	elseif npcId == "Farmer" then
+		displayName = "Farmer"
+	else
+		displayName = npcId
+	end
+	if npcNameLabel then
+		npcNameLabel.Text = displayName
+	end
+end
 
 local function clearButtons()
 	for _, child in buttonRow:GetChildren() do
@@ -68,7 +88,11 @@ local function addButton(label: string, onActivated: () -> ())
 	end)
 end
 
-local function onDialogLine(_text: string, _index: number, _total: number, choices: { string }?)
+local function onDialogLine(_text: string, _index: number, _total: number, choices: { string }?, npcId: string?)
+	if npcId then
+		updateNpcName(npcId)
+	end
+	npcNameLabel.Text = npcId or ""
 	buttonRow.Visible = true
 	clearButtons()
 	if choices then
@@ -128,6 +152,19 @@ function DialogController:Init()
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.Padding = UDim.new(0, 12)
 	layout.Parent = buttonRow
+
+	-- NPC name label shown above the button row
+	npcNameLabel = Instance.new("TextLabel")
+	npcNameLabel.AnchorPoint = Vector2.new(0.5, 0)
+	npcNameLabel.Position = UDim2.new(0.5, 0, 1, -148)
+	npcNameLabel.Size = UDim2.fromOffset(300, 24)
+	npcNameLabel.BackgroundTransparency = 1
+	npcNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	npcNameLabel.Font = Enum.Font.GothamBold
+	npcNameLabel.TextScaled = true
+	npcNameLabel.TextXAlignment = Enum.TextXAlignment.Center
+	npcNameLabel.Text = ""
+	npcNameLabel.Parent = gui
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

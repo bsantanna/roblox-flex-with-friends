@@ -46,7 +46,9 @@ export type Session = {
 	npcId: string,
 	model: Model?,
 	actor: NpcActor.NpcActor?,
+	choreActor: NpcActor.NpcActor?, -- chore patrol actor from DialogService (shared with chore)
 	game: Game,
+	def: any, -- full Config.Npc entry (for chore check, etc.)
 	homePosition: Vector3, -- where the NPC walks back to when the session ends
 	homeYaw: number,
 	phase: "pregame" | "instructions" | "playing",
@@ -93,6 +95,10 @@ local function endSession(session: Session, interrupted: boolean)
 	if actor then
 		task.spawn(function()
 			actor:walkTo(session.homePosition, session.homeYaw)
+			-- Resume chore patrol after the NPC walks home.
+			if session.choreActor then
+				NpcActor.resumeChore(session.choreActor)
+			end
 		end)
 	end
 end
@@ -179,8 +185,10 @@ end
 
 -- Starts a minigame for `player` at NPC `npcId`. Called by DialogService after the Train choice;
 -- the unlock check repeats here as defense in depth. `model` is the NPC (nil-safe: a fallback body
--- just won't walk/pose). No-op if a game is already running.
-function MinigameService:Request(player: Player, npcId: string, model: Model?)
+-- just won't walk/pose). `choreActor` is the chore patrol NpcActor from DialogService (for chore
+-- pause/resume — the minigame's own actor instance is for walkTo/arena movement). No-op if a game
+-- is already running.
+function MinigameService:Request(player: Player, npcId: string, model: Model?, choreActor: NpcActor.NpcActor?)
 	if active then
 		return
 	end
@@ -198,7 +206,9 @@ function MinigameService:Request(player: Player, npcId: string, model: Model?)
 		player = player,
 		npcId = npcId,
 		model = model,
+		def = def,
 		actor = if model then NpcActor.new(model, def.MoveSeconds, def.WalkAnimation) else nil,
+		choreActor = choreActor,
 		game = plugin,
 		homePosition = def.SpawnPosition,
 		homeYaw = def.SpawnYaw,
@@ -215,6 +225,11 @@ function MinigameService:Request(player: Player, npcId: string, model: Model?)
 
 	-- Hide the NPC's "Talk" prompt for the whole session; endSession restores it on any outcome.
 	NpcPromptService:Hide(npcId)
+
+	-- Pause chore patrol so the NPC doesn't wander while the minigame is running.
+	if def["Chore"] and session.choreActor then
+		NpcActor.pauseChore(session.choreActor)
+	end
 
 	task.spawn(runPregame, session, def)
 end

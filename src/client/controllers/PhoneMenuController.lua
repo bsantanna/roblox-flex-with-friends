@@ -1,5 +1,5 @@
 --!strict
--- PhoneMenuController: the cellphone HUD. A 📱 launcher button (bottom-right) summons a GTA-style
+-- PhoneMenuController: the cellphone HUD. A 📱 launcher button (top-right) summons a GTA-style
 -- phone — the uploaded Phone01 art with a carousel of functionalities on its screen. The art's
 -- close / left / ok / right buttons are baked into the image, so invisible TextButtons are overlaid
 -- on them (rects from Config.UI.Phone.Zones, measured from the art). Selecting a carousel item runs
@@ -29,6 +29,7 @@ local SCREEN_TEXT = Color3.fromRGB(28, 30, 46)
 local NAV_GLYPHS = { Close = "\u{2716}", Left = "\u{25C0}", Ok = "OK", Right = "\u{25B6}" }
 
 local launcher: TextButton
+local launcherLabel: TextLabel? = nil
 local phone: ImageLabel
 local screenFrame: Frame
 local emojiLabel: TextLabel
@@ -44,6 +45,16 @@ local earnedTrophies: { [string]: true } = {}
 local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	["personal_trainer_strength"] = { Id = "personal_trainer_strength", Name = "Strength", Emoji = "\u{1F4AA}" },
 	["farmer_farmhand"] = { Id = "farmer_farmhand", Name = "Fresh Milk", Emoji = "\u{1F95B}" },
+	["cowboy_roundup"] = { Id = "cowboy_roundup", Name = "Cowboy", Emoji = "\u{1F404}" },
+	["postman_swiftpost"] = { Id = "postman_swiftpost", Name = "Swift Post", Emoji = "\u{1F4E6}" },
+	["sage_quickdraw"] = { Id = "sage_quickdraw", Name = "Fast Hands", Emoji = "\u{26A1}" },
+	["taxi_driver_mobility"] = { Id = "taxi_driver_mobility", Name = "Mobility", Emoji = "\u{1F695}" },
+	["policeman_protection"] = { Id = "policeman_protection", Name = "Protection", Emoji = "\u{1F46E}" },
+	["firefighter_bravery"] = { Id = "firefighter_bravery", Name = "Bravery", Emoji = "\u{1F692}" },
+	["gardener_caretaking"] = { Id = "gardener_caretaking", Name = "Caretaking", Emoji = "\u{1F331}" },
+	["home_builder_nicehome"] = { Id = "home_builder_nicehome", Name = "Nice Home", Emoji = "\u{1F3E0}" },
+	["nurse_healthy"] = { Id = "nurse_healthy", Name = "Healthy", Emoji = "\u{1FA7A}" },
+	["truck_driver_heavyduty"] = { Id = "truck_driver_heavyduty", Name = "Heavy Duty", Emoji = "\u{1F69A}" },
 }
 
 local index = 1
@@ -69,12 +80,14 @@ end
 local function open()
 	phone.Visible = true
 	launcher.Visible = false
+	assert(launcherLabel).Visible = false
 	setMode("carousel")
 end
 
 local function close()
 	phone.Visible = false
 	launcher.Visible = true
+	assert(launcherLabel).Visible = true
 end
 
 local function populateTrophies(gridFrame: Frame)
@@ -383,13 +396,14 @@ function PhoneMenuController:Init()
 	gui.Name = "Cellphone"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 5
+	gui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
 
 	-- Launcher: the 📱 button that summons the phone.
 	launcher = Instance.new("TextButton")
 	launcher.Name = "Launcher"
-	launcher.AnchorPoint = Vector2.new(1, 1)
-	launcher.Position = UDim2.new(1, -18, 1, -18)
-	launcher.Size = UDim2.fromOffset(64, 64)
+	launcher.AnchorPoint = Vector2.new(1, 0)
+	launcher.Position = UDim2.new(1, -20, 0.02, 0)
+	launcher.Size = UDim2.fromOffset(56, 56)
 	launcher.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
 	launcher.BackgroundTransparency = 0.2
 	launcher.Text = "📲"
@@ -397,8 +411,22 @@ function PhoneMenuController:Init()
 	launcher.Font = Enum.Font.GothamBold
 	launcher.Parent = gui
 	local launcherCorner = Instance.new("UICorner")
-	launcherCorner.CornerRadius = UDim.new(0, 16)
+	launcherCorner.CornerRadius = UDim.new(0, 14)
 	launcherCorner.Parent = launcher
+
+	-- Label below the launcher icon.
+	local lbl = Instance.new("TextLabel")
+	lbl.Name = "LauncherLabel"
+	lbl.Size = UDim2.fromOffset(56, 20)
+	lbl.Position = UDim2.new(1, -75, 0.12, 0)
+	lbl.BackgroundTransparency = 1
+	lbl.Text = "Phone"
+	lbl.TextScaled = true
+	lbl.Font = Enum.Font.GothamBold
+	lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	lbl.TextXAlignment = Enum.TextXAlignment.Center
+	lbl.Parent = gui
+	launcherLabel = lbl
 
 	-- The phone shell: the art, height-locked to the viewport with a fixed aspect ratio.
 	phone = Instance.new("ImageLabel")

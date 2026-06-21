@@ -42,6 +42,41 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Fast Hands",
 		Emoji = "\u{26A1}", -- high voltage / lightning emoji
 	},
+	TaxiDriver = {
+		Id = "taxi_driver_mobility",
+		Name = "Mobility",
+		Emoji = "\u{1F695}", -- taxi emoji
+	},
+	Policeman = {
+		Id = "policeman_protection",
+		Name = "Protection",
+		Emoji = "\u{1F46E}", -- police officer emoji
+	},
+	Firefighter = {
+		Id = "firefighter_bravery",
+		Name = "Bravery",
+		Emoji = "\u{1F692}", -- fire engine emoji
+	},
+	Gardener = {
+		Id = "gardener_caretaking",
+		Name = "Caretaking",
+		Emoji = "\u{1F331}", -- seedling emoji
+	},
+	HomeBuilder = {
+		Id = "home_builder_nicehome",
+		Name = "Nice Home",
+		Emoji = "\u{1F3E0}", -- house emoji
+	},
+	Nurse = {
+		Id = "nurse_healthy",
+		Name = "Healthy",
+		Emoji = "\u{1FA7A}", -- stethoscope emoji
+	},
+	TruckDriver = {
+		Id = "truck_driver_heavyduty",
+		Name = "Heavy Duty",
+		Emoji = "\u{1F69A}", -- delivery truck emoji
+	},
 }
 
 local trophyEarned: RemoteEvent

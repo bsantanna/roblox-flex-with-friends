@@ -48,6 +48,13 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	["cowboy_roundup"] = { Id = "cowboy_roundup", Name = "Cowboy", Emoji = "\u{1F404}" },
 	["postman_swiftpost"] = { Id = "postman_swiftpost", Name = "Swift Post", Emoji = "\u{1F4E6}" },
 	["sage_quickdraw"] = { Id = "sage_quickdraw", Name = "Fast Hands", Emoji = "\u{26A1}" },
+	["taxi_driver_mobility"] = { Id = "taxi_driver_mobility", Name = "Mobility", Emoji = "\u{1F695}" },
+	["policeman_protection"] = { Id = "policeman_protection", Name = "Protection", Emoji = "\u{1F46E}" },
+	["firefighter_bravery"] = { Id = "firefighter_bravery", Name = "Bravery", Emoji = "\u{1F692}" },
+	["gardener_caretaking"] = { Id = "gardener_caretaking", Name = "Caretaking", Emoji = "\u{1F331}" },
+	["home_builder_nicehome"] = { Id = "home_builder_nicehome", Name = "Nice Home", Emoji = "\u{1F3E0}" },
+	["nurse_healthy"] = { Id = "nurse_healthy", Name = "Healthy", Emoji = "\u{1FA7A}" },
+	["truck_driver_heavyduty"] = { Id = "truck_driver_heavyduty", Name = "Heavy Duty", Emoji = "\u{1F69A}" },
 }
 
 local index = 1

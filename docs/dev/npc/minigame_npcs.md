@@ -20,6 +20,13 @@ Update this table when an NPC is created, modified, or removed.
 | PersonalTrainer | Simon Says (pose-memory) | Home (CentralBuilding) | 100 followers | 225 (50+75+100) | 💪 Strength (`personal_trainer_strength`) |
 | Farmer | Simon Says (pose-memory) | Farm (west fence) | 200 followers | 225 (50+75+100) | 🥛 Fresh Milk (`farmer_farmhand`) |
 | Sage | Quick Draw (reaction) | Home (forest clearing) | 250 followers **and** `farmer_farmhand` | 220 (3×45 + 85 bonus) | ⚡ Fast Hands (`sage_quickdraw`) |
+| TaxiDriver | Rock-Paper-Scissors | Home (NE ramp foot) | 300 followers **and** `personal_trainer_strength` | 160 (2×40 + 80 bonus) | 🚕 Mobility (`taxi_driver_mobility`) |
+| Policeman | Quick Draw (reaction) | Home (by Neighbor02, NE) | 350 followers **and** `sage_quickdraw` | 220 (3×45 + 85 bonus) | 👮 Protection (`policeman_protection`) |
+| Firefighter | Simon Says (pose-memory) | Home (by Neighbor01, NW) | 300 followers **and** `personal_trainer_strength` | 225 (50+75+100) | 🚒 Bravery (`firefighter_bravery`) |
+| Gardener | Simon Says (pose-memory) | Home (NW green quarter) | 450 followers **and** `policeman_protection` | 225 (50+75+100) | 🌱 Caretaking (`gardener_caretaking`) |
+| HomeBuilder | Simon Says (pose-memory) | Home (by Neighbor03, W) | 300 followers **and** `personal_trainer_strength` | 225 (50+75+100) | 🏠 Nice Home (`home_builder_nicehome`) |
+| Nurse | Rock-Paper-Scissors | Home (by Neighbor04, E) | 550 followers **and** `gardener_caretaking` | 160 (2×40 + 80 bonus) | 🩺 Healthy (`nurse_healthy`) |
+| TruckDriver | Quick Draw (reaction) | Home (SW ramp foot) | 450 followers **and** `taxi_driver_mobility` | 220 (3×45 + 85 bonus) | 🚚 Heavy Duty (`truck_driver_heavyduty`) |
 
 ## Unlocks
 

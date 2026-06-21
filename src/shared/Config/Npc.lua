@@ -319,6 +319,319 @@ Npc.Npc = {
 			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
 		},
 	},
+	-- Town-professions chain. Each gates on a previous NPC's trophy (RequiredTrophies) plus a rising
+	-- follower threshold, so they unlock in order. Positions are starting values seated on the Home
+	-- plateau (Y=0); verified/tuned in Studio. Profession headwear is filled in the Studio catalog pass.
+	TaxiDriver = {
+		Zone = "Home",
+		UnlockFollowers = 300,
+		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
+		Outfit = { -- cabbie look: a flat newsboy cap
+			Hats = { 78174478860906 }, -- Black Shelby Vintage Cap
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(172, 0, -172), -- grass shoulder by the NE ramp, clear of the road
+		SpawnYaw = 90, -- face the open grass toward town
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(160, 0, -172), -- a few steps along the grass
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Hop in! Quick game while the meter runs — Rock, Paper, Scissors.\n  Pick yer hand, best two outta three. Step on the mark when yer ready!",
+		Dialog = {
+			Lines = {
+				"Need a lift? I'm the town cabbie.",
+				"I know every street in this neighborhood — and I never lose a fare's bet.",
+			},
+			QualifiedLine = "Fancy a quick game o' Rock, Paper, Scissors while we wait? Best two outta three!",
+			GateLine = "Come back with {threshold} followers and the trainer's badge, and we'll play for the ride.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		RockPaperScissors = {
+			WinsNeeded = 2,
+			InputTimeoutSeconds = 15,
+			ReelSeconds = 2,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1,
+			BaseReward = 40,
+			MatchBonus = 80,
+			Choices = { "Rock", "Paper", "Scissors" },
+			Emoji = {
+				Rock = "\u{270A}", -- raised fist
+				Paper = "\u{270B}", -- raised hand
+				Scissors = "\u{270C}\u{FE0F}", -- victory hand
+			},
+			Poses = {
+				Rock = "rbxassetid://507770677", -- cheer (fist up)
+				Paper = "rbxassetid://507770239", -- wave (open hand)
+				Scissors = "rbxassetid://507770453", -- point
+			},
+		},
+	},
+	Policeman = {
+		Zone = "Home",
+		UnlockFollowers = 350,
+		RequiredTrophies = { "sage_quickdraw" }, -- the Forest sage's Fast Hands
+		Outfit = { -- police look: a peaked police hat
+			Hats = { 15752686682 }, -- Police Hat
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(144, 0, -110), -- plaza-side sidewalk south of Neighbor02 (NE square)
+		SpawnYaw = 180, -- face south, toward the plaza approach
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(144, 0, -96), -- a step toward the plaza, sidewalk before the road
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Quick Draw, citizen! Watch me closely. The instant you see DRAW, react — tap the button"
+			.. " or hit Space. Hesitate and you lose the round. Win every draw to earn my respect. Step on the mark!",
+		Dialog = {
+			Lines = {
+				"Afternoon. I keep the peace around this neighborhood.",
+				"Fast reflexes keep a town safe — let's see if you've got them.",
+			},
+			QualifiedLine = "You've proven yourself. Care to test your reflexes against the law?",
+			GateLine = "Return when you carry the sage's Fast Hands and have {threshold} followers.",
+			QualifiedChoices = { "Draw!", "Not now" },
+			GateChoices = { "Understood" },
+			TimeoutSeconds = 30,
+		},
+		QuickDraw = {
+			Rounds = 3,
+			MinDelaySeconds = 1.5,
+			MaxDelaySeconds = 3.5,
+			ReactWindowSeconds = 0.8,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1.0,
+			BaseReward = 45,
+			MatchBonus = 85,
+			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
+		},
+	},
+	Firefighter = {
+		Zone = "Home",
+		UnlockFollowers = 300,
+		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
+		Outfit = { -- firefighter look: a fire helmet
+			Hats = { 96463686997847 }, -- Firefighter Helmet
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(-144, 0, -110), -- plaza-side sidewalk south of Neighbor01 (NW square)
+		SpawnYaw = 180, -- face south, toward the plaza approach
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-144, 0, -96), -- a step toward the plaza, sidewalk before the road
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Drill time! Watch the moves I make, then repeat them in order with the on-screen buttons"
+			.. " or the arrow keys. Clear every round to bank followers. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Hey there! I'm the firefighter for this district.",
+				"We train hard so we're ready for anything. Want to run the drill with me?",
+			},
+			QualifiedLine = "You've got the strength — ready to run the fire drill?",
+			GateLine = "Come back with the trainer's badge and {threshold} followers, and we'll drill together.",
+			QualifiedChoices = { "Run the drill", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 1,
+			MaxRounds = 3,
+			ShowStepSeconds = 2.5,
+			ShowGapSeconds = 0.6,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
+			InputTimeoutSeconds = 20,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				Left = "rbxassetid://507770239",
+				Up = "rbxassetid://507770677",
+				Right = "rbxassetid://507770453",
+				Down = "rbxassetid://507771019",
+			},
+		},
+	},
+	Gardener = {
+		Zone = "Home",
+		UnlockFollowers = 450,
+		RequiredTrophies = { "policeman_protection" }, -- the policeman's Protection
+		Outfit = { -- gardener look: a straw hat (reuses the verified Farmer straw hat)
+			Hats = { 18358376553 }, -- Straw Hat
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(-171, 0, -117), -- grass strip in the NW quarter, west of Neighbor01
+		SpawnYaw = 180, -- face south toward the open sidewalk/plaza approach
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-171, 0, -105), -- a few steps onto the open sidewalk
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Let's tend the garden! Watch the planting moves I make, then repeat them in order with"
+			.. " the on-screen buttons or arrow keys. Clear every round to bank followers. Step on the mark!",
+		Dialog = {
+			Lines = {
+				"Oh, hello! I keep the neighborhood green.",
+				"A good garden takes patience and a steady rhythm — care to learn?",
+			},
+			QualifiedLine = "You've earned the town's trust — ready to tend the garden with me?",
+			GateLine = "Come back with the policeman's badge and {threshold} followers, and we'll garden together.",
+			QualifiedChoices = { "Let's garden", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 1,
+			MaxRounds = 3,
+			ShowStepSeconds = 2.5,
+			ShowGapSeconds = 0.6,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
+			InputTimeoutSeconds = 20,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				Left = "rbxassetid://507770239",
+				Up = "rbxassetid://507770677",
+				Right = "rbxassetid://507770453",
+				Down = "rbxassetid://507771019",
+			},
+		},
+	},
+	HomeBuilder = {
+		Zone = "Home",
+		UnlockFollowers = 300,
+		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
+		Outfit = { -- builder look: a construction hard hat
+			Hats = { 84987146959152 }, -- Construction Hard Hat
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(-100, 0, 0), -- plaza-side sidewalk east of Neighbor03 (W square)
+		SpawnYaw = 90, -- face east, toward the plaza approach
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-86, 0, 0), -- a step toward the plaza, clear sidewalk
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Time to build! Watch the construction moves I make, then repeat them in order with the"
+			.. " on-screen buttons or arrow keys. Clear every round to bank followers. Step on the mark!",
+		Dialog = {
+			Lines = {
+				"Howdy! I build the homes around this neighborhood.",
+				"Every house goes up step by step, in the right order. Think you can keep up?",
+			},
+			QualifiedLine = "You've got the strength — ready to raise a house with me?",
+			GateLine = "Come back with the trainer's badge and {threshold} followers, and we'll build together.",
+			QualifiedChoices = { "Let's build", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 1,
+			MaxRounds = 3,
+			ShowStepSeconds = 2.5,
+			ShowGapSeconds = 0.6,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
+			InputTimeoutSeconds = 20,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				Left = "rbxassetid://507770239",
+				Up = "rbxassetid://507770677",
+				Right = "rbxassetid://507770453",
+				Down = "rbxassetid://507771019",
+			},
+		},
+	},
+	Nurse = {
+		Zone = "Home",
+		UnlockFollowers = 550,
+		RequiredTrophies = { "gardener_caretaking" }, -- the gardener's Caretaking
+		Outfit = { -- nurse look: a white nurse cap
+			Hats = { 10770260 }, -- Nurse Hat
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(100, 0, 0), -- plaza-side sidewalk west of Neighbor04 (E square)
+		SpawnYaw = 270, -- face west, toward the plaza approach
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(86, 0, 0), -- a step toward the plaza, clear sidewalk
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Health check! Quick game of Rock, Paper, Scissors to test your reflexes.\n  Pick yer hand, best two outta three. Step on the mark when you're ready!",
+		Dialog = {
+			Lines = {
+				"Hello! I'm the neighborhood nurse.",
+				"A sharp mind keeps you healthy — let's see how quick you are at a friendly game.",
+			},
+			QualifiedLine = "You've earned your care — fancy a game o' Rock, Paper, Scissors? Best two outta three!",
+			GateLine = "Come back with the gardener's badge and {threshold} followers, and we'll play.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		RockPaperScissors = {
+			WinsNeeded = 2,
+			InputTimeoutSeconds = 15,
+			ReelSeconds = 2,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1,
+			BaseReward = 40,
+			MatchBonus = 80,
+			Choices = { "Rock", "Paper", "Scissors" },
+			Emoji = {
+				Rock = "\u{270A}", -- raised fist
+				Paper = "\u{270B}", -- raised hand
+				Scissors = "\u{270C}\u{FE0F}", -- victory hand
+			},
+			Poses = {
+				Rock = "rbxassetid://507770677", -- cheer (fist up)
+				Paper = "rbxassetid://507770239", -- wave (open hand)
+				Scissors = "rbxassetid://507770453", -- point
+			},
+		},
+	},
+	TruckDriver = {
+		Zone = "Home",
+		UnlockFollowers = 450,
+		RequiredTrophies = { "taxi_driver_mobility" }, -- the taxi driver's Mobility
+		Outfit = { -- trucker look: a trucker cap
+			Hats = { 12356137971 }, -- Vintage Label Trucker Cap
+			Layered = {},
+		},
+		SpawnPosition = Vector3.new(-172, 0, 172), -- grass shoulder by the SW ramp, clear of the road
+		SpawnYaw = 0, -- face the open grass toward the plaza
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-172, 0, 160), -- a few steps along the grass
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Quick Draw, partner! Watch me closely. The instant you see DRAW, react — tap the button"
+			.. " or hit Space. Hesitate and you lose the round. Win every draw to earn my respect. Step on the mark!",
+		Dialog = {
+			Lines = {
+				"Howdy! I haul the heavy loads in and out of town.",
+				"Long-haul driving is all about reflexes on the road. Got fast hands?",
+			},
+			QualifiedLine = "You've kept up with the cabbie — care to test your reflexes against a trucker?",
+			GateLine = "Come back with the cabbie's Mobility and {threshold} followers, and we'll duel.",
+			QualifiedChoices = { "Draw!", "Not now" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		QuickDraw = {
+			Rounds = 3,
+			MinDelaySeconds = 1.5,
+			MaxDelaySeconds = 3.5,
+			ReactWindowSeconds = 0.8,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1.0,
+			BaseReward = 45,
+			MatchBonus = 85,
+			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
+		},
+	},
 } :: { [string]: NpcDef }
 
 return Npc

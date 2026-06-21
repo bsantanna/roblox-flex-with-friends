@@ -10,7 +10,8 @@ local World = {}
 World.Zones = {
 	Home = Vector3.new(0, 0, 0),
 	Airport = Vector3.new(0, 0, 560),
-	Beach = Vector3.new(0, 0, 760),
+	Beach = Vector3.new(0, 0, 980), -- pushed out into the lake so it stays a separate island from the
+	-- enlarged airport apron (~130 studs of water between them; reached by travel, not on foot)
 	Farm = Vector3.new(320, 0, -140), -- zone origin; matches Config.Farm.Center
 } :: { [string]: Vector3 }
 
@@ -80,7 +81,13 @@ World.Terrain = {
 		},
 	},
 	Airport = {
-		Size = 120, -- tarmac apron
+		-- The apron is a wide rectangle skewed toward +Z so it sits under the whole airport-town
+		-- build-out (terminals, control tower, hotel, cargo, shops, car rental...), which sprawls
+		-- X ~ +/-270 and Z ~ +570..+770 in world space -- far beyond the old 120-stud square. Offset
+		-- shifts the slab centre north of the zone origin to match where that cluster actually sits.
+		SizeX = 560,
+		SizeZ = 235,
+		Offset = Vector3.new(0, 0, 110),
 		Ground = Enum.Material.Asphalt,
 	},
 	Beach = {

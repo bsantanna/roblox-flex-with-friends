@@ -50,6 +50,47 @@ This skill is the fast path. For depth, read the reference files when the task c
 The authoritative roadmap is `doc/002_implementation_plan.md`. When in doubt about *what* to build
 next, read it; this skill is about *how* to build it.
 
+## Understand before you change: scope, then research, then act
+
+The most expensive mistake in this repo is editing code before you understand the cause and effect
+of what you're touching. Roblox's API is full of behaviors that aren't guessable from the call site
+— a property that only replicates one direction, a method with a side effect, an event that fires on
+a different thread, a service that behaves differently in Studio than in a live server. Code that
+*looks* obviously right and even type-checks can still do the wrong thing at runtime because the
+underlying engine behavior wasn't what you assumed. Guessing here is the same failure mode as
+signing off on spatial work from the math instead of the screenshot — and the fix is the same:
+gather the real information first.
+
+So before you edit, work the problem in this order:
+
+1. **Pin the scope.** State plainly what you're being asked to change and what you expect it to
+   affect. If the request is ambiguous, or you can see more than one reasonable interpretation, or
+   you'd have to assume an unstated requirement — **stop and ask a clarifying question.** A
+   ten-second question is cheaper than a change that solves the wrong problem. This is rule 5
+   (surgical changes) applied before you've written a line: you can't keep a change small if you
+   don't yet know what it's supposed to do.
+
+2. **Research the cause and effect.** Once the scope is clear but *how* a given Roblox API,
+   property, event, or service actually behaves is not, find out before you commit to an approach —
+   don't infer it from the name or from one prior usage. Combine two sources:
+   - **Web search** for current behavior, known pitfalls, deprecations, and real-world usage —
+     engine behavior and best practices change across Roblox versions, so prefer recent results.
+   - **Official Roblox Creator/Engine documentation** (`create.roblox.com/docs`) as the
+     authoritative reference for an API's contract, parameters, return values, and side effects.
+
+   Use the `WebSearch` / `WebFetch` tools for this; cross-check the docs against what search turns
+   up, because the two together expose the gap between what the API *claims* to do and how it
+   actually behaves in practice. For in-place, runtime-specific questions ("does this actually fire
+   here?"), the Studio MCP (`execute_luau`, console output) is the tie-breaker — see [Verifying that
+   logic actually runs](#verifying-that-logic-actually-runs).
+
+3. **Then change it.** Only once you understand the scope and the mechanism do you write the edit —
+   now you can keep it surgical, because you know exactly what it needs to touch and why.
+
+This isn't ceremony for trivial edits (a typo, a tunable in `Config`, a rename you fully
+understand — just do those). It's the gate for anything where you're not already certain *why* the
+change produces the effect you want. When in doubt, research; don't ship a guess.
+
 ## Golden rules
 
 These are the conventions that keep the game correct and the diffs clean. Internalize the *why* —

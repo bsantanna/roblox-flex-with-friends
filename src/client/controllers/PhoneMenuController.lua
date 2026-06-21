@@ -16,6 +16,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PhotoController = require(script.Parent.PhotoController)
 local FriendController = require(script.Parent.FriendController)
+local TravelController = require(script.Parent.TravelController)
 
 local AssetIds = require(ReplicatedStorage.Shared.SceneryAssetIds) :: { [string]: number }
 
@@ -61,7 +62,18 @@ local index = 1
 local mode: "carousel" | "social" = "carousel"
 local hasArt = false
 
-local function renderCarousel()
+local function renderCarousel(step: number?)
+	-- Skip "Call a Cab" if the player hasn't earned the Mobility trophy. Step in the direction
+	-- of travel (default forward) so left/right navigation past the hidden item stays symmetric.
+	local dir = step or 1
+	local start = index
+	while PHONE.Items[index].action == "Cab" and not earnedTrophies["taxi_driver_mobility"] do
+		index = (index - 1 + dir) % #PHONE.Items + 1
+		if index == start then
+			break
+		end
+	end
+
 	local item = PHONE.Items[index]
 	emojiLabel.Text = item.emoji
 	titleLabel.Text = item.label
@@ -180,6 +192,11 @@ local function onTrophyEarned(trophies: { [string]: true })
 		if gridFrame then
 			populateTrophies(gridFrame)
 		end
+	end
+
+	-- Re-render the carousel so a newly earned Mobility trophy reveals "Call a Cab" live.
+	if mode == "carousel" and phone.Visible then
+		renderCarousel()
 	end
 end
 
@@ -351,7 +368,7 @@ local function cycle(delta: number)
 		return
 	end
 	index = (index - 1 + delta) % #PHONE.Items + 1
-	renderCarousel()
+	renderCarousel(delta)
 end
 
 local function activate()
@@ -367,6 +384,9 @@ local function activate()
 		FriendController:PromptInvite()
 	elseif action == "Social" then
 		showSocialModal()
+	elseif action == "Cab" then
+		close()
+		TravelController:OpenPicker()
 	end
 end
 

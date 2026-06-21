@@ -22,6 +22,7 @@ local EVENTS = {
 	"DialogChoose", -- client -> server: (choiceIndex: number) -- pick a branch-line choice
 	"DialogEnd", -- server -> client: () -- dismiss the dialog UI
 	"SetFollowers", -- client -> server: (value: number) -- dev cheat; server accepts in Studio only
+	"GrantAllTrophies", -- client -> server: () -- dev cheat; Studio only
 	-- Generic NPC-minigame pre-game flow (MinigameService); every minigame reuses these.
 	"MinigameAwaitReady", -- server -> client: () -- pre-game: head to the green ready-zone in front of the NPC
 	"MinigameInstructions", -- server -> client: (instructions: string) -- show the rules + a Start button

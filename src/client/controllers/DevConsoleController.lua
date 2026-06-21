@@ -3,6 +3,9 @@
 -- keyboard (the Konami code) toggles a small panel that force-sets the follower count via the
 -- SetFollowers remote — which the server also only honors in Studio. Outside Studio this whole
 -- controller is a no-op.
+--
+-- The same Konami sequence also toggles a debug panel with a "Grant All Trophies" button that
+-- unlocks every trophy (and so the Cab phone option) via the GrantAllTrophies remote.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,7 +21,9 @@ local DevConsoleController = {}
 local player = Players.LocalPlayer
 
 local setFollowers: RemoteEvent
+local grantTrophies: RemoteEvent
 local panel: Frame
+local debugPanel: Frame
 
 function DevConsoleController:Init()
 	if not RunService:IsStudio() then
@@ -26,11 +31,13 @@ function DevConsoleController:Init()
 	end
 
 	setFollowers = Net.Event("SetFollowers")
+	grantTrophies = Net.Event("GrantAllTrophies")
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "DevConsole"
 	gui.ResetOnSpawn = false
 
+	-- Main panel: follower setter.
 	panel = Instance.new("Frame")
 	panel.AnchorPoint = Vector2.new(0.5, 0)
 	panel.Position = UDim2.fromScale(0.5, 0.06)
@@ -77,6 +84,37 @@ function DevConsoleController:Init()
 		end
 	end)
 
+	-- Debug panel: trophy grant. Sits just below the 110px-tall main panel.
+	debugPanel = Instance.new("Frame")
+	debugPanel.AnchorPoint = Vector2.new(0.5, 0)
+	debugPanel.Position = UDim2.new(0.5, 0, 0.06, 120)
+	debugPanel.Size = UDim2.fromOffset(260, 60)
+	debugPanel.BackgroundColor3 = Color3.fromRGB(30, 20, 40)
+	debugPanel.Visible = false
+	debugPanel.Parent = gui
+
+	local debugTitle = Instance.new("TextLabel")
+	debugTitle.Size = UDim2.new(1, 0, 0, 24)
+	debugTitle.BackgroundTransparency = 1
+	debugTitle.TextColor3 = Color3.fromRGB(200, 120, 220)
+	debugTitle.Font = Enum.Font.Code
+	debugTitle.TextScaled = true
+	debugTitle.Text = "Debug mode"
+	debugTitle.Parent = debugPanel
+
+	local grantBtn = Instance.new("TextButton")
+	grantBtn.Size = UDim2.new(1, -16, 0, 28)
+	grantBtn.Position = UDim2.fromOffset(8, 32)
+	grantBtn.BackgroundColor3 = Color3.fromRGB(120, 60, 180)
+	grantBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	grantBtn.Font = Enum.Font.GothamBold
+	grantBtn.TextScaled = true
+	grantBtn.Text = "Grant All Trophies"
+	grantBtn.Parent = debugPanel
+	grantBtn.Activated:Connect(function()
+		grantTrophies:FireServer()
+	end)
+
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
@@ -86,16 +124,24 @@ function DevConsoleController:Start()
 	end
 
 	local history: { string } = {}
+	local panelVisible = false
+
 	UserInputService.InputBegan:Connect(function(input: InputObject, _gameProcessed: boolean)
 		-- Don't filter on gameProcessed: the default character controls sink the arrow keys
 		-- (and A/B), which would eat most of the sequence. Only ignore typing into a TextBox.
 		if UserInputService:GetFocusedTextBox() ~= nil or input.UserInputType ~= Enum.UserInputType.Keyboard then
 			return
 		end
+
+		local keyName = input.KeyCode.Name
+
+		-- Full Konami (↑↑↓↓←→←→BA): toggles dev console + debug panels together.
 		local matched
-		matched, history = KeySequence.push(history, input.KeyCode.Name, Config.DevConsole.Sequence)
+		matched, history = KeySequence.push(history, keyName, Config.DevConsole.Sequence)
 		if matched then
-			panel.Visible = not panel.Visible
+			panelVisible = not panelVisible
+			panel.Visible = panelVisible
+			debugPanel.Visible = panelVisible
 		end
 	end)
 end

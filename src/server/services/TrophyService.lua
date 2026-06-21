@@ -9,6 +9,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local DataService = require(script.Parent.DataService)
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -82,10 +83,12 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 local trophyEarned: RemoteEvent
 local trophyUnlocked: RemoteEvent
 local awardedCallbacks: { (Player) -> () } = {}
+local grantTrophiesRemote: RemoteEvent
 
 function TrophyService:Init()
 	trophyEarned = Net.Event("TrophyEarned")
 	trophyUnlocked = Net.Event("TrophyUnlocked")
+	grantTrophiesRemote = Net.Event("GrantAllTrophies")
 end
 
 function TrophyService:Start()
@@ -93,6 +96,14 @@ function TrophyService:Start()
 	for _, player in Players:GetPlayers() do
 		task.spawn(TrophyService._seedPlayer, self, player)
 	end
+
+	-- Dev cheat (debug mode): grant all trophies on command. Studio only.
+	grantTrophiesRemote.OnServerEvent:Connect(function(player: Player)
+		if not RunService:IsStudio() then
+			return
+		end
+		TrophyService:GrantAll(player)
+	end)
 end
 
 function TrophyService:_seedPlayer(player: Player)
@@ -139,6 +150,14 @@ end
 -- Register a callback run with (player) whenever that player earns a new trophy.
 function TrophyService:OnAwarded(callback: (Player) -> ())
 	table.insert(awardedCallbacks, callback)
+end
+
+--- Grant every trophy to `player`. Only used by the debug cheat — Studio only.
+--- Routes through AwardTrophy so toasts and trophy-gated unlock callbacks fire as if earned.
+function TrophyService:GrantAll(player: Player)
+	for npcId in TROPHY_DEFS do
+		TrophyService:AwardTrophy(player, npcId)
+	end
 end
 
 return TrophyService

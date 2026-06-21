@@ -111,6 +111,9 @@ end
 local function onDialogEnd()
 	clearButtons()
 	buttonRow.Visible = false
+	if npcNameLabel then
+		npcNameLabel.Text = ""
+	end
 end
 
 -- Gym-friend lines always carry the player's answer choices (a branching tree, no plain "Next");

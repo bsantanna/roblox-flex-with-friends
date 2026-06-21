@@ -25,7 +25,7 @@ local KEY_CHOICE: { [Enum.KeyCode]: string } = {
 }
 
 local BUTTON_IDLE = Color3.fromRGB(60, 120, 200)
-local BUTTON_PICKED = Color3.fromRGB(255, 220, 80)
+local BUTTON_PICKED = Color3.fromRGB(60, 200, 90)
 local REEL_STEP = 0.08 -- seconds between reel flips while spinning
 
 local rpsPickPhase: RemoteEvent

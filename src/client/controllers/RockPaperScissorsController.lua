@@ -143,11 +143,11 @@ local function onGameOver(won: boolean, playerWins: number, opponentWins: number
 		feedbackTitle.TextColor3 = Color3.fromRGB(120, 240, 140)
 		feedbackSubtitle.Text = `\u{2B50} +{totalReward} followers and the {name} trophy!`
 	else
-		feedbackTitle.Text = "\u{1F605} The cowboy got you!"
+		feedbackTitle.Text = `\u{1F605} {name} got you!`
 		feedbackTitle.TextColor3 = Color3.fromRGB(255, 170, 90)
 		feedbackSubtitle.Text = if totalReward > 0
 			then `\u{1F920} +{totalReward} followers — catch {name} on the route!`
-			else "\u{1F920} Better luck next time, partner!"
+			else `\u{1F920} Better luck next time, {name}!`
 	end
 	feedbackScore.Text = `You {playerWins}  —  {opponentWins} {name}`
 	feedbackFrame.Visible = true

@@ -17,7 +17,7 @@ local EVENTS = {
 	"RequestPhotoCapture", -- client -> server: ()
 	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
 	"UnlockNpc", -- server -> client: (npcId: string)
-	"DialogLine", -- server -> client: (text: string, index: number, total: number, choices: {string}?)
+	"DialogLine", -- server -> client: (text: string, index: number, total: number, choices: {string}?, npcId: string?) -- npcId enables client to show NPC name
 	"DialogAdvance", -- client -> server: () -- advance past a plain line
 	"DialogChoose", -- client -> server: (choiceIndex: number) -- pick a branch-line choice
 	"DialogEnd", -- server -> client: () -- dismiss the dialog UI

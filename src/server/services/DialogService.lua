@@ -72,7 +72,7 @@ local function sendStep(s: Session)
 	end
 	s.choices = step.choices
 	s.bubble:setText(step.text)
-	dialogLine:FireClient(s.player, step.text, step.index, step.total, step.choices)
+	dialogLine:FireClient(s.player, step.text, step.index, step.total, step.choices, s.npcId)
 	armTimeout(s)
 end
 

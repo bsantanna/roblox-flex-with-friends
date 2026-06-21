@@ -268,6 +268,19 @@ local function spawnNpc(npcId: string, def: any)
 		NpcActor.startChorePatrol(actor, defChore.HomePosition, defChore.Waypoints)
 		npcActors[npcId] = actor
 	end
+
+	-- Start citizen walk for NPCs that patrol the town sidewalks (no chore/minigame).
+	local defCitizen = def["CitizenWalk"]
+	if defCitizen then
+		local actor = NpcActor.new(model, def.MoveSeconds, def.WalkAnimation)
+		NpcActor.startCitizenWalk(
+			actor,
+			defCitizen.Waypoints,
+			defCitizen.WalkSpeed,
+			defCitizen.PauseMin,
+			defCitizen.PauseMax
+		)
+	end
 end
 
 function DialogService:Init()

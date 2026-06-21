@@ -62,6 +62,8 @@ export type NpcActor = typeof(setmetatable(
 		_chorePause: boolean,
 		_choreWaypoints: { { position: Vector3, animationId: string, delaySeconds: number } }?,
 		_choreIndex: number,
+		-- Citizen walk (sidewalk patrol for non-chore NPCs).
+		_citizenWalkId: thread?,
 	},
 	NpcActor
 ))
@@ -85,6 +87,8 @@ function NpcActor.new(model: Model, moveSeconds: number, walkAnimationId: string
 		_chorePause = false,
 		_choreWaypoints = nil,
 		_choreIndex = 0,
+		-- Citizen walk.
+		_citizenWalkId = nil,
 	}, NpcActor)
 end
 
@@ -274,6 +278,70 @@ function NpcActor._stopChore(npcActor: NpcActor)
 		npcActor._choreCycleId = nil
 	end
 	npcActor._chorePause = false
+end
+
+-- Citizen walk loop --------------------------------------------------------------------------
+
+-- Internal: random-waypoint sidewalk walk. Glides to a random waypoint, pauses,
+-- then picks another random waypoint (avoiding the one just left). Runs forever
+-- until stopCitizenWalk is called.
+local function _citizenWalkLoop(
+	self: NpcActor,
+	waypoints: { Vector3 },
+	walkSpeed: number,
+	pauseMin: number,
+	pauseMax: number
+)
+	local prevIdx = 0
+	while true do
+		-- Pick a random waypoint different from the one we just left.
+		local nextIdx
+		repeat
+			nextIdx = math.random(1, #waypoints)
+		until nextIdx ~= prevIdx or #waypoints == 1
+		prevIdx = nextIdx
+
+		-- Compute glide duration from distance and walkSpeed.
+		local cf = self.model:GetPivot()
+		local dist = (waypoints[nextIdx] - Vector3.new(cf.Position.X, 0, cf.Position.Z)).Magnitude
+		local duration = if dist > 0.5 then dist / walkSpeed else 0
+
+		-- Glide to the waypoint.
+		glideTo(self, waypoints[nextIdx], duration)
+
+		-- Random pause at the waypoint.
+		task.wait(math.random(pauseMin, pauseMax))
+	end
+end
+
+-- Starts a citizen walk for this NPC. `waypoints` is a list of Vector3 positions the NPC
+-- visits in random order. `walkSpeed` is in studs per second (3 is a casual pace).
+-- `pauseMin` and `pauseMax` control the random delay at each waypoint.
+function NpcActor.startCitizenWalk(
+	self: NpcActor,
+	waypoints: { Vector3 },
+	walkSpeed: number,
+	pauseMin: number,
+	pauseMax: number
+)
+	-- Cancel any existing citizen walk.
+	NpcActor.stopCitizenWalk(self)
+
+	if not self.animator or not waypoints or #waypoints == 0 then
+		return
+	end
+
+	self._citizenWalkId = task.spawn(function()
+		_citizenWalkLoop(self, waypoints, walkSpeed, pauseMin, pauseMax)
+	end)
+end
+
+-- Stops the citizen walk loop.
+function NpcActor.stopCitizenWalk(self: NpcActor)
+	if self._citizenWalkId then
+		task.cancel(self._citizenWalkId)
+		self._citizenWalkId = nil
+	end
 end
 
 return NpcActor

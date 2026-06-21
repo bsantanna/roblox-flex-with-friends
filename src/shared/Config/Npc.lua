@@ -60,6 +60,13 @@ type QuickDrawDef = {
 	MatchBonus: number, -- extra followers for winning every draw
 	DrawPose: string, -- animation asset id played on the NPC at the DRAW signal
 }
+-- Sidewalk/citizen walk config for NPCs that patrol the town (not doing chores).
+type CitizenWalkDef = {
+	Waypoints: { Vector3 }, -- ordered sidewalk waypoints the NPC visits in random order
+	WalkSpeed: number, -- studs per second (3 is a casual pace)
+	PauseMin: number, -- min seconds to pause at each waypoint
+	PauseMax: number, -- max seconds to pause at each waypoint
+}
 type NpcDialog = {
 	Lines: { string }, -- plain lines, advanced with Next
 	QualifiedLine: string, -- branch line when the player has the unlock
@@ -96,6 +103,7 @@ type NpcDef = {
 		HomePosition: Vector3, -- spawn / idle position where the NPC wanders from
 		Waypoints: { { position: Vector3, animationId: string, delaySeconds: number } }, -- ordered chore points
 	}?, -- present iff this NPC does farm chore patrol
+	CitizenWalk: CitizenWalkDef?, -- present iff this NPC patrols the town sidewalks
 }
 
 Npc.Npc = {
@@ -144,6 +152,18 @@ Npc.Npc = {
 				Right = "rbxassetid://507770453", -- point
 				Down = "rbxassetid://507771019", -- dance
 			},
+		},
+		-- PersonalTrainer patrols the gym area.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-10, 23, -32), -- spawn / post
+				Vector3.new(-10, 23, -50), -- north walk
+				Vector3.new(5, 23, -41), -- east walk
+				Vector3.new(-25, 23, -41), -- west walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
 		},
 	},
 	Farmer = {
@@ -307,6 +327,18 @@ Npc.Npc = {
 				Scissors = "rbxassetid://507770453", -- point
 			},
 		},
+		-- Postman patrols the central plaza sidewalks.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(40, 0, -40), -- spawn / post
+				Vector3.new(50, 0, -30), -- east walk
+				Vector3.new(60, 0, -40), -- north walk
+				Vector3.new(50, 0, -50), -- west walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
+		},
 	},
 	Sage = {
 		Zone = "Home", -- the forest is the Home island's green belt; the sage sits in a tree clearing
@@ -345,6 +377,18 @@ Npc.Npc = {
 			BaseReward = 45, -- per draw won
 			MatchBonus = 85, -- all three draws -> 3*45 + 85 = 220 total
 			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
+		},
+		-- Sage patrols the forest clearing area.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-116, 0, -276), -- spawn / post
+				Vector3.new(-116, 0, -266), -- north walk
+				Vector3.new(-126, 0, -276), -- west walk
+				Vector3.new(-116, 0, -286), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 4, -- min seconds between waypoints
+			PauseMax = 10, -- max seconds between waypoints
 		},
 	},
 	-- Town-professions chain. Each gates on a previous NPC's trophy (RequiredTrophies) plus a rising
@@ -396,6 +440,18 @@ Npc.Npc = {
 				Scissors = "rbxassetid://507770453", -- point
 			},
 		},
+		-- TaxiDriver patrols the NE ramp area.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(172, 0, -172), -- spawn / post
+				Vector3.new(160, 0, -160), -- along the ramp
+				Vector3.new(150, 0, -172), -- east walk
+				Vector3.new(160, 0, -184), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
+		},
 	},
 	Policeman = {
 		Zone = "Home",
@@ -434,6 +490,18 @@ Npc.Npc = {
 			BaseReward = 45,
 			MatchBonus = 85,
 			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
+		},
+		-- Policeman patrols the plaza sidewalks.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(144, 0, -110), -- spawn / post
+				Vector3.new(144, 0, -96), -- north walk
+				Vector3.new(130, 0, -103), -- west walk
+				Vector3.new(144, 0, -116), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
 		},
 	},
 	Firefighter = {
@@ -481,6 +549,18 @@ Npc.Npc = {
 				Down = "rbxassetid://507771019",
 			},
 		},
+		-- Firefighter patrols the plaza sidewalks near Neighbor01.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-144, 0, -110), -- spawn / post
+				Vector3.new(-144, 0, -96), -- north walk
+				Vector3.new(-158, 0, -103), -- west walk
+				Vector3.new(-144, 0, -116), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
+		},
 	},
 	Gardener = {
 		Zone = "Home",
@@ -527,6 +607,18 @@ Npc.Npc = {
 				Down = "rbxassetid://507771019",
 			},
 		},
+		-- Gardener patrols the NW area near Neighbor01.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-171, 0, -117), -- spawn / post
+				Vector3.new(-171, 0, -105), -- north walk
+				Vector3.new(-185, 0, -117), -- west walk
+				Vector3.new(-171, 0, -129), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
+		},
 	},
 	HomeBuilder = {
 		Zone = "Home",
@@ -572,6 +664,18 @@ Npc.Npc = {
 				Right = "rbxassetid://507770453",
 				Down = "rbxassetid://507771019",
 			},
+		},
+		-- HomeBuilder patrols the W area near Neighbor03.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-100, 0, 0), -- spawn / post
+				Vector3.new(-86, 0, 0), -- north walk
+				Vector3.new(-114, 0, 14), -- east walk
+				Vector3.new(-100, 0, 14), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
 		},
 	},
 	Nurse = {
@@ -620,6 +724,18 @@ Npc.Npc = {
 				Scissors = "rbxassetid://507770453", -- point
 			},
 		},
+		-- Nurse patrols the plaza sidewalks near Neighbor04.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(100, 0, 0), -- spawn / post
+				Vector3.new(86, 0, 0), -- west walk
+				Vector3.new(100, 0, -14), -- south walk
+				Vector3.new(114, 0, 0), -- east walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
+		},
 	},
 	TruckDriver = {
 		Zone = "Home",
@@ -658,6 +774,18 @@ Npc.Npc = {
 			BaseReward = 45,
 			MatchBonus = 85,
 			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
+		},
+		-- TruckDriver patrols the SW ramp area.
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-172, 0, 172), -- spawn / post
+				Vector3.new(-172, 0, 160), -- north walk
+				Vector3.new(-186, 0, 172), -- west walk
+				Vector3.new(-172, 0, 186), -- south walk
+			},
+			WalkSpeed = 3, -- casual pace
+			PauseMin = 3, -- min seconds between waypoints
+			PauseMax = 8, -- max seconds between waypoints
 		},
 	},
 } :: { [string]: NpcDef }

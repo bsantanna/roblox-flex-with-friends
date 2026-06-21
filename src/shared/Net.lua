@@ -40,6 +40,12 @@ local EVENTS = {
 	"RpsPlayerChoice", -- client -> server: (choice: string) -- the player's hand for this round
 	"RpsReveal", -- server -> client: (playerChoice: string, opponentChoice: string, outcome: string, reelSeconds: number, playerWins: number, opponentWins: number, roundReward: number) -- spin the reel onto opponentChoice, then show the outcome/score
 	"RpsGameOver", -- server -> client: (won: boolean, playerWins: number, opponentWins: number, totalReward: number, npcId: string) -- match decided
+	-- Quick Draw gameplay (the Forest sage's reaction-duel plugin owns these).
+	"QuickDrawCountdown", -- server -> client: (round: number, maxRounds: number) -- a draw begins; brace, watch for the signal
+	"QuickDrawSignal", -- server -> client: (windowSeconds: number) -- DRAW! the player must press within the window
+	"QuickDrawPress", -- client -> server: () -- the player struck (server times it against the signal)
+	"QuickDrawResult", -- server -> client: (outcome: string, roundReward: number, roundsWon: number) -- outcome: "win" | "slow" | "falsestart"
+	"QuickDrawGameOver", -- server -> client: (won: boolean, roundsWon: number, totalReward: number, npcId: string) -- duel decided
 	-- Trophy rewards (TrophyService).
 	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
 	"TrophyUnlocked", -- server -> client: (Id: string, Name: string, Emoji: string) -- one-shot toast for new trophy

@@ -19,6 +19,7 @@ Update this table when an NPC is created, modified, or removed.
 | Cowboy (Cole) | Rock-Paper-Scissors | Farm (paddock) | None | 160 (2×40 + 80 bonus) | 🐄 Cowboy (`cowboy_roundup`) |
 | PersonalTrainer | Simon Says (pose-memory) | Home (CentralBuilding) | 100 followers | 225 (50+75+100) | 💪 Strength (`personal_trainer_strength`) |
 | Farmer | Simon Says (pose-memory) | Farm (west fence) | 200 followers | 225 (50+75+100) | 🥛 Fresh Milk (`farmer_farmhand`) |
+| Sage | Quick Draw (reaction) | Home (forest clearing) | 250 followers **and** `farmer_farmhand` | 220 (3×45 + 85 bonus) | ⚡ Fast Hands (`sage_quickdraw`) |
 
 ## Unlocks
 
@@ -42,7 +43,10 @@ the `GateLine`. `MinigameService:Request` re-checks the unlock as defense in dep
   (best-of-`2*WinsNeeded-1`). Max = `(WinsNeeded × BaseReward) + MatchBonus`.
 - **Simon Says** — `BaseReward + (round-1) × RewardPerRound` per round cleared, over `MaxRounds`
   rounds (the sequence grows from `StartLength` arrows). Max = the sum across all rounds.
-- **Quick Draw** — see [Quick Draw](#quick-draw) once implemented.
+- **Quick Draw** — `BaseReward` per draw won (react within `ReactWindowSeconds` of the DRAW signal) +
+  `MatchBonus` for winning every draw. One miss (too slow or a false start) ends the duel; rewards for
+  draws already won are kept. Max = `(Rounds × BaseReward) + MatchBonus`. The press is timed on the
+  **server** clock against the signal, so it can't be spoofed.
 
 All follower awards route through `FollowerService:Award` (the single writer); tunables live in each
 NPC's game subtable in `Config.Npc`.

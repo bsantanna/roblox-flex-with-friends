@@ -37,10 +37,16 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Swift Post",
 		Emoji = "\u{1F4E6}", -- letter emoji
 	},
+	Sage = {
+		Id = "sage_quickdraw",
+		Name = "Fast Hands",
+		Emoji = "\u{26A1}", -- high voltage / lightning emoji
+	},
 }
 
 local trophyEarned: RemoteEvent
 local trophyUnlocked: RemoteEvent
+local awardedCallbacks: { (Player) -> () } = {}
 
 function TrophyService:Init()
 	trophyEarned = Net.Event("TrophyEarned")
@@ -88,6 +94,16 @@ function TrophyService:AwardTrophy(player: Player, npcId: string)
 
 	-- One-shot toast notification with trophy definition.
 	trophyUnlocked:FireClient(player, def.Id, def.Name, def.Emoji)
+
+	-- Let listeners (e.g. NpcService's trophy-gated unlocks) react to the new trophy.
+	for _, callback in awardedCallbacks do
+		task.spawn(callback, player)
+	end
+end
+
+-- Register a callback run with (player) whenever that player earns a new trophy.
+function TrophyService:OnAwarded(callback: (Player) -> ())
+	table.insert(awardedCallbacks, callback)
 end
 
 return TrophyService

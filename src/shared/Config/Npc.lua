@@ -49,6 +49,17 @@ type RockPaperScissorsDef = {
 	Emoji: { [string]: string }, -- move -> emoji shown to the player
 	Poses: { [string]: string }, -- move -> animation asset id played on the NPC at reveal
 }
+type QuickDrawDef = {
+	Rounds: number, -- draws to win in a row; clearing all awards the bonus + trophy
+	MinDelaySeconds: number, -- shortest suspense before the DRAW signal
+	MaxDelaySeconds: number, -- longest suspense before the DRAW signal
+	ReactWindowSeconds: number, -- press within this many seconds of DRAW to win the round (server-timed)
+	RevealSeconds: number, -- pause showing a round's result before the next
+	RoundDelaySeconds: number, -- pause before a round's countdown begins
+	BaseReward: number, -- followers for each draw the player wins
+	MatchBonus: number, -- extra followers for winning every draw
+	DrawPose: string, -- animation asset id played on the NPC at the DRAW signal
+}
 type NpcDialog = {
 	Lines: { string }, -- plain lines, advanced with Next
 	QualifiedLine: string, -- branch line when the player has the unlock
@@ -68,6 +79,7 @@ type NpcOutfit = {
 type NpcDef = {
 	Zone: string, -- which World.<Zone> folder the NPC is parented to
 	UnlockFollowers: number,
+	RequiredTrophies: { string }?, -- trophy ids the player must own to unlock (in addition to followers)
 	Outfit: NpcOutfit?, -- profession look applied on spawn (omitted = bare AvatarUserId avatar)
 	SpawnPosition: Vector3, -- world position of the floor point the NPC stands on (its post)
 	SpawnYaw: number, -- facing, degrees around Y (0 looks -Z/north); also the arena facing
@@ -79,6 +91,7 @@ type NpcDef = {
 	Dialog: NpcDialog,
 	SimonSays: SimonSaysDef?, -- present iff this NPC hosts the Simon Says minigame
 	RockPaperScissors: RockPaperScissorsDef?, -- present iff this NPC hosts the Rock-Paper-Scissors minigame
+	QuickDraw: QuickDrawDef?, -- present iff this NPC hosts the Quick Draw reaction minigame
 }
 
 Npc.Npc = {
@@ -265,6 +278,45 @@ Npc.Npc = {
 				Paper = "rbxassetid://507770239", -- wave (open hand)
 				Scissors = "rbxassetid://507770453", -- point
 			},
+		},
+	},
+	Sage = {
+		Zone = "Home", -- the forest is the Home island's green belt; the sage sits in a tree clearing
+		UnlockFollowers = 250,
+		RequiredTrophies = { "farmer_farmhand" }, -- must have earned the Farmer's Fresh Milk first
+		SpawnPosition = Vector3.new(-116, 0, -276), -- grass clearing ringed by green-belt trees
+		SpawnYaw = 180, -- face +Z, toward the walkway where players approach the grove
+		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
+		Outfit = { -- mystic look: a hood and flowing robe
+			Hats = { 14760815405 }, -- Wizard Hood
+			Layered = { { AssetId = 14133900767, Type = Enum.AccessoryType.Jacket } }, -- Long White Robes
+		},
+		ArenaPosition = Vector3.new(-116, 0, -266), -- a few steps toward the approach, still on grass
+		MoveSeconds = 1.5,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Quick Draw! Watch me closely. The instant you see DRAW, strike — tap the button or"
+			.. " hit Space. Hesitate and you lose the round. Win every draw to earn my favor. Step on the mark when you're ready!",
+		Dialog = {
+			Lines = {
+				"Ah... a traveler ventures into my grove.",
+				"I am the old sage of these woods, and I test the swiftness of those who seek me.",
+			},
+			QualifiedLine = "Your hand is proven and your fame precedes you. Care to test your reflexes?",
+			GateLine = "Return when you carry the Farmer's Fresh Milk and have {threshold} followers — then we shall duel.",
+			QualifiedChoices = { "Draw!", "Not now" },
+			GateChoices = { "I will return" },
+			TimeoutSeconds = 30,
+		},
+		QuickDraw = {
+			Rounds = 3,
+			MinDelaySeconds = 1.5,
+			MaxDelaySeconds = 3.5,
+			ReactWindowSeconds = 0.8, -- server-timed; generous enough to absorb typical network latency
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1.0,
+			BaseReward = 45, -- per draw won
+			MatchBonus = 85, -- all three draws -> 3*45 + 85 = 220 total
+			DrawPose = "rbxassetid://507770453", -- point emote as the draw gesture (placeholder default)
 		},
 	},
 } :: { [string]: NpcDef }

@@ -289,6 +289,9 @@ local function spawnNpc(npcId: string, def: any)
 			defCitizen.PauseMin,
 			defCitizen.PauseMax
 		)
+		-- Store the actor so dialog/minigame can pause the walk (otherwise the NPC walks away
+		-- mid-conversation). The chore branch above stores its actor the same way.
+		npcActors[npcId] = actor
 	end
 end
 

@@ -229,9 +229,12 @@ Npc.Npc = {
 		SpawnPosition = Vector3.new(300, 0, -120), -- inside the paddock, on grass north-east of the Farmer
 		SpawnYaw = 90, -- same facing as the Farmer (toward the pen approach)
 		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
-		Outfit = { -- cowboy look: a wide-brim cowboy hat
+		Outfit = { -- cowboy look: cowboy hat + plaid flannel shirt and western jeans
 			Hats = { 10473499273 }, -- Cowboy Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
 		},
 		ArenaPosition = Vector3.new(322, 0, -120), -- a short walk to clear pen floor for the duel
 		MoveSeconds = 2,
@@ -287,9 +290,12 @@ Npc.Npc = {
 		SpawnPosition = Vector3.new(40, 0, -40), -- central plaza area, near the town green
 		SpawnYaw = 180, -- face south, toward the approach from the spawn plaza
 		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
-		Outfit = { -- postal look: a peaked uniform officer cap
+		Outfit = { -- postal look: officer cap + white shirt and navy trousers (summer postal uniform)
 			Hats = { 13383061629 }, -- White Star Line Officer Cap
-			Layered = {},
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top
+				{ AssetId = 140048946599540, Type = Enum.AccessoryType.Pants }, -- navy uniform pants
+			},
 		},
 		ArenaPosition = Vector3.new(60, 0, -40), -- a short walk north for the duel
 		MoveSeconds = 2,
@@ -398,9 +404,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 300,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
-		Outfit = { -- cabbie look: a flat newsboy cap
+		Outfit = { -- cabbie look: newsboy cap + casual tee and jeans
 			Hats = { 78174478860906 }, -- Black Shelby Vintage Cap
-			Layered = {},
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
 		},
 		SpawnPosition = Vector3.new(172, 0, -172), -- grass shoulder by the NE ramp, clear of the road
 		SpawnYaw = 90, -- face the open grass toward town
@@ -457,9 +466,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 350,
 		RequiredTrophies = { "sage_quickdraw" }, -- the Forest sage's Fast Hands
-		Outfit = { -- police look: a peaked police hat
+		Outfit = { -- police look: police hat + navy uniform jacket and trousers
 			Hats = { 15752686682 }, -- Police Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 90301601233454, Type = Enum.AccessoryType.Jacket }, -- police uniform jacket
+				{ AssetId = 140048946599540, Type = Enum.AccessoryType.Pants }, -- police uniform pants
+			},
 		},
 		SpawnPosition = Vector3.new(144, 0, -110), -- plaza-side sidewalk south of Neighbor02 (NE square)
 		SpawnYaw = 180, -- face south, toward the plaza approach
@@ -508,9 +520,11 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 300,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
-		Outfit = { -- firefighter look: a fire helmet
+		Outfit = { -- firefighter look: fire helmet + firefighter turnout pants
 			Hats = { 96463686997847 }, -- Firefighter Helmet
-			Layered = {},
+			Layered = {
+				{ AssetId = 9773731232, Type = Enum.AccessoryType.Pants }, -- Firefighter Pants
+			},
 		},
 		SpawnPosition = Vector3.new(-144, 0, -110), -- plaza-side sidewalk south of Neighbor01 (NW square)
 		SpawnYaw = 180, -- face south, toward the plaza approach
@@ -566,9 +580,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 450,
 		RequiredTrophies = { "policeman_protection" }, -- the policeman's Protection
-		Outfit = { -- gardener look: a straw hat (reuses the verified Farmer straw hat)
-			Hats = { 18358376553 }, -- Straw Hat
-			Layered = {},
+		Outfit = { -- gardener look: straw hat + flannel shirt under denim overalls
+			Hats = { 18358376553 }, -- Straw Hat (reuses the verified Farmer straw hat)
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 127189956586914, Type = Enum.AccessoryType.Pants }, -- Classic Blue Denim Overalls
+			},
 		},
 		SpawnPosition = Vector3.new(-171, 0, -117), -- grass strip in the NW quarter, west of Neighbor01
 		SpawnYaw = 180, -- face south toward the open sidewalk/plaza approach
@@ -624,9 +641,11 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 300,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
-		Outfit = { -- builder look: a construction hard hat
+		Outfit = { -- builder look: hard hat + denim work overalls
 			Hats = { 84987146959152 }, -- Construction Hard Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 127189956586914, Type = Enum.AccessoryType.Pants }, -- Classic Blue Denim Overalls
+			},
 		},
 		SpawnPosition = Vector3.new(-100, 0, 0), -- plaza-side sidewalk east of Neighbor03 (W square)
 		SpawnYaw = 90, -- face east, toward the plaza approach
@@ -682,9 +701,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 550,
 		RequiredTrophies = { "gardener_caretaking" }, -- the gardener's Caretaking
-		Outfit = { -- nurse look: a white nurse cap
+		Outfit = { -- nurse look: nurse cap + medical scrubs top and trousers
 			Hats = { 10770260 }, -- Nurse Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 80960012829759, Type = Enum.AccessoryType.Jacket }, -- Medical Nurse Outfit Vet
+				{ AssetId = 13896827744, Type = Enum.AccessoryType.Pants }, -- Medical Scrubs Hospital Pants
+			},
 		},
 		SpawnPosition = Vector3.new(100, 0, 0), -- plaza-side sidewalk west of Neighbor04 (E square)
 		SpawnYaw = 270, -- face west, toward the plaza approach
@@ -741,9 +763,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 450,
 		RequiredTrophies = { "taxi_driver_mobility" }, -- the taxi driver's Mobility
-		Outfit = { -- trucker look: a trucker cap
+		Outfit = { -- trucker look: trucker cap + plaid flannel shirt and jeans
 			Hats = { 12356137971 }, -- Vintage Label Trucker Cap
-			Layered = {},
+			Layered = {
+				{ AssetId = 127156100983108, Type = Enum.AccessoryType.Shirt }, -- Red & Black Long Sleeve Plaid Flannel Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
 		},
 		SpawnPosition = Vector3.new(-172, 0, 172), -- grass shoulder by the SW ramp, clear of the road
 		SpawnYaw = 0, -- face the open grass toward the plaza

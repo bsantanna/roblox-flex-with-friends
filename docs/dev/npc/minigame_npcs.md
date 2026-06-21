@@ -86,8 +86,12 @@ An `Outfit` has two parts, both real Marketplace asset ids:
   `HumanoidDescription:SetAccessories(list, false)` (`false` keeps the hats).
 
 Because `ApplyDescriptionAsync` requires the model to be in the DataModel, the outfit is applied
-**after** the NPC is parented into its zone. Current looks: Postman (officer cap), Cowboy (cowboy
-hat), Trainer (sweatband + tank top), Farmer (straw hat + denim overalls).
+**after** the NPC is parented into its zone. Every minigame NPC now wears a full profession look —
+a hat plus matching layered top and/or trousers — so the body reads as the job, not just the hat:
+e.g. Policeman (navy jacket + trousers), Nurse (medical scrubs), Cowboy/TruckDriver (plaid flannel +
+jeans), Firefighter (turnout pants), Gardener/HomeBuilder (denim overalls), Trainer (tank top),
+Farmer (overalls), Sage (robe). The `Layered` asset ids are real catalog layered clothing
+(AssetTypeId 64–72), so they render for every player without the place owning them.
 
 ## Poses
 

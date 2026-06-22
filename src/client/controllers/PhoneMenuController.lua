@@ -71,6 +71,8 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	["ballerina_swiftness"] = { Id = "ballerina_swiftness", Name = "Swiftness", Emoji = "\u{1FA70}" },
 	["pianist_talent"] = { Id = "pianist_talent", Name = "Talent", Emoji = "\u{1F3B9}" },
 	["archeologist_relic"] = { Id = "archeologist_relic", Name = "Relic", Emoji = "\u{1F9B4}" },
+	-- Quest 002 completion trophy.
+	["pilot_delivery"] = { Id = "pilot_delivery", Name = "Delivery Hero", Emoji = "\u{2708}" },
 }
 
 -- Trophy zone mapping: trophyId -> zone name. Each trophy belongs to exactly one zone. Town NPCs
@@ -97,6 +99,7 @@ local TROPHY_ZONE: { [string]: string } = {
 	["ballerina_swiftness"] = "Airport",
 	["pianist_talent"] = "Airport",
 	["archeologist_relic"] = "Airport",
+	["pilot_delivery"] = "Airport",
 }
 
 -- Tab bar labels and colors. Config-driven in the future.

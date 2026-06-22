@@ -46,6 +46,9 @@ Config.AirTraffic = TrafficCfg.AirTraffic
 Config.Minigame = Npc.Minigame
 Config.Npc = Npc.Npc
 
+-- Quest 002 "The Pilot's Forgotten Packages" tunables (Quest.lua)
+Config.Quest = require(script.Quest)
+
 -- Gym equipment (Gym.lua)
 Config.Gym = require(script.Gym)
 

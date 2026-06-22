@@ -26,6 +26,7 @@ Player.ProfileTemplate = {
 	InvitedFriends = {},
 	ClaimedReferral = false,
 	Friends = {},
+	CompletedQuests = {},
 } :: Types.ProfileData
 
 -- Offline follower decay applied on join. Off by default until balanced with real playtest data.

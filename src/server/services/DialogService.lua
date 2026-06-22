@@ -7,12 +7,11 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Dialog = require(ReplicatedStorage.Shared.Logic.Dialog)
-local Log = require(ReplicatedStorage.Shared.Util.Log)
+local NpcModel = require(ReplicatedStorage.Shared.Util.NpcModel)
 local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local MinigameService = require(script.Parent.MinigameService)
@@ -173,100 +172,26 @@ local function onDialogChoose(player: Player, choiceIndex: unknown)
 	end
 end
 
--- Dresses an NPC in its fixed profession outfit (Config.Npc.<npcId>.Outfit). The model must already
--- be parented into the DataModel (ApplyDescription needs that). Rigid headwear goes through the
--- HatAccessory string property; layered clothing (shirt/pants/jacket) through SetAccessories with
--- includeRigidAccessories=false so the hats are preserved. Yields, so spawnNpc runs off the boot thread.
-local function applyOutfit(model: Model, outfit: any)
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	if not humanoid then
-		return
-	end
-	local desc = humanoid:GetAppliedDescription()
-
-	local hatIds = {}
-	for _, id in outfit.Hats do
-		table.insert(hatIds, tostring(id))
-	end
-	desc.HatAccessory = table.concat(hatIds, ",")
-
-	local layered = {}
-	for i, item in outfit.Layered do
-		table.insert(layered, { Order = i, AssetId = item.AssetId, AccessoryType = item.Type, IsLayered = true })
-	end
-	desc:SetAccessories(layered, false)
-
-	humanoid:ApplyDescriptionAsync(desc)
-end
-
-local function makeFallbackBody(): Model
-	local model = Instance.new("Model")
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = Vector3.new(2, 5, 2)
-	body.Anchored = true
-	body.Color = Color3.fromRGB(200, 90, 90)
-	body.Parent = model
-	model.PrimaryPart = body
-	return model
-end
-
--- Spawns one NPC from Config.Npc.<npcId> in its World.<Zone> folder.
+-- Spawns one NPC from Config.Npc.<npcId> in its World.<Zone> folder via the shared NpcModel build,
+-- then wires its Talk prompt and any background movement (chore patrol / citizen walk).
 local function spawnNpc(npcId: string, def: any)
-	local zoneName = def.Zone
-	local worldFolder = Workspace:WaitForChild("World", 30)
-	local zoneFolder = worldFolder:WaitForChild(zoneName, 30)
-	assert(zoneFolder, string.format("DialogService: zone %s not found under World/", zoneName))
-
-	local ok, result = pcall(function()
-		return Players:CreateHumanoidModelFromUserId(def.AvatarUserId)
-	end)
-	local model: Model
-	if ok and result then
-		model = result
-	else
-		Log.warn(
-			"DialogService",
-			"avatar fetch failed; using fallback body",
-			{ npcId = npcId, userId = def.AvatarUserId }
-		)
-		model = makeFallbackBody()
-	end
-	model.Name = npcId
-
-	local root = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
-	assert(root, string.format("DialogService: %s model has no BasePart", npcId))
-
-	root.Anchored = true
-
-	model:PivotTo(CFrame.new(def.SpawnPosition) * CFrame.Angles(0, math.rad(def.SpawnYaw), 0))
-	local boundsCFrame, boundsSize = model:GetBoundingBox()
-	local bottom = boundsCFrame.Position.Y - boundsSize.Y / 2
-	model:PivotTo(model:GetPivot() + Vector3.new(0, def.SpawnPosition.Y - bottom, 0))
-
-	-- Ensure the NPC has an Animator for the minigame walk/pose animations.
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	if humanoid and not humanoid:FindFirstChildOfClass("Animator") then
-		local animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = npcId
-	prompt.ActionText = "Talk"
-	prompt.ObjectText = npcId
-	prompt.HoldDuration = 0
-	prompt.RequiresLineOfSight = false
-	prompt.MaxActivationDistance = 12
+	local result = NpcModel.build({
+		npcId = npcId,
+		zone = def.Zone,
+		avatarUserId = def.AvatarUserId,
+		spawnPosition = def.SpawnPosition,
+		spawnYaw = def.SpawnYaw,
+		outfit = def.Outfit,
+		promptText = "Talk",
+		promptDistance = 12,
+	})
+	local model = result.model
+	local root = result.root
+	local prompt = result.prompt
+	assert(prompt, string.format("DialogService: %s prompt expected", npcId))
 	prompt.Triggered:Connect(function(player: Player)
 		onPromptTriggered(player, npcId)
 	end)
-	prompt.Parent = root
-	model.Parent = zoneFolder
-	-- Dress the NPC in its profession outfit once it's in the DataModel (ApplyDescription requires it).
-	if def.Outfit then
-		applyOutfit(model, def.Outfit)
-	end
 	NpcPromptService.Register(npcId, prompt)
 	npcModels[npcId] = { root = root, model = model }
 

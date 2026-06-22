@@ -37,6 +37,7 @@ export type ProfileData = {
 	ClaimedReferral: boolean, -- whether this player has claimed their one-time invited-join bonus
 	Friends: { [string]: OutfitData }, -- customizable NPC id -> the look the player created for it
 	-- (key present == befriended; gates first-meet vs friend dialog). Written only by OutfitService.
+	CompletedQuests: { [string]: true }, -- questId -> true (finished); written only by QuestService
 }
 
 -- Minimal shim over ProfileStore's Profile<T>. The Wally wrapper module re-exports

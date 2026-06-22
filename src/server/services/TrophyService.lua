@@ -120,6 +120,13 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Relic",
 		Emoji = "\u{1F9B4}", -- bone emoji
 	},
+	-- Quest 002 "The Pilot's Forgotten Packages" completion trophy (awarded by QuestService on delivery).
+	-- Shows in the Social Modal's Airport tab.
+	Pilot = {
+		Id = "pilot_delivery",
+		Name = "Delivery Hero",
+		Emoji = "\u{2708}", -- airplane emoji
+	},
 }
 
 local trophyEarned: RemoteEvent

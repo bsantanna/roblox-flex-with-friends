@@ -66,6 +66,14 @@ local EVENTS = {
 	"OpenNpcEditor", -- server -> client: (npcId: string) -- first meeting: open the "create your friend" editor
 	"SaveNpcOutfit", -- client -> server: (npcId: string, outfit: OutfitData) -- save the created look (validated server-side)
 	"NpcOutfitSync", -- server -> client: (outfits: { [string]: OutfitData }) -- this player's saved NPC looks
+	-- Quest 002 "The Pilot's Forgotten Packages" (QuestService / QuestController / CutsceneController).
+	"QuestState", -- server -> client: (questId: string, phase: string, collected: number, total: number, deadline: number?) -- the one HUD/state sync
+	"QuestAccept", -- client -> server: () -- accept the Pilot's offer
+	"QuestDecline", -- client -> server: () -- decline the offer
+	"RequestQuestTravel", -- client -> server: (destination: string) -- phone fast-travel ("City"/"Airport"); validated vs quest state
+	"RequestCollectPackage", -- client -> server: (index: number) -- triggered a beacon; server validates proximity
+	"CutscenePlay", -- server -> client: (sequenceId: string) -- take camera control, play a named cutscene
+	"CutsceneDone", -- client -> server: () -- cutscene finished/skipped; lets the server sequence the next beat
 }
 
 -- Request/response functions.

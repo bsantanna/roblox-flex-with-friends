@@ -901,6 +901,17 @@ Npc.Npc = {
 				Down = "rbxassetid://507771019",
 			},
 		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(80, 1.1, 743), -- spawn / post
+				Vector3.new(64, 1.1, 743), -- towards hall centre
+				Vector3.new(80, 1.1, 721), -- south along right wall
+				Vector3.new(64, 1.1, 721), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
+		},
 	},
 	Chef = {
 		Zone = "Airport",
@@ -965,6 +976,17 @@ Npc.Npc = {
 				"\u{1F570}\u{FE0F}", -- clock
 			},
 		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-80, 1.1, 677), -- spawn / post
+				Vector3.new(-64, 1.1, 677), -- towards hall centre
+				Vector3.new(-80, 1.1, 699), -- north along left wall
+				Vector3.new(-64, 1.1, 699), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
+		},
 	},
 	Singer = {
 		Zone = "Airport",
@@ -1013,6 +1035,17 @@ Npc.Npc = {
 				Scissors = "rbxassetid://507770453", -- point
 			},
 		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-80, 1.1, 699), -- spawn / post
+				Vector3.new(-64, 1.1, 699), -- towards hall centre
+				Vector3.new(-80, 1.1, 721), -- north along left wall
+				Vector3.new(-64, 1.1, 721), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
+		},
 	},
 	Violinist = {
 		Zone = "Airport",
@@ -1051,6 +1084,17 @@ Npc.Npc = {
 			MatchBonus = 80,
 			PlayerMark = "X",
 			NpcMark = "O",
+		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(80, 1.1, 721), -- spawn / post
+				Vector3.new(64, 1.1, 721), -- towards hall centre
+				Vector3.new(80, 1.1, 699), -- south along right wall
+				Vector3.new(64, 1.1, 699), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
 		},
 	},
 	DJ = {
@@ -1116,6 +1160,17 @@ Npc.Npc = {
 				"\u{1F570}\u{FE0F}", -- clock
 			},
 		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-80, 1.1, 721), -- spawn / post
+				Vector3.new(-64, 1.1, 721), -- towards hall centre
+				Vector3.new(-80, 1.1, 743), -- south along left wall
+				Vector3.new(-64, 1.1, 743), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
+		},
 	},
 	Ballerina = {
 		Zone = "Airport",
@@ -1164,6 +1219,17 @@ Npc.Npc = {
 				Right = "rbxassetid://507770453",
 				Down = "rbxassetid://507771019",
 			},
+		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(80, 1.1, 677), -- spawn / post
+				Vector3.new(64, 1.1, 677), -- towards hall centre
+				Vector3.new(80, 1.1, 699), -- north along right wall
+				Vector3.new(64, 1.1, 699), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
 		},
 	},
 	Pianist = {
@@ -1229,6 +1295,17 @@ Npc.Npc = {
 				"\u{1F570}\u{FE0F}", -- clock
 			},
 		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(80, 1.1, 699), -- spawn / post
+				Vector3.new(64, 1.1, 699), -- towards hall centre
+				Vector3.new(80, 1.1, 677), -- south along right wall
+				Vector3.new(64, 1.1, 677), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
+		},
 	},
 	Archeologist = {
 		Zone = "Airport",
@@ -1270,6 +1347,17 @@ Npc.Npc = {
 			MatchBonus = 80,
 			PlayerMark = "X",
 			NpcMark = "O",
+		},
+		CitizenWalk = {
+			Waypoints = {
+				Vector3.new(-80, 1.1, 743), -- spawn / post
+				Vector3.new(-64, 1.1, 743), -- towards hall centre
+				Vector3.new(-80, 1.1, 677), -- south along left wall
+				Vector3.new(-64, 1.1, 677), -- towards hall centre
+			},
+			WalkSpeed = 3,
+			PauseMin = 2,
+			PauseMax = 6,
 		},
 	},
 } :: { [string]: NpcDef }

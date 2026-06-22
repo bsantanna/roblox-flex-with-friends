@@ -857,6 +857,13 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 600,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
+		Outfit = { -- athletic look: sweatband + tank top and joggers
+			Hats = { 12871624213 }, -- Red Bandana Headband
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top
+				{ AssetId = 9183094140, Type = Enum.AccessoryType.Pants }, -- White Jogger Pants
+			},
+		},
 		SpawnPosition = Vector3.new(80, 1.1, 743), -- right wall, terminal floor
 		SpawnYaw = 270, -- face west, into the hall
 		AvatarUserId = 1,
@@ -899,6 +906,10 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 700,
 		RequiredTrophies = { "sage_quickdraw" }, -- the Forest sage's Fast Hands
+		Outfit = { -- chef look: toque + white double-breasted coat
+			Hats = { 1374258 }, -- Chef Hat
+			Layered = { { AssetId = 11332013358, Type = Enum.AccessoryType.Jacket } }, -- Chef Coat In White
+		},
 		SpawnPosition = Vector3.new(-80, 1.1, 677), -- left wall, terminal floor
 		SpawnYaw = 90, -- face east, into the hall
 		AvatarUserId = 1,
@@ -959,6 +970,10 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 800,
 		RequiredTrophies = { "firefighter_bravery" }, -- the firefighter's Bravery
+		Outfit = { -- pop-star look: stylish cap + flashy gold tuxedo jacket
+			Hats = { 78174478860906 }, -- Black Shelby Vintage Cap
+			Layered = { { AssetId = 13073595441, Type = Enum.AccessoryType.Jacket } }, -- Golden Tuxedo Suit
+		},
 		SpawnPosition = Vector3.new(-80, 1.1, 699), -- left wall, terminal floor
 		SpawnYaw = 90, -- face east, into the hall
 		AvatarUserId = 1,
@@ -1003,6 +1018,10 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 900,
 		RequiredTrophies = { "home_builder_nicehome" }, -- the home builder's Nice Home
+		Outfit = { -- formal musician look: black pinstripe tuxedo jacket
+			Hats = {},
+			Layered = { { AssetId = 9039269740, Type = Enum.AccessoryType.Jacket } }, -- Pinstripe Tuxedo Jacket Suit - Black
+		},
 		SpawnPosition = Vector3.new(80, 1.1, 721), -- right wall, terminal floor
 		SpawnYaw = 270, -- face west, into the hall
 		AvatarUserId = 1,
@@ -1038,6 +1057,10 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 1000,
 		RequiredTrophies = { "policeman_protection" }, -- the policeman's Protection
+		Outfit = { -- DJ look: headphones + varsity jacket
+			Hats = { 12196484286 }, -- Star Headphones Accessory
+			Layered = { { AssetId = 16380310710, Type = Enum.AccessoryType.Jacket } }, -- Black Sport Oversized Varsity Jacket
+		},
 		SpawnPosition = Vector3.new(-80, 1.1, 721), -- left wall, terminal floor
 		SpawnYaw = 90, -- face east, into the hall
 		AvatarUserId = 1,
@@ -1098,6 +1121,13 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 1100,
 		RequiredTrophies = { "truck_driver_heavyduty" }, -- the truck driver's Heavy Duty
+		Outfit = { -- ballet look: leotard top + tutu skirt
+			Hats = {},
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top (leotard top)
+				{ AssetId = 14453904448, Type = Enum.AccessoryType.DressSkirt }, -- Ballerina dress (tutu)
+			},
+		},
 		SpawnPosition = Vector3.new(80, 1.1, 677), -- right wall, terminal floor
 		SpawnYaw = 270, -- face west, into the hall
 		AvatarUserId = 1,
@@ -1140,6 +1170,10 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 1200,
 		RequiredTrophies = { "gardener_caretaking" }, -- the gardener's Caretaking
+		Outfit = { -- formal musician look: navy tuxedo jacket
+			Hats = {},
+			Layered = { { AssetId = 9039602336, Type = Enum.AccessoryType.Jacket } }, -- Tuxedo Jacket Suit - Navy
+		},
 		SpawnPosition = Vector3.new(80, 1.1, 699), -- right wall, terminal floor
 		SpawnYaw = 270, -- face west, into the hall
 		AvatarUserId = 1,
@@ -1200,6 +1234,13 @@ Npc.Npc = {
 		Zone = "Airport",
 		UnlockFollowers = 1300,
 		RequiredTrophies = { "nurse_healthy" }, -- the nurse's Healthy
+		Outfit = { -- explorer look: pith helmet + flannel shirt and jeans
+			Hats = { 10705097 }, -- Tan Pith Helmet
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
+		},
 		SpawnPosition = Vector3.new(-80, 1.1, 743), -- left wall, terminal floor
 		SpawnYaw = 90, -- face east, into the hall
 		AvatarUserId = 1,

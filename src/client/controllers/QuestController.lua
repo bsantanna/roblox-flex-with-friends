@@ -31,6 +31,9 @@ local buttonRow: Frame
 local hudFrame: Frame
 local timerLabel: TextLabel
 local objLabel: TextLabel
+local toastLabel: TextLabel
+local toastToken = 0
+local prevCount = 0
 
 -- Beacon + collection state. collectedLocal mirrors which packages this client has already grabbed so
 -- re-entering the city doesn't respawn collected beacons; the server count stays authoritative.
@@ -117,6 +120,29 @@ local function clearBeacons()
 	end
 end
 
+-- A little pickup flourish: burst the particles, hide the part, then destroy after the burst clears.
+local function collectFeedback(model: Model)
+	local part = model.PrimaryPart
+	if part then
+		local emitter = part:FindFirstChildOfClass("ParticleEmitter")
+		if emitter then
+			emitter:Emit(24)
+		end
+		local prompt = part:FindFirstChildOfClass("ProximityPrompt")
+		if prompt then
+			prompt.Enabled = false
+		end
+		local light = part:FindFirstChildOfClass("PointLight")
+		if light then
+			light.Enabled = false
+		end
+		part.Transparency = 1
+	end
+	task.delay(0.5, function()
+		model:Destroy()
+	end)
+end
+
 local function makeBeacon(index: number, ground: Vector3): Model
 	local B = Q.Beacon
 	local model = Instance.new("Model")
@@ -180,7 +206,11 @@ local function makeBeacon(index: number, ground: Vector3): Model
 		end
 		-- Optimistic local removal; the server validates proximity before it counts.
 		collectedLocal[index] = true
-		removeBeacon(index)
+		local m = beacons[index]
+		beacons[index] = nil
+		if m then
+			collectFeedback(m)
+		end
 		requestCollect:FireServer(index)
 	end)
 
@@ -213,6 +243,19 @@ local function updateObjective()
 	objLabel.Text = `📦 {questCount}/{TOTAL}`
 end
 
+-- A brief encouraging toast (auto-hides). Latest call wins via the token.
+local function showToast(text: string)
+	toastToken += 1
+	local token = toastToken
+	toastLabel.Text = text
+	toastLabel.Visible = true
+	task.delay(2.2, function()
+		if token == toastToken then
+			toastLabel.Visible = false
+		end
+	end)
+end
+
 -- State sync -----------------------------------------------------------------------------------
 
 local function onQuestState(_questId: string, phase: string, count: number, _total: number, deadline: number?)
@@ -225,6 +268,12 @@ local function onQuestState(_questId: string, phase: string, count: number, _tot
 	else
 		hideOffer()
 	end
+
+	-- A package was just confirmed (count climbed) -> an encouraging toast.
+	if (phase == "collecting" or phase == "returning") and count > prevCount then
+		showToast(Q.CollectToasts[math.min(count, #Q.CollectToasts)])
+	end
+	prevCount = count
 
 	if phase == "offer" or phase == "accepted" then
 		if count == 0 then
@@ -330,6 +379,25 @@ function QuestController:Init()
 	objLabel.TextColor3 = Color3.fromRGB(220, 230, 220)
 	objLabel.Font = Enum.Font.GothamBold
 	objLabel.Parent = hudFrame
+
+	-- Encouraging collection toast, just under the HUD.
+	toastLabel = Instance.new("TextLabel")
+	toastLabel.Name = "QuestToast"
+	toastLabel.AnchorPoint = Vector2.new(0.5, 0)
+	toastLabel.Position = UDim2.new(0.5, 0, 0, 84)
+	toastLabel.Size = UDim2.fromOffset(360, 40)
+	toastLabel.BackgroundColor3 = Color3.fromRGB(40, 55, 30)
+	toastLabel.BackgroundTransparency = 0.2
+	toastLabel.Text = ""
+	toastLabel.TextScaled = true
+	toastLabel.TextColor3 = Color3.fromRGB(235, 245, 220)
+	toastLabel.Font = Enum.Font.GothamBold
+	toastLabel.Visible = false
+	toastLabel.Parent = gui
+
+	local toastCorner = Instance.new("UICorner")
+	toastCorner.CornerRadius = UDim.new(0, 10)
+	toastCorner.Parent = toastLabel
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

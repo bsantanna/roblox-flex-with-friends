@@ -91,6 +91,15 @@ Quest.Lines = {
 }
 Quest.LineHoldSeconds = 4 -- how long each spoken line stays up
 
+-- Encouraging toast shown on the player's screen as each package is collected, indexed by the running
+-- count (1..4). Kept warm and short for the young audience.
+Quest.CollectToasts = {
+	"Nice find! 🎉",
+	"Two down -- keep going!",
+	"Almost there!",
+	"That's all four -- back to the Pilot!",
+}
+
 -- Cutscene camera keyframes (CutsceneController). eye/target are world offsets added to the Pilot's
 -- position (rule 3) so framing is tuned without editing the controller. Each beat tweens over
 -- TweenSeconds. Verified visually in Studio -- a CFrame that type-checks can still point at a wall.

@@ -10,16 +10,17 @@ local Quest = {}
 -- Persisted completion key (Profile.Data.CompletedQuests[Id]); a one-time story quest.
 Quest.Id = "PilotPackages"
 
--- The Pilot quest-giver. Stands in the arrivals terminal (Zone "Airport", floor Y=1.1) like the other
--- airport NPCs, near the centre of the hall facing the apron/entrance. Exact post + facing are
--- Studio-verified, not trusted from these numbers. The outfit reuses verified catalog ids (the
--- Postman's White Star Line officer cap + a white tank + navy uniform pants) for a clean pilot look.
+-- The Pilot quest-giver. Stands in the arrivals terminal (Zone "Airport", floor Y=1.1) on open floor
+-- by the gates -- clear of the central bar (behind) and the seating (ahead), facing the player arrival
+-- point so the gate + runway sit behind him as the cutscene backdrop. Post + facing were Studio-verified
+-- (the bar/seats occupy the hall centre; this spot reads cleanly). The outfit reuses verified catalog
+-- ids (the Postman's White Star Line officer cap + a white tank + navy uniform pants).
 Quest.Pilot = {
 	NpcId = "Pilot",
 	Zone = "Airport",
 	AvatarUserId = 1, -- Roblox default avatar, dressed via Outfit (matches the whole roster)
-	SpawnPosition = Vector3.new(0, 1.1, 700),
-	SpawnYaw = 0, -- face -Z (toward the apron/entrance); Studio-verified
+	SpawnPosition = Vector3.new(0, 1.1, 690),
+	SpawnYaw = 180, -- face +Z toward arriving players; the gate + runway frame the cutscene behind him
 	Outfit = {
 		Hats = { 13383061629 }, -- White Star Line Officer Cap
 		Layered = {
@@ -42,13 +43,14 @@ Quest.TrophyNpcId = "Pilot"
 -- "City" is the Home neighbourhood plaza; the return goes to the Airport terminal beside the Pilot.
 Quest.CityDropOff = Vector3.new(0, 5, 0) -- Home plaza centre (Zones.Home + lift); Studio-verified
 
--- The 4 packages to collect, placed around the Home town (floor Y=0), reachable on foot from the plaza
--- within the timer. Positions + the collect radius are Studio-verified.
+-- The 4 packages to collect, at the four internal road crossings of the Home grid -- open asphalt, one
+-- per quadrant around the central plaza, ~100 studs from the spawn (well within the timer on foot). The
+-- (+/-120, +/-120) house-square corners were rejected in Studio: two sat under Forest trees.
 Quest.PackagePositions = {
-	Vector3.new(120, 0, 120),
-	Vector3.new(-120, 0, 120),
-	Vector3.new(120, 0, -120),
-	Vector3.new(-120, 0, -120),
+	Vector3.new(72, 0, 72),
+	Vector3.new(-72, 0, 72),
+	Vector3.new(72, 0, -72),
+	Vector3.new(-72, 0, -72),
 }
 Quest.CollectRadius = 14 -- studs; server validates the player's real root is within this of a package
 

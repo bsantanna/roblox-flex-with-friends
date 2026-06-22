@@ -62,12 +62,20 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	["home_builder_nicehome"] = { Id = "home_builder_nicehome", Name = "Nice Home", Emoji = "\u{1F3E0}" },
 	["nurse_healthy"] = { Id = "nurse_healthy", Name = "Healthy", Emoji = "\u{1FA7A}" },
 	["truck_driver_heavyduty"] = { Id = "truck_driver_heavyduty", Name = "Heavy Duty", Emoji = "\u{1F69A}" },
+	-- Airport-terminal NPCs.
+	["athlete_speed"] = { Id = "athlete_speed", Name = "Speed", Emoji = "\u{1F3C3}" },
+	["chef_secret_sauce"] = { Id = "chef_secret_sauce", Name = "Secret Sauce", Emoji = "\u{1F9C5}" },
+	["singer_confidence"] = { Id = "singer_confidence", Name = "Confidence", Emoji = "\u{1F3A4}" },
+	["violinist_refinement"] = { Id = "violinist_refinement", Name = "Refinement", Emoji = "\u{1F3BB}" },
+	["dj_grooves"] = { Id = "dj_grooves", Name = "Grooves", Emoji = "\u{1F3A7}" },
+	["ballerina_swiftness"] = { Id = "ballerina_swiftness", Name = "Swiftness", Emoji = "\u{1FA70}" },
+	["pianist_talent"] = { Id = "pianist_talent", Name = "Talent", Emoji = "\u{1F3B9}" },
+	["archeologist_relic"] = { Id = "archeologist_relic", Name = "Relic", Emoji = "\u{1F9B4}" },
 }
 
--- Trophy zone mapping: trophyId -> zone name. Each trophy belongs to exactly one zone.
--- Every NPC currently lives in the town (Config.Npc Zone = "Home"/"Farm"), so all trophies map to
--- "City". The "Airport" tab is an empty placeholder until Airport-zone NPCs exist — move their
--- trophies here when they're added.
+-- Trophy zone mapping: trophyId -> zone name. Each trophy belongs to exactly one zone. Town NPCs
+-- (Config.Npc Zone = "Home"/"Farm") map to "City"; the airport-terminal NPCs (Zone = "Airport") map
+-- to "Airport", populating that tab.
 local TROPHY_ZONE: { [string]: string } = {
 	["personal_trainer_strength"] = "City",
 	["farmer_farmhand"] = "City",
@@ -81,6 +89,14 @@ local TROPHY_ZONE: { [string]: string } = {
 	["home_builder_nicehome"] = "City",
 	["nurse_healthy"] = "City",
 	["truck_driver_heavyduty"] = "City",
+	["athlete_speed"] = "Airport",
+	["chef_secret_sauce"] = "Airport",
+	["singer_confidence"] = "Airport",
+	["violinist_refinement"] = "Airport",
+	["dj_grooves"] = "Airport",
+	["ballerina_swiftness"] = "Airport",
+	["pianist_talent"] = "Airport",
+	["archeologist_relic"] = "Airport",
 }
 
 -- Tab bar labels and colors. Config-driven in the future.

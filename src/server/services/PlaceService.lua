@@ -1,9 +1,9 @@
 --!strict
--- PlaceService: server-authoritative travel between zones. Validates the destination is a real,
--- unlocked place; for outbound trips runs the Airport boarding minigame (a timed press the server
--- owns) before moving the player and awarding arrival followers; traveling Home applies the
--- carbon-footprint follower loss. Tracks the player's current zone and Stats.TripsTaken.
--- See doc/002_implementation_plan.md (1.4).
+-- PlaceService: server-authoritative cab travel. The cab is a binary shuttle -- it flips the player
+-- between Home and the Airport based on where they currently are: from Home it drops them inside the
+-- arrivals terminal (the airport safe zone); from the Airport it brings them back Home, applying the
+-- carbon-footprint follower loss. Onward flights to other Places are reserved for a later system.
+-- Tracks the player's current zone and Stats.TripsTaken. See doc/002_implementation_plan.md (1.4).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,92 +17,53 @@ local PlaceService = {}
 
 local requestTravel: RemoteEvent
 local travelComplete: RemoteEvent
-local startMinigame: RemoteEvent
-local minigameInput: RemoteEvent
 
-local location: { [Player]: string } = {} -- current zone per player
+local location: { [Player]: string } = {} -- current zone per player ("Home" or "Airport")
 local traveling: { [Player]: boolean } = {} -- guards against concurrent travel
-local boardedAt: { [Player]: number } = {} -- set when a player fires MinigameInput
 
 local function setLocation(player: Player, zoneName: string)
 	location[player] = zoneName
 	player:SetAttribute("CurrentPlace", zoneName)
 end
 
+-- Where the cab drops a player off in each zone. Home is the spawn plaza; the Airport drop-off is
+-- inside the arrivals terminal (its centre + the configured spawn offset), the airport safe zone.
+local function dropOff(zoneName: string): Vector3
+	if zoneName == "Airport" then
+		local T = Config.Terminal
+		return Config.Zones.Airport + T.Offset + T.SpawnOffset + Vector3.new(0, 5, 0)
+	end
+	return Config.Zones[zoneName] + Vector3.new(0, 5, 0)
+end
+
 local function teleport(player: Player, zoneName: string)
-	local origin = Config.Zones[zoneName]
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if origin and root and root:IsA("BasePart") then
-		root.CFrame = CFrame.new(origin + Vector3.new(0, 5, 0))
+	if root and root:IsA("BasePart") then
+		root.CFrame = CFrame.new(dropOff(zoneName))
 	end
 end
 
--- Yields until the player boards within the window. Returns true on success, false on timeout.
-local function runBoardingMinigame(player: Player): boolean
-	boardedAt[player] = nil
-	startMinigame:FireClient(player, "AirportBoarding", Config.Travel.MinigameWindow)
-
-	local started = os.clock()
-	while os.clock() - started < Config.Travel.MinigameWindow do
-		if boardedAt[player] then
-			return true
-		end
-		task.wait()
-	end
-	return false
-end
-
-local function onRequestTravel(player: Player, placeId: unknown)
-	if type(placeId) ~= "string" then
-		return
-	end
-
+local function onRequestTravel(player: Player)
 	local profile = DataService:GetProfile(player)
 	if not profile or traveling[player] then
 		return
 	end
 
-	local place = Config.Places[placeId]
-	if not place then
-		travelComplete:FireClient(player, false, "Unknown destination")
-		return
-	end
-	if not table.find(profile.Data.UnlockedPlaces, placeId) then
-		travelComplete:FireClient(player, false, "That place is locked")
-		return
-	end
-
+	-- The cab flips the player between Home and the Airport based on where they are now.
 	local current = location[player] or "Home"
-	if placeId == current then
-		travelComplete:FireClient(player, false, "You are already there")
-		return
-	end
+	local dest = if current == "Home" then "Airport" else "Home"
 
 	traveling[player] = true
 
-	if placeId == "Home" then
-		-- Returning home: no minigame, apply the carbon-footprint loss.
-		teleport(player, "Home")
+	teleport(player, dest)
+	setLocation(player, dest)
+	profile.Data.Stats.TripsTaken += 1
+	if dest == "Home" then
+		-- Returning home costs followers (carbon footprint); arriving at the Airport is free.
 		FollowerService:Deduct(player, Config.Travel.CarbonFootprintLoss, "carbon-footprint")
-		setLocation(player, "Home")
-		profile.Data.Stats.TripsTaken += 1
-		travelComplete:FireClient(player, true, nil, "Home")
-	else
-		-- Outbound: board at the Airport, then fly to the destination.
-		teleport(player, "Airport")
-		local boarded = runBoardingMinigame(player)
-		if not boarded then
-			teleport(player, current)
-			travelComplete:FireClient(player, false, "You missed the flight")
-		else
-			teleport(player, placeId)
-			FollowerService:Award(player, place.Arrival, "arrival:" .. placeId)
-			setLocation(player, placeId)
-			profile.Data.Stats.TripsTaken += 1
-			travelComplete:FireClient(player, true, nil, placeId)
-		end
 	end
+	travelComplete:FireClient(player, true, nil, dest)
 
 	traveling[player] = false
 end
@@ -110,8 +71,6 @@ end
 function PlaceService:Init()
 	requestTravel = Net.Event("RequestTravel")
 	travelComplete = Net.Event("TravelComplete")
-	startMinigame = Net.Event("StartMinigame")
-	minigameInput = Net.Event("MinigameInput")
 end
 
 function PlaceService:Start()
@@ -122,14 +81,9 @@ function PlaceService:Start()
 
 	requestTravel.OnServerEvent:Connect(onRequestTravel)
 
-	minigameInput.OnServerEvent:Connect(function(player: Player)
-		boardedAt[player] = os.clock()
-	end)
-
 	Players.PlayerRemoving:Connect(function(player: Player)
 		location[player] = nil
 		traveling[player] = nil
-		boardedAt[player] = nil
 	end)
 end
 

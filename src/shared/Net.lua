@@ -10,10 +10,8 @@ local RunService = game:GetService("RunService")
 -- Server -> client and client -> server events.
 local EVENTS = {
 	"FollowerChanged", -- server -> client: (followers: number)
-	"RequestTravel", -- client -> server: (placeId: string)
+	"RequestTravel", -- client -> server: () -- call a cab; server flips the player Home <-> Airport
 	"TravelComplete", -- server -> client: (success: boolean, reason: string?, placeId: string?)
-	"StartMinigame", -- server -> client: (kind: string, durationSeconds: number)
-	"MinigameInput", -- client -> server: () -- player acted (e.g. boarded)
 	"RequestPhotoCapture", -- client -> server: ()
 	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
 	"UnlockNpc", -- server -> client: (npcId: string)

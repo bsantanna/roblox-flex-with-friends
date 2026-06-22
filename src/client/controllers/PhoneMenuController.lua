@@ -386,7 +386,7 @@ local function activate()
 		showSocialModal()
 	elseif action == "Cab" then
 		close()
-		TravelController:OpenPicker()
+		TravelController:OpenCabConfirm()
 	end
 end
 

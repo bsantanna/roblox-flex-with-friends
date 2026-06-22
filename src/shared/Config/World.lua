@@ -4,9 +4,9 @@
 
 local World = {}
 
--- World zone origins. MVP keeps Home/Airport/Beach as zones in one place; "travel"
--- repositions the player between these origins (Airport is the transit waypoint where the
--- boarding minigame runs).
+-- World zone origins. MVP keeps Home/Airport/Beach as zones in one place; the cab "travel"
+-- repositions the player between Home and the Airport (the Airport drop-off is inside the
+-- arrivals terminal, see World.Terminal).
 World.Zones = {
 	Home = Vector3.new(0, 0, 0),
 	Airport = Vector3.new(0, 0, 560),
@@ -15,12 +15,26 @@ World.Zones = {
 	Farm = Vector3.new(320, 0, -140), -- zone origin; matches Config.Farm.Center
 } :: { [string]: Vector3 }
 
--- Travel destinations selectable from the Cab picker. A place is travelable only if it is in
--- the player's UnlockedPlaces. Arrival is the follower reward for arriving there.
+-- Onward travel destinations (Arrival is the follower reward for arriving there). Reserved for the
+-- flight system that boards players from the Airport terminal; the cab itself only shuttles
+-- Home <-> Airport.
 World.Places = {
 	Home = { Zone = World.Zones.Home, Arrival = 0 },
 	Beach = { Zone = World.Zones.Beach, Arrival = 50 },
 } :: { [string]: { Zone: Vector3, Arrival: number } }
+
+-- The arrivals terminal at the Airport: a large enterable hall the cab drops players into, and the
+-- airport "safe zone" -- players spawn inside it and sealed walls keep them in until they cab home
+-- (the flight system that lets them travel onward is built on top of this later). TerminalService
+-- builds it under Workspace.Scenery; PlaceService spawns arriving players at its centre. Geometry is
+-- world-space relative to Zones.Airport; the glass facade faces -Z, toward the apron and runway.
+World.Terminal = {
+	Offset = Vector3.new(0, 0, 150), -- terminal centre, from Zones.Airport
+	Size = Vector3.new(90, 18, 44), -- interior clear span (X wide, Y tall, Z deep)
+	WallThickness = 1,
+	Lift = 0.1, -- floor-slab bottom clearance above the apron, so surfaces never sit coplanar (no z-fight)
+	SpawnOffset = Vector3.new(0, 0, 12), -- player spawn, from the terminal centre (toward the back wall)
+}
 
 -- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't
 -- round-trip through Rojo, so the *generating values* live here and the world stays reproducible

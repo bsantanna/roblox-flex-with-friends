@@ -23,7 +23,6 @@ local CUSHION = Color3.fromRGB(232, 213, 183)
 local CONCRETE = Color3.fromRGB(185, 185, 190)
 local GLASS_AIRPORT = Color3.fromRGB(160, 200, 230)
 local YELLOW = Color3.fromRGB(255, 210, 50)
-local PLANE_ACCENT = Color3.fromRGB(45, 100, 180)
 
 type PartOpts = { material: Enum.Material?, transparency: number?, shape: Enum.PartType? }
 
@@ -146,58 +145,6 @@ local function buildSunLounger(model: Model, base: CFrame)
 end
 
 -- ========== Airport buildings ==========
-
--- Main terminal: glass facade, doors, "AIRPORT" sign.
--- Placed at the far (+Z) edge of the airport apron.
-local function buildAirportTerminal(model: Model, base: CFrame)
-	-- Back wall (full height and width).
-	add(model, base * CFrame.new(0, 6, 5), Vector3.new(24, 12, 0.5), CONCRETE, { material = Enum.Material.Concrete })
-	-- Side walls (along Z, connecting back wall to front).
-	add(model, base * CFrame.new(-12, 6, 0), Vector3.new(0.5, 12, 10), CONCRETE, { material = Enum.Material.Concrete })
-	add(model, base * CFrame.new(12, 6, 0), Vector3.new(0.5, 12, 10), CONCRETE, { material = Enum.Material.Concrete })
-	-- Front wall panels (door opening in center + glass windows).
-	add(model, base * CFrame.new(-6, 6, -5), Vector3.new(5, 12, 0.5), CONCRETE, { material = Enum.Material.Concrete }) -- left panel
-	add(model, base * CFrame.new(6, 6, -5), Vector3.new(5, 12, 0.5), CONCRETE, { material = Enum.Material.Concrete }) -- right panel
-	add(model, base * CFrame.new(0, 10.5, -5), Vector3.new(12, 3, 0.5), CONCRETE, { material = Enum.Material.Concrete }) -- top panel
-	add(model, base * CFrame.new(0, 2, -5), Vector3.new(4, 4, 0.5), PLANE_ACCENT, { material = Enum.Material.Metal }) -- door
-	-- Glass facade panels along front.
-	for _, xOff in { -7.5, -2.5, 2.5, 7.5 } do
-		add(
-			model,
-			base * CFrame.new(xOff, 5, -5.1),
-			Vector3.new(4, 6, 0.1),
-			GLASS_AIRPORT,
-			{ material = Enum.Material.Glass, transparency = 0.15 }
-		)
-	end
-	-- Roof.
-	add(
-		model,
-		base * CFrame.new(0, 12, 0),
-		Vector3.new(24.5, 0.8, 10.5),
-		CONCRETE,
-		{ material = Enum.Material.Concrete }
-	)
-	-- "AIRPORT" sign on top.
-	add(model, base * CFrame.new(0, 13.5, 6), Vector3.new(14, 1.5, 0.5), PLANE_ACCENT)
-	local signText = Instance.new("TextLabel")
-	signText.Name = "Sign"
-	signText.Size = UDim2.fromScale(1, 1)
-	signText.BackgroundTransparency = 1
-	signText.Text = "AIRPORT"
-	signText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	signText.TextScaled = true
-	signText.Font = Enum.Font.GothamBold
-	signText.Parent = model
-	-- Entrance canopy.
-	add(
-		model,
-		base * CFrame.new(0, 3.5, -6.5),
-		Vector3.new(5, 0.4, 3),
-		PLANE_ACCENT,
-		{ material = Enum.Material.Metal }
-	)
-end
 
 -- Terminal B: a second terminal building, slightly narrower with green accent.
 local function buildAirportTerminalB(model: Model, base: CFrame)
@@ -855,14 +802,8 @@ local PLACEMENTS: { Placement } = {
 		build = buildAirportRunwayMarkings,
 	},
 	{ id = "JetBridge", zone = "Airport", offset = Vector3.new(0, 0, 90), rotationY = 0, build = buildJetBridge },
-	-- Terminal & control tower cluster (Z=100-110).
-	{
-		id = "AirportTerminal",
-		zone = "Airport",
-		offset = Vector3.new(0, 0, 110),
-		rotationY = 0,
-		build = buildAirportTerminal,
-	},
+	-- Terminal cluster. The large walk-in arrivals terminal is built separately by TerminalService;
+	-- what remains here is Terminal B, the control tower and the outbuildings.
 	{
 		id = "AirportTerminalB",
 		zone = "Airport",
@@ -961,11 +902,9 @@ local PLACEMENTS: { Placement } = {
 		build = buildAirportShops,
 	},
 	-- Landscaping trees: spaced beside buildings and along the apron edge (Z > 80, away from taxi).
-	-- Terminal-side trees (left and right of AirportTerminal).
-	{ id = "Tree1", zone = "Airport", offset = Vector3.new(-15, 0, 125), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree2", zone = "Airport", offset = Vector3.new(15, 0, 125), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree3", zone = "Airport", offset = Vector3.new(-15, 0, 135), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree4", zone = "Airport", offset = Vector3.new(15, 0, 135), rotationY = 0, build = buildAirportTree },
+	-- Trees flanking the arrivals-terminal entrance (TerminalService builds it, centred at Z≈150).
+	{ id = "Tree1", zone = "Airport", offset = Vector3.new(-56, 0, 118), rotationY = 0, build = buildAirportTree },
+	{ id = "Tree2", zone = "Airport", offset = Vector3.new(56, 0, 118), rotationY = 0, build = buildAirportTree },
 	-- Left cluster near ParkingGarage, Hotel, Office.
 	{ id = "Tree5", zone = "Airport", offset = Vector3.new(-230, 0, 130), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree6", zone = "Airport", offset = Vector3.new(-230, 0, 155), rotationY = 0, build = buildAirportTree },
@@ -985,8 +924,6 @@ local PLACEMENTS: { Placement } = {
 	-- Far apron edge row (Z ≈ 165).
 	{ id = "Tree18", zone = "Airport", offset = Vector3.new(-180, 0, 165), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree19", zone = "Airport", offset = Vector3.new(-100, 0, 165), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree20", zone = "Airport", offset = Vector3.new(-20, 0, 165), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree21", zone = "Airport", offset = Vector3.new(40, 0, 165), rotationY = 0, build = buildAirportTree },
 	-- Panoptic terminal: very long rectangular building behind all existing airport buildings.
 	-- Glass facade faces the apron/driveway for panoramic airport views.
 	{

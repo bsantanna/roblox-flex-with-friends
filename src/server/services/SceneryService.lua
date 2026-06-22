@@ -752,33 +752,6 @@ local function buildParkingGarage(model: Model, base: CFrame)
 	add(model, base * CFrame.new(0, 23, 0.1), Vector3.new(2, 2, 0.1), Color3.fromRGB(30, 120, 30))
 end
 
--- Panoptic terminal: very long rectangular building behind all other airport buildings.
--- Glass facade facing the apron/driveway for panoramic airport views.
-local function buildPanopticTerminal(model: Model, base: CFrame)
-	-- Very long body (200 studs wide, 18 studs tall).
-	add(model, base * CFrame.new(0, 9, 0), Vector3.new(200, 18, 12), Color3.fromRGB(190, 195, 200))
-	-- Glass facade on the front (Z+ side, facing the apron).
-	-- Multiple glass panels with dividers.
-	local paneWidth = 20
-	local paneCount = 8
-	for i = 1, paneCount do
-		local xOff = (i - (paneCount + 1) / 2) * (paneWidth + 2)
-		add(model, base * CFrame.new(xOff, 9, 6.2), Vector3.new(paneWidth, 16, 0.3), GLASS_AIRPORT)
-		add(
-			model,
-			base * CFrame.new(xOff + paneWidth / 2 + 1, 9, 6.2),
-			Vector3.new(2, 16, 0.3),
-			Color3.fromRGB(180, 185, 190)
-		) -- frame divider
-	end
-	-- Solid back wall (interior).
-	add(model, base * CFrame.new(0, 9, -6), Vector3.new(198, 16, 0.5), Color3.fromRGB(170, 175, 180))
-	-- Roof overhang.
-	add(model, base * CFrame.new(0, 18.5, 0), Vector3.new(204, 1, 16), CONCRETE)
-	-- Entrance area (center).
-	add(model, base * CFrame.new(0, 3, 6.2), Vector3.new(12, 6, 0.3), Color3.fromRGB(60, 60, 80))
-end
-
 type Placement = {
 	id: string,
 	zone: string,
@@ -833,11 +806,11 @@ local PLACEMENTS: { Placement } = {
 		rotationY = 0,
 		build = buildAirportFlagpoles,
 	},
-	-- Security checkpoint near the terminal.
+	-- Security checkpoint in the terminal forecourt (the big arrivals terminal starts at Z≈106).
 	{
 		id = "SecurityBooth",
 		zone = "Airport",
-		offset = Vector3.new(-20, 0, 115),
+		offset = Vector3.new(-60, 0, 95),
 		rotationY = 0,
 		build = buildSecurityBooth,
 	},
@@ -879,18 +852,18 @@ local PLACEMENTS: { Placement } = {
 		rotationY = 0,
 		build = buildCargoCenter,
 	},
-	{ id = "CarRental", zone = "Airport", offset = Vector3.new(-80, 0, 130), rotationY = 0, build = buildCarRental },
+	{ id = "CarRental", zone = "Airport", offset = Vector3.new(-180, 0, 175), rotationY = 0, build = buildCarRental },
 	{
 		id = "AirportGasStation",
 		zone = "Airport",
-		offset = Vector3.new(-80, 0, 155),
+		offset = Vector3.new(-180, 0, 205),
 		rotationY = 0,
 		build = buildAirportGasStation,
 	},
 	{
 		id = "AirportRestaurant",
 		zone = "Airport",
-		offset = Vector3.new(80, 0, 140),
+		offset = Vector3.new(175, 0, 175),
 		rotationY = 0,
 		build = buildAirportRestaurant,
 	},
@@ -902,9 +875,9 @@ local PLACEMENTS: { Placement } = {
 		build = buildAirportShops,
 	},
 	-- Landscaping trees: spaced beside buildings and along the apron edge (Z > 80, away from taxi).
-	-- Trees flanking the arrivals-terminal entrance (TerminalService builds it, centred at Z≈150).
-	{ id = "Tree1", zone = "Airport", offset = Vector3.new(-56, 0, 118), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree2", zone = "Airport", offset = Vector3.new(56, 0, 118), rotationY = 0, build = buildAirportTree },
+	-- Trees flanking the arrivals-terminal entrance (TerminalService builds it; front face at Z≈106).
+	{ id = "Tree1", zone = "Airport", offset = Vector3.new(-105, 0, 100), rotationY = 0, build = buildAirportTree },
+	{ id = "Tree2", zone = "Airport", offset = Vector3.new(105, 0, 100), rotationY = 0, build = buildAirportTree },
 	-- Left cluster near ParkingGarage, Hotel, Office.
 	{ id = "Tree5", zone = "Airport", offset = Vector3.new(-230, 0, 130), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree6", zone = "Airport", offset = Vector3.new(-230, 0, 155), rotationY = 0, build = buildAirportTree },
@@ -915,7 +888,7 @@ local PLACEMENTS: { Placement } = {
 	{ id = "Tree10", zone = "Airport", offset = Vector3.new(-160, 0, 145), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree11", zone = "Airport", offset = Vector3.new(-100, 0, 145), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree12", zone = "Airport", offset = Vector3.new(-100, 0, 160), rotationY = 0, build = buildAirportTree },
-	{ id = "Tree13", zone = "Airport", offset = Vector3.new(-60, 0, 145), rotationY = 0, build = buildAirportTree },
+	{ id = "Tree13", zone = "Airport", offset = Vector3.new(-150, 0, 170), rotationY = 0, build = buildAirportTree },
 	-- Right cluster near Restaurant, Shops.
 	{ id = "Tree14", zone = "Airport", offset = Vector3.new(100, 0, 155), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree15", zone = "Airport", offset = Vector3.new(100, 0, 170), rotationY = 0, build = buildAirportTree },
@@ -924,15 +897,6 @@ local PLACEMENTS: { Placement } = {
 	-- Far apron edge row (Z ≈ 165).
 	{ id = "Tree18", zone = "Airport", offset = Vector3.new(-180, 0, 165), rotationY = 0, build = buildAirportTree },
 	{ id = "Tree19", zone = "Airport", offset = Vector3.new(-100, 0, 165), rotationY = 0, build = buildAirportTree },
-	-- Panoptic terminal: very long rectangular building behind all existing airport buildings.
-	-- Glass facade faces the apron/driveway for panoramic airport views.
-	{
-		id = "PanopticTerminal",
-		zone = "Airport",
-		offset = Vector3.new(0, 0, 200),
-		rotationY = 0,
-		build = buildPanopticTerminal,
-	},
 	-- Beach zone.
 	{ id = "BeachCabana", zone = "Beach", offset = Vector3.new(0, 0, 0), rotationY = 0, build = buildBeachCabana },
 	{ id = "PalmTree", zone = "Beach", offset = Vector3.new(-22, 0, 12), rotationY = 0, build = buildPalmTree },

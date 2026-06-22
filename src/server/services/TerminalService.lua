@@ -4,11 +4,12 @@
 -- side walls and roof) with a glass facade facing the apron (-Z) so players look out over the
 -- airfield. The facade panes are decorative; an invisible collidable barrier behind them seals the
 -- front, so the player is contained no matter how the panes tile. The floor slab rests a hair above
--- the apron (Config.Terminal.Lift) so no surfaces sit coplanar (no z-fighting). Inside is purely
--- cosmetic dressing -- storefronts along the back wall, a waiting zone of seat rows facing the glass,
--- and two boarding-gate desks -- none of it functional. Geometry comes from Config.Terminal (centred
--- at Zones.Airport + Offset); everything is anchored, under Workspace.Scenery. PlaceService spawns
--- arriving players at the terminal centre (+ Config.Terminal.SpawnOffset).
+-- the apron (Config.Terminal.Lift) so no surfaces sit coplanar (no z-fighting). The interior is purely
+-- cosmetic dressing: a retail strip of shops along the back wall, a food-court row of stalls, a central
+-- plaza with a bar and bistro tables, a waiting zone of seat rows facing the glass, and boarding-gate
+-- desks. None of it is functional. Geometry comes from Config.Terminal (centred at Zones.Airport +
+-- Offset); everything is anchored, under Workspace.Scenery. PlaceService spawns arriving players at the
+-- terminal centre (+ Config.Terminal.SpawnOffset).
 
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -27,6 +28,9 @@ local METAL = Color3.fromRGB(150, 154, 162)
 local COUNTER_TOP = Color3.fromRGB(235, 235, 238)
 local SHOP_WALL = Color3.fromRGB(225, 225, 228)
 local DARK_BOARD = Color3.fromRGB(22, 24, 34)
+local WOOD = Color3.fromRGB(120, 84, 52)
+local DARKWOOD = Color3.fromRGB(74, 52, 36)
+local SIGN_GOLD = Color3.fromRGB(255, 220, 120)
 
 local function addPart(
 	parent: Instance,
@@ -36,7 +40,8 @@ local function addPart(
 	color: Color3,
 	material: Enum.Material,
 	transparency: number?,
-	canCollide: boolean?
+	canCollide: boolean?,
+	shape: Enum.PartType?
 ): Part
 	local p = Instance.new("Part")
 	p.Name = name
@@ -47,32 +52,45 @@ local function addPart(
 	p.Color = color
 	p.Material = material
 	p.Transparency = transparency or 0
+	if shape then
+		p.Shape = shape
+	end
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Parent = parent
 	return p
 end
 
--- Scaled text on a part's Front face. Parts below are oriented so their Front points where the text
--- should read, so the caller never has to pick a NormalId.
+-- Scaled text on a part's Front face. SizingMode = PixelsPerStud makes the canvas match the face's
+-- aspect ratio, so glyphs are never stretched. Parts below are oriented so their Front points where
+-- the text should read, so the caller never has to pick a NormalId.
 local function labelFace(part: Part, text: string, color: Color3?)
 	local gui = Instance.new("SurfaceGui")
 	gui.Name = "Label"
 	gui.Face = Enum.NormalId.Front
 	gui.Adornee = part
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 50
 	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.fromScale(1, 1)
+	-- Vertical overscan: TextScaled fits the font's full line box (caps are only ~72% of it), which
+	-- leaves short labels looking small in their band. Sizing the label ~1.32x the face height pushes
+	-- the visible cap-height to ~95% of the board; width still follows proportionally (aspect is kept),
+	-- and the empty ascender/descender padding that spills past the face is simply not drawn.
+	lbl.AnchorPoint = Vector2.new(0.5, 0.5)
+	lbl.Position = UDim2.fromScale(0.5, 0.5)
+	lbl.Size = UDim2.fromScale(1, 1.32)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = text
 	lbl.TextColor3 = color or Color3.fromRGB(255, 255, 255)
 	lbl.TextScaled = true
+	lbl.TextWrapped = false
 	lbl.Font = Enum.Font.GothamBold
 	lbl.Parent = gui
 	gui.Parent = part
 end
 
--- A row of bucket seats on a shared rail. `cf` sits at floor level; local +X is the row direction and
--- the seats face local -Z. Collidable so a player can clamber on them, but non-functional (no Seat).
+-- A row of bucket seats on a shared rail. `cf` at floor; local +X is the row direction and the seats
+-- face local -Z. Collidable so a player can clamber on them, but non-functional (no Seat).
 local function seatRow(parent: Instance, cf: CFrame, seats: number)
 	local pitch = 2.4
 	local width = seats * pitch
@@ -110,7 +128,7 @@ local function seatRow(parent: Instance, cf: CFrame, seats: number)
 	end
 end
 
--- A storefront. `cf` at floor; the shop opens toward local -Z (into the hall), backdrop toward +Z.
+-- A storefront. `cf` at floor; the shop opens toward local -Z, backdrop toward +Z.
 local function shop(parent: Instance, cf: CFrame, width: number, name: string, signColor: Color3)
 	local H = 8
 	addPart(
@@ -135,13 +153,12 @@ local function shop(parent: Instance, cf: CFrame, width: number, name: string, s
 			false
 		)
 	end
-	-- Counter + a couple of backdrop shelves.
 	addPart(
 		parent,
 		"ShopCounter",
 		cf * CFrame.new(0, 1.6, -0.9),
 		Vector3.new(width - 2, 3.2, 1.4),
-		Color3.fromRGB(180, 150, 110),
+		WOOD,
 		Enum.Material.Wood
 	)
 	addPart(
@@ -168,8 +185,8 @@ local function shop(parent: Instance, cf: CFrame, width: number, name: string, s
 	local sign = addPart(
 		parent,
 		"ShopSign",
-		cf * CFrame.new(0, H + 0.9, -0.1),
-		Vector3.new(width - 0.5, 1.6, 0.3),
+		cf * CFrame.new(0, H + 1.1, -0.1),
+		Vector3.new(width - 1, 2.4, 0.3),
 		signColor,
 		Enum.Material.SmoothPlastic,
 		nil,
@@ -188,8 +205,59 @@ local function shop(parent: Instance, cf: CFrame, width: number, name: string, s
 	)
 end
 
--- A boarding-gate desk with an overhead gate sign. `cf` at floor; the desk front (and sign text)
--- faces local -Z.
+-- A food-court kiosk. `cf` at floor; serves toward local -Z, with a canopy and an overhead menu sign.
+local function foodStall(parent: Instance, cf: CFrame, width: number, name: string, color: Color3)
+	local H = 7
+	addPart(
+		parent,
+		"StallBack",
+		cf * CFrame.new(0, H / 2, 1.1),
+		Vector3.new(width, H, 0.3),
+		color,
+		Enum.Material.SmoothPlastic,
+		nil,
+		false
+	)
+	addPart(
+		parent,
+		"StallCounter",
+		cf * CFrame.new(0, 1.5, -0.8),
+		Vector3.new(width - 1, 3, 1.2),
+		Color3.fromRGB(205, 205, 210),
+		Enum.Material.SmoothPlastic
+	)
+	addPart(
+		parent,
+		"StallCounterTop",
+		cf * CFrame.new(0, 3.1, -0.8),
+		Vector3.new(width - 0.6, 0.2, 1.5),
+		COUNTER_TOP,
+		Enum.Material.SmoothPlastic
+	)
+	addPart(
+		parent,
+		"StallCanopy",
+		cf * CFrame.new(0, H, -1.1),
+		Vector3.new(width + 0.6, 0.3, 2.6),
+		color,
+		Enum.Material.SmoothPlastic,
+		nil,
+		false
+	)
+	local sign = addPart(
+		parent,
+		"StallSign",
+		cf * CFrame.new(0, H + 1.2, -0.2),
+		Vector3.new(width - 1, 2.2, 0.3),
+		DARK_BOARD,
+		Enum.Material.SmoothPlastic,
+		nil,
+		false
+	)
+	labelFace(sign, name, SIGN_GOLD)
+end
+
+-- A boarding-gate desk with an overhead gate sign. `cf` at floor; the desk front (and sign) face -Z.
 local function gateDesk(parent: Instance, cf: CFrame, label: string)
 	addPart(parent, "GateDesk", cf * CFrame.new(0, 1.5, 0), Vector3.new(5, 3, 2), ACCENT, Enum.Material.SmoothPlastic)
 	addPart(
@@ -223,6 +291,144 @@ local function gateDesk(parent: Instance, cf: CFrame, label: string)
 	labelFace(board, label, Color3.fromRGB(120, 230, 150))
 end
 
+-- A bistro table with three chairs -- the food-court / plaza seating. `cf` at floor.
+local function bistroTable(parent: Instance, cf: CFrame)
+	addPart(parent, "TableLeg", cf * CFrame.new(0, 1.25, 0), Vector3.new(0.5, 2.5, 0.5), METAL, Enum.Material.Metal)
+	addPart(
+		parent,
+		"TableTop",
+		cf * CFrame.new(0, 2.6, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Vector3.new(0.3, 3.2, 3.2),
+		WOOD,
+		Enum.Material.Wood,
+		nil,
+		true,
+		Enum.PartType.Cylinder
+	)
+	for k = 0, 2 do
+		local a = k * (2 * math.pi / 3)
+		local px, pz = math.cos(a) * 2.4, math.sin(a) * 2.4
+		addPart(parent, "Chair", cf * CFrame.new(px, 1.1, pz), Vector3.new(1.2, 0.3, 1.2), SEAT, Enum.Material.Fabric)
+		addPart(
+			parent,
+			"ChairBack",
+			cf * CFrame.new(px * 1.35, 1.9, pz * 1.35),
+			Vector3.new(1.2, 1.4, 0.2),
+			SEAT,
+			Enum.Material.Fabric
+		)
+	end
+end
+
+-- The central bar: a square counter (open at the back for "staff"), a top overhang, a back gantry of
+-- bottles, stools on the front, and a hanging BAR sign. `cf` at the plaza-floor centre.
+local function centralBar(parent: Instance, cf: CFrame)
+	-- Plaza floor accent (a polished disc marking the central plaza).
+	addPart(
+		parent,
+		"PlazaFloor",
+		cf * CFrame.new(0, 0.08, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Vector3.new(0.16, 40, 40),
+		Color3.fromRGB(120, 124, 132),
+		Enum.Material.Marble,
+		nil,
+		false,
+		Enum.PartType.Cylinder
+	)
+	local bw, bd, bh = 16, 12, 3.2
+	addPart(
+		parent,
+		"BarFront",
+		cf * CFrame.new(0, bh / 2, -bd / 2),
+		Vector3.new(bw, bh, 1.2),
+		DARKWOOD,
+		Enum.Material.Wood
+	)
+	for _, sx in { -1, 1 } do
+		addPart(
+			parent,
+			"BarSide",
+			cf * CFrame.new(sx * bw / 2, bh / 2, 0),
+			Vector3.new(1.2, bh, bd),
+			DARKWOOD,
+			Enum.Material.Wood
+		)
+	end
+	addPart(
+		parent,
+		"BarTop",
+		cf * CFrame.new(0, bh + 0.15, 0),
+		Vector3.new(bw + 1.6, 0.3, bd + 1.6),
+		COUNTER_TOP,
+		Enum.Material.SmoothPlastic
+	)
+	-- Back gantry with a row of bottles.
+	addPart(
+		parent,
+		"BarGantry",
+		cf * CFrame.new(0, 4.6, bd / 2 - 1),
+		Vector3.new(bw - 2, 5.2, 0.5),
+		Color3.fromRGB(55, 40, 30),
+		Enum.Material.Wood,
+		nil,
+		false
+	)
+	local bottleColors = {
+		Color3.fromRGB(120, 200, 120),
+		Color3.fromRGB(200, 120, 120),
+		Color3.fromRGB(120, 160, 220),
+		Color3.fromRGB(220, 200, 120),
+	}
+	for i = -3, 3 do
+		addPart(
+			parent,
+			"Bottle",
+			cf * CFrame.new(i * 1.9, 3.4, bd / 2 - 1.2),
+			Vector3.new(0.5, 1.5, 0.5),
+			bottleColors[((i + 3) % #bottleColors) + 1],
+			Enum.Material.Glass,
+			0.15,
+			false
+		)
+	end
+	-- Stools along the front.
+	for _, sx in { -6, -2, 2, 6 } do
+		addPart(
+			parent,
+			"Stool",
+			cf * CFrame.new(sx, 1.6, -bd / 2 - 1.8) * CFrame.Angles(0, 0, math.rad(90)),
+			Vector3.new(0.2, 1.6, 1.6),
+			DARKWOOD,
+			Enum.Material.Wood,
+			nil,
+			true,
+			Enum.PartType.Cylinder
+		)
+	end
+	-- Hanging BAR sign over the front.
+	addPart(
+		parent,
+		"BarSignPost",
+		cf * CFrame.new(0, 9.5, -bd / 2 - 1),
+		Vector3.new(0.3, 4, 0.3),
+		FRAME,
+		Enum.Material.Metal,
+		nil,
+		false
+	)
+	local sign = addPart(
+		parent,
+		"BarSign",
+		cf * CFrame.new(0, 8, -bd / 2 - 1),
+		Vector3.new(8, 2.6, 0.4),
+		ACCENT,
+		Enum.Material.SmoothPlastic,
+		nil,
+		false
+	)
+	labelFace(sign, "BAR")
+end
+
 function TerminalService:Start()
 	local scenery = Workspace:FindFirstChild("Scenery")
 	if not scenery then
@@ -244,7 +450,7 @@ function TerminalService:Start()
 	-- Vertical reference: the floor slab rests `Lift` above the apron; floorTop is the walkable surface.
 	local floorTop = center.Y + T.Lift + t
 
-	-- Floor (slab bottom sits Lift above the apron) and roof.
+	-- Floor and roof.
 	addPart(
 		model,
 		"Floor",
@@ -282,8 +488,8 @@ function TerminalService:Start()
 		)
 	end
 
-	-- Front (-Z): an invisible collidable barrier seals the opening (the safe-zone wall); a glass
-	-- facade in front reads as the frontage, framed by a concrete base and lintel.
+	-- Front (-Z): invisible collidable barrier seals the opening; a glass facade in front reads as the
+	-- frontage, framed by a concrete base and lintel.
 	local frontZ = cz - halfZ - t / 2
 	addPart(
 		model,
@@ -320,7 +526,7 @@ function TerminalService:Start()
 	-- Decorative glass panes + vertical mullions across the front, between base and lintel.
 	local glassH = sy - baseH - lintelH
 	local glassY = floorTop + baseH + glassH / 2
-	local paneCount = 9
+	local paneCount = 18
 	local pitch = sx / paneCount
 	for i = 0, paneCount - 1 do
 		local px = cx - sx / 2 + pitch * (i + 0.5)
@@ -353,8 +559,8 @@ function TerminalService:Start()
 	local board = addPart(
 		model,
 		"SignBoard",
-		CFrame.new(cx, floorTop + sy + 2, frontZ - t),
-		Vector3.new(20, 3, 0.5),
+		CFrame.new(cx, floorTop + sy + 2.5, frontZ - t),
+		Vector3.new(40, 4, 0.5),
 		ACCENT,
 		Enum.Material.SmoothPlastic,
 		nil,
@@ -364,28 +570,59 @@ function TerminalService:Start()
 
 	-- ===== Cosmetic interior =====
 	local floorCF = CFrame.new(cx, floorTop, cz)
+	local faceBack = CFrame.Angles(0, math.pi, 0) -- so a part's Front (-Z) instead points +Z
 
-	-- Storefronts along the back wall, opening toward the hall (-Z).
+	-- Retail strip: 6 shops along the back wall, opening toward the hall (-Z).
 	local shopZ = halfZ - 1.6
-	shop(model, floorCF * CFrame.new(-28, 0, shopZ), 22, "CAFÉ", Color3.fromRGB(150, 70, 50))
-	shop(model, floorCF * CFrame.new(0, 0, shopZ), 22, "DUTY FREE", Color3.fromRGB(110, 70, 150))
-	shop(model, floorCF * CFrame.new(28, 0, shopZ), 22, "NEWS", Color3.fromRGB(40, 130, 110))
+	local shopNames = { "CAFÉ", "DUTY FREE", "NEWS", "BOOKS", "FASHION", "GIFTS" }
+	local shopColors = {
+		Color3.fromRGB(150, 70, 50),
+		Color3.fromRGB(110, 70, 150),
+		Color3.fromRGB(40, 130, 110),
+		Color3.fromRGB(160, 120, 40),
+		Color3.fromRGB(170, 60, 110),
+		Color3.fromRGB(60, 110, 160),
+	}
+	for i = 1, 6 do
+		local x = (i - 3.5) * 30
+		shop(model, floorCF * CFrame.new(x, 0, shopZ), 28, shopNames[i], shopColors[i])
+	end
 
-	-- Waiting zone: two seat rows in the middle, facing the glass (-Z).
-	seatRow(model, floorCF * CFrame.new(0, 0, 5), 14)
-	seatRow(model, floorCF * CFrame.new(0, 0, -2), 14)
+	-- Food court: 4 kiosks in a row in front of the shops, facing the back/spawn (+Z).
+	local foodNames = { "PIZZA", "SUSHI", "BURGERS", "NOODLES" }
+	local foodColors = {
+		Color3.fromRGB(200, 90, 60),
+		Color3.fromRGB(70, 140, 170),
+		Color3.fromRGB(190, 150, 70),
+		Color3.fromRGB(150, 90, 160),
+	}
+	for i = 1, 4 do
+		local x = (i - 2.5) * 30
+		foodStall(model, floorCF * CFrame.new(x, 0, 22) * faceBack, 24, foodNames[i], foodColors[i])
+	end
 
-	-- Boarding-gate desks near the front, facing the hall (+Z, so rotate 180 about Y).
-	local faceHall = CFrame.Angles(0, math.pi, 0)
-	gateDesk(model, floorCF * CFrame.new(-30, 0, -halfZ + 5) * faceHall, "GATE 1")
-	gateDesk(model, floorCF * CFrame.new(30, 0, -halfZ + 5) * faceHall, "GATE 2")
+	-- Central plaza: the bar at the centre, ringed by bistro tables.
+	centralBar(model, floorCF)
+	for _, t2 in { Vector3.new(-26, 0, 11), Vector3.new(26, 0, 11), Vector3.new(-26, 0, -11), Vector3.new(26, 0, -11) } do
+		bistroTable(model, floorCF * CFrame.new(t2.X, 0, t2.Z))
+	end
 
-	-- Departures board mounted on the left wall, text facing into the hall (+X, so rotate +90 about Y).
+	-- Waiting zone: two seat rows facing the glass (-Z).
+	seatRow(model, floorCF * CFrame.new(0, 0, -26), 16)
+	seatRow(model, floorCF * CFrame.new(0, 0, -33), 16)
+
+	-- Boarding-gate desks near the front, facing the hall (+Z).
+	for i = 1, 4 do
+		local x = (i - 2.5) * 40
+		gateDesk(model, floorCF * CFrame.new(x, 0, -halfZ + 5) * faceBack, "GATE " .. i)
+	end
+
+	-- Departures board on the left wall, text facing into the hall (+X, so rotate +90 about Y).
 	local depBoard = addPart(
 		model,
 		"DeparturesBoard",
-		floorCF * CFrame.new(-halfX + 0.3, 9, 0) * CFrame.Angles(0, math.rad(90), 0),
-		Vector3.new(16, 6, 0.3),
+		floorCF * CFrame.new(-halfX + 0.3, 10, 0) * CFrame.Angles(0, math.rad(90), 0),
+		Vector3.new(20, 7, 0.3),
 		DARK_BOARD,
 		Enum.Material.SmoothPlastic,
 		nil,

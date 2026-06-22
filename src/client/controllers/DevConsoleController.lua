@@ -37,10 +37,10 @@ function DevConsoleController:Init()
 	gui.Name = "DevConsole"
 	gui.ResetOnSpawn = false
 
-	-- Main panel: follower setter.
+	-- Main panel: follower setter. Anchored bottom-left, sitting above the debug panel.
 	panel = Instance.new("Frame")
-	panel.AnchorPoint = Vector2.new(0.5, 0)
-	panel.Position = UDim2.fromScale(0.5, 0.06)
+	panel.AnchorPoint = Vector2.new(0, 1)
+	panel.Position = UDim2.new(0, 12, 1, -80)
 	panel.Size = UDim2.fromOffset(260, 110)
 	panel.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	panel.Visible = false
@@ -84,10 +84,10 @@ function DevConsoleController:Init()
 		end
 	end)
 
-	-- Debug panel: trophy grant. Sits just below the 110px-tall main panel.
+	-- Debug panel: trophy grant. Anchored at the very bottom-left, below the main panel.
 	debugPanel = Instance.new("Frame")
-	debugPanel.AnchorPoint = Vector2.new(0.5, 0)
-	debugPanel.Position = UDim2.new(0.5, 0, 0.06, 120)
+	debugPanel.AnchorPoint = Vector2.new(0, 1)
+	debugPanel.Position = UDim2.new(0, 12, 1, -12)
 	debugPanel.Size = UDim2.fromOffset(260, 60)
 	debugPanel.BackgroundColor3 = Color3.fromRGB(30, 20, 40)
 	debugPanel.Visible = false

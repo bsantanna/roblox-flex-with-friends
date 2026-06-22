@@ -30,10 +30,10 @@ World.Places = {
 -- world-space relative to Zones.Airport; the glass facade faces -Z, toward the apron and runway.
 World.Terminal = {
 	Offset = Vector3.new(0, 0, 150), -- terminal centre, from Zones.Airport
-	Size = Vector3.new(90, 18, 44), -- interior clear span (X wide, Y tall, Z deep)
+	Size = Vector3.new(180, 26, 88), -- interior clear span (X wide, Y tall, Z deep)
 	WallThickness = 1,
 	Lift = 0.1, -- floor-slab bottom clearance above the apron, so surfaces never sit coplanar (no z-fight)
-	SpawnOffset = Vector3.new(0, 0, 12), -- player spawn, from the terminal centre (toward the back wall)
+	SpawnOffset = Vector3.new(0, 0, 34), -- player spawn, from the terminal centre (toward the back-wall shops)
 }
 
 -- Code-generated ground per zone (WorldService paints it at startup). Terrain voxels don't

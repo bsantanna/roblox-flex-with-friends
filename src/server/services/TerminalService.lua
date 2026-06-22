@@ -61,32 +61,48 @@ local function addPart(
 	return p
 end
 
--- Scaled text on a part's Front face. SizingMode = PixelsPerStud makes the canvas match the face's
--- aspect ratio, so glyphs are never stretched. Parts below are oriented so their Front points where
--- the text should read, so the caller never has to pick a NormalId.
+-- Big, unstretched text on a sign board's Front face. Three Roblox constraints force the approach:
+-- TextScaled is unreliable on bare SurfaceGui labels (it can collapse to ~8px); TextSize is hard-capped
+-- at 100; and a label whose em-box is taller than its SurfaceGui canvas renders nothing. So the text
+-- gets its own transparent panel, sized taller than the band, with PixelsPerStud chosen so the capped
+-- TextSize 100 yields caps ~95% of the *band* height -- the empty ascender/descender padding overflows
+-- the band harmlessly (the panel is invisible). TextSize is reduced only if the word would exceed ~95%
+-- of the band width, so long phrases fit the width instead of overflowing. SizingMode = PixelsPerStud
+-- keeps the canvas aspect equal to the face's, so glyphs are never stretched. Parts below are oriented
+-- so their Front points where the text reads.
 local function labelFace(part: Part, text: string, color: Color3?)
+	local H, W = part.Size.Y, part.Size.X
+	local pps = math.clamp(72 / (0.95 * H), 1, 100) -- caps (~0.72 of the em) land at ~95% of the band
+	local panel = Instance.new("Part")
+	panel.Name = "LabelPanel"
+	panel.Anchored = true
+	panel.CanCollide = false
+	panel.Transparency = 1
+	panel.Size = Vector3.new(W, 100 / pps + 0.4, 0.2) -- canvas taller than the em-box so the text renders
+	panel.CFrame = part.CFrame * CFrame.new(0, 0, -0.21) -- just in front of the coloured band
+	panel.Parent = part
+
+	local ref = game:GetService("TextService"):GetTextSize(text, 100, Enum.Font.GothamBold, Vector2.new(1e6, 1e6))
+	local widthTextSize = (0.95 * W * pps) * 100 / math.max(ref.X, 1)
+	local textSize = math.clamp(math.min(100, widthTextSize), 1, 100)
+
 	local gui = Instance.new("SurfaceGui")
 	gui.Name = "Label"
 	gui.Face = Enum.NormalId.Front
-	gui.Adornee = part
+	gui.Adornee = panel
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 50
+	gui.PixelsPerStud = pps
 	local lbl = Instance.new("TextLabel")
-	-- Vertical overscan: TextScaled fits the font's full line box (caps are only ~72% of it), which
-	-- leaves short labels looking small in their band. Sizing the label ~1.32x the face height pushes
-	-- the visible cap-height to ~95% of the board; width still follows proportionally (aspect is kept),
-	-- and the empty ascender/descender padding that spills past the face is simply not drawn.
-	lbl.AnchorPoint = Vector2.new(0.5, 0.5)
-	lbl.Position = UDim2.fromScale(0.5, 0.5)
-	lbl.Size = UDim2.fromScale(1, 1.32)
+	lbl.Size = UDim2.fromScale(1, 1)
 	lbl.BackgroundTransparency = 1
 	lbl.Text = text
 	lbl.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-	lbl.TextScaled = true
+	lbl.TextScaled = false
 	lbl.TextWrapped = false
+	lbl.TextSize = textSize
 	lbl.Font = Enum.Font.GothamBold
 	lbl.Parent = gui
-	gui.Parent = part
+	gui.Parent = panel
 end
 
 -- A row of bucket seats on a shared rail. `cf` at floor; local +X is the row direction and the seats

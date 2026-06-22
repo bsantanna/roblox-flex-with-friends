@@ -19,6 +19,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -27,6 +28,7 @@ local SpeechBubble = require(ReplicatedStorage.Shared.Util.SpeechBubble)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 local TrophyService = require(script.Parent.TrophyService)
+local PlaceService = require(script.Parent.PlaceService)
 local NpcActor = require(script.Parent.minigame.NpcActor)
 
 local QuestService = {}
@@ -47,6 +49,7 @@ local TOTAL = #Q.PackagePositions
 local questState: RemoteEvent
 local questAccept: RemoteEvent
 local questDecline: RemoteEvent
+local requestQuestTravel: RemoteEvent
 
 local sessions: { [Player]: Session } = {}
 local pilotModel: Model? = nil
@@ -182,10 +185,76 @@ local function onDecline(player: Player)
 	fireState(player, "idle", 0)
 end
 
+-- Absolute end time the client counts down to: GetServerTimeNow() is synced client/server, so the
+-- client can render the remaining time without trusting its own clock. The server's os.clock() deadline
+-- stays the sole authority on expiry.
+local function clientDeadline(session: Session): number
+	return Workspace:GetServerTimeNow() + math.max(0, session.deadline - os.clock())
+end
+
+-- Gentle failure: snap the player back to the airport, drop the session, let the Pilot give an
+-- understanding line. Only fires while collecting (the timer ran out).
+local function failQuest(player: Player)
+	local s = sessions[player]
+	if not s or s.phase ~= "collecting" then
+		return
+	end
+	clearSession(player)
+	PlaceService:TravelTo(player, "Airport")
+	task.spawn(speak, { Q.Lines.Fail })
+	fireState(player, "failed", 0)
+end
+
+-- Begins the timed collection: starts the server-authoritative deadline + its poll loop and tells the
+-- client the countdown end time. Called when the player first arrives in the city.
+local function startCollecting(session: Session)
+	session.phase = "collecting"
+	session.deadline = os.clock() + Q.TimeLimitSeconds
+	task.spawn(function()
+		while session.alive and session.phase == "collecting" and os.clock() < session.deadline do
+			task.wait(0.1)
+		end
+		if session.alive and session.phase == "collecting" then
+			failQuest(session.player)
+		end
+	end)
+	fireState(session.player, "collecting", session.count, clientDeadline(session))
+end
+
+-- Phone fast travel between the airport and the city (the Home neighbourhood). Validated against quest
+-- state; zero carbon cost. Going to the city the first time starts the timer.
+local function onRequestTravel(player: Player, destination: unknown)
+	if type(destination) ~= "string" then
+		return
+	end
+	local s = sessions[player]
+	if not s then
+		return
+	end
+	if destination == "City" then
+		if s.phase ~= "accepted" and s.phase ~= "collecting" then
+			return
+		end
+		PlaceService:TravelTo(player, "Home", Q.CityDropOff)
+		if s.phase == "accepted" then
+			startCollecting(s)
+		else
+			fireState(player, "collecting", s.count, clientDeadline(s))
+		end
+	elseif destination == "Airport" then
+		if s.phase ~= "collecting" and s.phase ~= "returning" then
+			return
+		end
+		PlaceService:TravelTo(player, "Airport")
+		fireState(player, s.phase, s.count)
+	end
+end
+
 function QuestService:Init()
 	questState = Net.Event("QuestState")
 	questAccept = Net.Event("QuestAccept")
 	questDecline = Net.Event("QuestDecline")
+	requestQuestTravel = Net.Event("RequestQuestTravel")
 end
 
 function QuestService:Start()
@@ -211,6 +280,7 @@ function QuestService:Start()
 
 	questAccept.OnServerEvent:Connect(onAccept)
 	questDecline.OnServerEvent:Connect(onDecline)
+	requestQuestTravel.OnServerEvent:Connect(onRequestTravel)
 
 	Players.PlayerRemoving:Connect(clearSession)
 end

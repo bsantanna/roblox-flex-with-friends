@@ -78,6 +78,48 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Heavy Duty",
 		Emoji = "\u{1F69A}", -- delivery truck emoji
 	},
+	-- Airport-terminal NPCs (the second collectible chain). Their trophies show in the Social Modal's
+	-- Airport tab (PhoneMenuController.TROPHY_ZONE).
+	Athlete = {
+		Id = "athlete_speed",
+		Name = "Speed",
+		Emoji = "\u{1F3C3}", -- runner emoji
+	},
+	Chef = {
+		Id = "chef_secret_sauce",
+		Name = "Secret Sauce",
+		Emoji = "\u{1F9C5}", -- onion emoji
+	},
+	Singer = {
+		Id = "singer_confidence",
+		Name = "Confidence",
+		Emoji = "\u{1F3A4}", -- microphone emoji
+	},
+	Violinist = {
+		Id = "violinist_refinement",
+		Name = "Refinement",
+		Emoji = "\u{1F3BB}", -- violin emoji
+	},
+	DJ = {
+		Id = "dj_grooves",
+		Name = "Grooves",
+		Emoji = "\u{1F3A7}", -- headphone emoji
+	},
+	Ballerina = {
+		Id = "ballerina_swiftness",
+		Name = "Swiftness",
+		Emoji = "\u{1FA70}", -- ballet shoes emoji
+	},
+	Pianist = {
+		Id = "pianist_talent",
+		Name = "Talent",
+		Emoji = "\u{1F3B9}", -- musical keyboard emoji
+	},
+	Archeologist = {
+		Id = "archeologist_relic",
+		Name = "Relic",
+		Emoji = "\u{1F9B4}", -- bone emoji
+	},
 }
 
 local trophyEarned: RemoteEvent

@@ -27,6 +27,18 @@ Update this table when an NPC is created, modified, or removed.
 | HomeBuilder | Tic-Tac-Toe | Home (by Neighbor03, W) | 300 followers **and** `personal_trainer_strength` | 160 (2×40 + 80 bonus) | 🏠 Nice Home (`home_builder_nicehome`) |
 | Nurse | Memory (recognition) | Home (by Neighbor04, E) | 550 followers **and** `gardener_caretaking` | 225 (50+75+100) | 🩺 Healthy (`nurse_healthy`) |
 | TruckDriver | Quick Draw (reaction) | Home (SW ramp foot) | 450 followers **and** `taxi_driver_mobility` | 220 (3×45 + 85 bonus) | 🚚 Heavy Duty (`truck_driver_heavyduty`) |
+| Athlete | Simon Says (pose-memory) | Airport (terminal hall) | 600 followers **and** `personal_trainer_strength` | 225 (50+75+100) | 🏃 Speed (`athlete_speed`) |
+| Chef | Memory (recognition) | Airport (terminal hall) | 700 followers **and** `sage_quickdraw` | 225 (50+75+100) | 🧅 Secret Sauce (`chef_secret_sauce`) |
+| Singer | Rock-Paper-Scissors | Airport (terminal hall) | 800 followers **and** `firefighter_bravery` | 160 (2×40 + 80 bonus) | 🎤 Confidence (`singer_confidence`) |
+| Violinist | Tic-Tac-Toe | Airport (terminal hall) | 900 followers **and** `home_builder_nicehome` | 160 (2×40 + 80 bonus) | 🎻 Refinement (`violinist_refinement`) |
+| DJ | Memory (recognition) | Airport (terminal hall) | 1000 followers **and** `policeman_protection` | 225 (50+75+100) | 🎧 Grooves (`dj_grooves`) |
+| Ballerina | Simon Says (pose-memory) | Airport (terminal hall) | 1100 followers **and** `truck_driver_heavyduty` | 225 (50+75+100) | 🩰 Swiftness (`ballerina_swiftness`) |
+| Pianist | Memory (recognition) | Airport (terminal hall) | 1200 followers **and** `gardener_caretaking` | 225 (50+75+100) | 🎹 Talent (`pianist_talent`) |
+| Archeologist | Tic-Tac-Toe | Airport (terminal hall) | 1300 followers **and** `nurse_healthy` | 160 (2×40 + 80 bonus) | 🦴 Relic (`archeologist_relic`) |
+
+The Airport NPCs form a second collectible chain, each gating on a city NPC's trophy plus a rising
+follower threshold (600→1300), so they unlock after the town is cleared. They stand stationary inside
+the arrivals terminal and their trophies populate the Social Modal's **Airport** tab.
 
 ## Unlocks
 
@@ -99,6 +111,13 @@ a hat plus matching layered top and/or trousers — so the body reads as the job
 e.g. Policeman (navy jacket + trousers), Nurse (medical scrubs), Cowboy/TruckDriver (plaid flannel +
 jeans), Firefighter (turnout pants), Gardener/HomeBuilder (denim overalls), Trainer (tank top),
 Farmer (overalls), Sage (robe). The `Layered` asset ids are real catalog layered clothing
+(AssetTypeId 64–72), so they render for every player without the place owning them.
+
+The eight Airport NPCs also wear full profession looks (Studio-verified Marketplace asset ids):
+Athlete (sweatband + tank top + joggers), Chef (toque + white coat), Singer (cap + gold tuxedo),
+Violinist (black pinstripe tuxedo), DJ (headphones + varsity jacket), Ballerina (tank top + tulle
+tutu), Pianist (navy tuxedo), Archeologist (pith helmet + flannel + jeans). As with the town NPCs,
+the `Hats` are rigid type-8 accessories and every `Layered` piece is real catalog layered clothing
 (AssetTypeId 64–72), so they render for every player without the place owning them.
 
 ## Poses

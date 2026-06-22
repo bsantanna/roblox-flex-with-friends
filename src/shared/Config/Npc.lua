@@ -847,6 +847,431 @@ Npc.Npc = {
 			PauseMax = 8, -- max seconds between waypoints
 		},
 	},
+	-- Airport-terminal professions. The second collectible chain: each gates on a city NPC's trophy
+	-- (RequiredTrophies) plus a rising follower threshold (600..1300), so they unlock after the town is
+	-- cleared. All stand stationary inside the arrivals terminal (Zone "Airport", floor Y=1.1) and walk
+	-- out to their arena for the minigame -- no CitizenWalk. Positions are starting values verified/tuned
+	-- in Studio; outfits are filled in the Studio catalog pass. Their trophies populate the Social
+	-- Modal's Airport tab (PhoneMenuController.TROPHY_ZONE).
+	Athlete = {
+		Zone = "Airport",
+		UnlockFollowers = 600,
+		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
+		Outfit = { -- athletic look: sweatband + tank top and joggers
+			Hats = { 12871624213 }, -- Red Bandana Headband
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top
+				{ AssetId = 9183094140, Type = Enum.AccessoryType.Pants }, -- White Jogger Pants
+			},
+		},
+		SpawnPosition = Vector3.new(80, 1.1, 743), -- right wall, terminal floor
+		SpawnYaw = 270, -- face west, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(64, 1.1, 743), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Simon Says, athlete style! Watch the moves I make, then repeat them in order with"
+			.. " the on-screen buttons or the arrow keys. Clear every round to bank followers. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Hey! I'm a pro athlete, always in training.",
+				"Footwork drills sharpen the mind too — want to copy my moves?",
+			},
+			QualifiedLine = "You've got the strength — ready to run the drill? Watch and repeat!",
+			GateLine = "Come back with the trainer's Strength and {threshold} followers, and we'll train.",
+			QualifiedChoices = { "Let's go!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 1,
+			MaxRounds = 3,
+			ShowStepSeconds = 2.5,
+			ShowGapSeconds = 0.6,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
+			InputTimeoutSeconds = 20,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				Left = "rbxassetid://507770239",
+				Up = "rbxassetid://507770677",
+				Right = "rbxassetid://507770453",
+				Down = "rbxassetid://507771019",
+			},
+		},
+	},
+	Chef = {
+		Zone = "Airport",
+		UnlockFollowers = 700,
+		RequiredTrophies = { "sage_quickdraw" }, -- the Forest sage's Fast Hands
+		Outfit = { -- chef look: toque + white double-breasted coat
+			Hats = { 1374258 }, -- Chef Hat
+			Layered = { { AssetId = 11332013358, Type = Enum.AccessoryType.Jacket } }, -- Chef Coat In White
+		},
+		SpawnPosition = Vector3.new(-80, 1.1, 677), -- left wall, terminal floor
+		SpawnYaw = 90, -- face east, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-64, 1.1, 677), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Memory kitchen! I'll flash a few items — memorize them. Then a grid appears: tap the"
+			.. " ones you saw and hit Submit. Clear every round to bank followers. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Welcome! I'm a chef — I run the terminal's kitchen.",
+				"A great cook never forgets a recipe. Want to test your memory?",
+			},
+			QualifiedLine = "You've got fast hands — fancy a memory game? Watch the ingredients, then pick them out!",
+			GateLine = "Come back with the sage's Fast Hands and {threshold} followers, and we'll cook.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		Memory = {
+			Rounds = 3,
+			StartTargets = 4,
+			GridSize = 16,
+			ShowSeconds = 4,
+			SelectTimeoutSeconds = 20,
+			RoundDelaySeconds = 1.5,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Emojis = {
+				"\u{1F34E}", -- apple
+				"\u{26BD}", -- soccer ball
+				"\u{1F3B8}", -- guitar
+				"\u{1F511}", -- key
+				"\u{1F388}", -- balloon
+				"\u{1F355}", -- pizza
+				"\u{1F6B2}", -- bicycle
+				"\u{1F4DA}", -- books
+				"\u{1F3B2}", -- die
+				"\u{2602}\u{FE0F}", -- umbrella
+				"\u{1F514}", -- bell
+				"\u{1F344}", -- mushroom
+				"\u{1F9E9}", -- puzzle piece
+				"\u{1FA81}", -- kite
+				"\u{1F941}", -- drum
+				"\u{1F9F8}", -- teddy bear
+				"\u{1F369}", -- doughnut
+				"\u{1F381}", -- gift
+				"\u{1F455}", -- t-shirt
+				"\u{1F3A9}", -- top hat
+				"\u{1F4A1}", -- light bulb
+				"\u{1F33B}", -- sunflower
+				"\u{1F4F7}", -- camera
+				"\u{1F570}\u{FE0F}", -- clock
+			},
+		},
+	},
+	Singer = {
+		Zone = "Airport",
+		UnlockFollowers = 800,
+		RequiredTrophies = { "firefighter_bravery" }, -- the firefighter's Bravery
+		Outfit = { -- pop-star look: stylish cap + flashy gold tuxedo jacket
+			Hats = { 78174478860906 }, -- Black Shelby Vintage Cap
+			Layered = { { AssetId = 13073595441, Type = Enum.AccessoryType.Jacket } }, -- Golden Tuxedo Suit
+		},
+		SpawnPosition = Vector3.new(-80, 1.1, 699), -- left wall, terminal floor
+		SpawnYaw = 90, -- face east, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-64, 1.1, 699), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Rock, Paper, Scissors, star style! Pick your hand, I'll throw mine. Best two out of"
+			.. " three takes it. Step on the mark when you're ready!",
+		Dialog = {
+			Lines = {
+				"Hello, darling! I'm a singer touring the world.",
+				"A little stage game keeps the nerves away — Rock, Paper, Scissors?",
+			},
+			QualifiedLine = "You've got the bravery — fancy a quick game of Rock, Paper, Scissors? Best two out of three!",
+			GateLine = "Come back with the firefighter's Bravery and {threshold} followers, and we'll play.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		RockPaperScissors = {
+			WinsNeeded = 2,
+			InputTimeoutSeconds = 15,
+			ReelSeconds = 2,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1,
+			BaseReward = 40,
+			MatchBonus = 80,
+			Choices = { "Rock", "Paper", "Scissors" },
+			Emoji = {
+				Rock = "\u{270A}", -- raised fist
+				Paper = "\u{270B}", -- raised hand
+				Scissors = "\u{270C}\u{FE0F}", -- victory hand
+			},
+			Poses = {
+				Rock = "rbxassetid://507770677", -- cheer (fist up)
+				Paper = "rbxassetid://507770239", -- wave (open hand)
+				Scissors = "rbxassetid://507770453", -- point
+			},
+		},
+	},
+	Violinist = {
+		Zone = "Airport",
+		UnlockFollowers = 900,
+		RequiredTrophies = { "home_builder_nicehome" }, -- the home builder's Nice Home
+		Outfit = { -- formal musician look: black pinstripe tuxedo jacket
+			Hats = {},
+			Layered = { { AssetId = 9039269740, Type = Enum.AccessoryType.Jacket } }, -- Pinstripe Tuxedo Jacket Suit - Black
+		},
+		SpawnPosition = Vector3.new(80, 1.1, 721), -- right wall, terminal floor
+		SpawnYaw = 270, -- face west, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(64, 1.1, 721), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Tic-Tac-Toe, with finesse! You're X, I'm O — tap a square to lay your mark. Get three"
+			.. " in a row before I do. Best two out of three takes it. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Ah, a listener! I'm a violinist between performances.",
+				"Precision and patience — the same skills win a game of Tic-Tac-Toe.",
+			},
+			QualifiedLine = "You've a builder's eye for structure — up for a round of Tic-Tac-Toe?",
+			GateLine = "Return with the builder's Nice Home badge and {threshold} followers, and we'll play.",
+			QualifiedChoices = { "Let's play", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		TicTacToe = {
+			WinsNeeded = 2,
+			MoveTimeoutSeconds = 20,
+			RevealSeconds = 2,
+			RoundDelaySeconds = 1.5,
+			NpcMoveDelaySeconds = 0.6,
+			BaseReward = 40,
+			MatchBonus = 80,
+			PlayerMark = "X",
+			NpcMark = "O",
+		},
+	},
+	DJ = {
+		Zone = "Airport",
+		UnlockFollowers = 1000,
+		RequiredTrophies = { "policeman_protection" }, -- the policeman's Protection
+		Outfit = { -- DJ look: headphones + varsity jacket
+			Hats = { 12196484286 }, -- Star Headphones Accessory
+			Layered = { { AssetId = 16380310710, Type = Enum.AccessoryType.Jacket } }, -- Black Sport Oversized Varsity Jacket
+		},
+		SpawnPosition = Vector3.new(-80, 1.1, 721), -- left wall, terminal floor
+		SpawnYaw = 90, -- face east, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-64, 1.1, 721), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Memory mix! I'll flash a few items — memorize them. Then a grid appears: tap the ones"
+			.. " you saw and hit Submit. Clear every round to bank followers. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Yo! I'm the airport DJ — I keep the terminal grooving.",
+				"A good memory makes a great set. Think you can keep up?",
+			},
+			QualifiedLine = "You've earned your stripes — fancy a memory game? Watch the tracks, then pick them out!",
+			GateLine = "Come back with the policeman's Protection and {threshold} followers, and we'll spin.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		Memory = {
+			Rounds = 3,
+			StartTargets = 4,
+			GridSize = 16,
+			ShowSeconds = 4,
+			SelectTimeoutSeconds = 20,
+			RoundDelaySeconds = 1.5,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Emojis = {
+				"\u{1F34E}", -- apple
+				"\u{26BD}", -- soccer ball
+				"\u{1F3B8}", -- guitar
+				"\u{1F511}", -- key
+				"\u{1F388}", -- balloon
+				"\u{1F355}", -- pizza
+				"\u{1F6B2}", -- bicycle
+				"\u{1F4DA}", -- books
+				"\u{1F3B2}", -- die
+				"\u{2602}\u{FE0F}", -- umbrella
+				"\u{1F514}", -- bell
+				"\u{1F344}", -- mushroom
+				"\u{1F9E9}", -- puzzle piece
+				"\u{1FA81}", -- kite
+				"\u{1F941}", -- drum
+				"\u{1F9F8}", -- teddy bear
+				"\u{1F369}", -- doughnut
+				"\u{1F381}", -- gift
+				"\u{1F455}", -- t-shirt
+				"\u{1F3A9}", -- top hat
+				"\u{1F4A1}", -- light bulb
+				"\u{1F33B}", -- sunflower
+				"\u{1F4F7}", -- camera
+				"\u{1F570}\u{FE0F}", -- clock
+			},
+		},
+	},
+	Ballerina = {
+		Zone = "Airport",
+		UnlockFollowers = 1100,
+		RequiredTrophies = { "truck_driver_heavyduty" }, -- the truck driver's Heavy Duty
+		Outfit = { -- ballet look: leotard top + tutu skirt
+			Hats = {},
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top (leotard top)
+				{ AssetId = 14453904448, Type = Enum.AccessoryType.DressSkirt }, -- Ballerina dress (tutu)
+			},
+		},
+		SpawnPosition = Vector3.new(80, 1.1, 677), -- right wall, terminal floor
+		SpawnYaw = 270, -- face west, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(64, 1.1, 677), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Simon Says, en pointe! Watch the steps I make, then repeat them in order with the"
+			.. " on-screen buttons or the arrow keys. Clear every round to bank followers. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Bonjour! I'm a ballerina with the touring company.",
+				"Choreography is memory in motion — want to follow my steps?",
+			},
+			QualifiedLine = "You've kept pace with the truckers — ready to follow my steps? Watch and repeat!",
+			GateLine = "Return with the trucker's Heavy Duty badge and {threshold} followers, and we'll dance.",
+			QualifiedChoices = { "Let's dance!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		SimonSays = {
+			StartLength = 1,
+			MaxRounds = 3,
+			ShowStepSeconds = 2.5,
+			ShowGapSeconds = 0.6,
+			StepLeadSeconds = 1.0,
+			RoundDelaySeconds = 1.5,
+			InputTimeoutSeconds = 20,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Arrows = { "Left", "Up", "Right", "Down" },
+			Poses = {
+				Left = "rbxassetid://507770239",
+				Up = "rbxassetid://507770677",
+				Right = "rbxassetid://507770453",
+				Down = "rbxassetid://507771019",
+			},
+		},
+	},
+	Pianist = {
+		Zone = "Airport",
+		UnlockFollowers = 1200,
+		RequiredTrophies = { "gardener_caretaking" }, -- the gardener's Caretaking
+		Outfit = { -- formal musician look: navy tuxedo jacket
+			Hats = {},
+			Layered = { { AssetId = 9039602336, Type = Enum.AccessoryType.Jacket } }, -- Tuxedo Jacket Suit - Navy
+		},
+		SpawnPosition = Vector3.new(80, 1.1, 699), -- right wall, terminal floor
+		SpawnYaw = 270, -- face west, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(64, 1.1, 699), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Memory recital! I'll flash a few items — memorize them. Then a grid appears: tap the"
+			.. " ones you saw and hit Submit. Clear every round to bank followers. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Good day. I'm a concert pianist passing through.",
+				"Every melody is a memory — let's see how sharp yours is.",
+			},
+			QualifiedLine = "You've a gardener's care — fancy a memory game? Watch the notes, then pick them out!",
+			GateLine = "Come back with the gardener's Caretaking and {threshold} followers, and we'll play.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		Memory = {
+			Rounds = 3,
+			StartTargets = 4,
+			GridSize = 16,
+			ShowSeconds = 4,
+			SelectTimeoutSeconds = 20,
+			RoundDelaySeconds = 1.5,
+			BaseReward = 50,
+			RewardPerRound = 25,
+			Emojis = {
+				"\u{1F34E}", -- apple
+				"\u{26BD}", -- soccer ball
+				"\u{1F3B8}", -- guitar
+				"\u{1F511}", -- key
+				"\u{1F388}", -- balloon
+				"\u{1F355}", -- pizza
+				"\u{1F6B2}", -- bicycle
+				"\u{1F4DA}", -- books
+				"\u{1F3B2}", -- die
+				"\u{2602}\u{FE0F}", -- umbrella
+				"\u{1F514}", -- bell
+				"\u{1F344}", -- mushroom
+				"\u{1F9E9}", -- puzzle piece
+				"\u{1FA81}", -- kite
+				"\u{1F941}", -- drum
+				"\u{1F9F8}", -- teddy bear
+				"\u{1F369}", -- doughnut
+				"\u{1F381}", -- gift
+				"\u{1F455}", -- t-shirt
+				"\u{1F3A9}", -- top hat
+				"\u{1F4A1}", -- light bulb
+				"\u{1F33B}", -- sunflower
+				"\u{1F4F7}", -- camera
+				"\u{1F570}\u{FE0F}", -- clock
+			},
+		},
+	},
+	Archeologist = {
+		Zone = "Airport",
+		UnlockFollowers = 1300,
+		RequiredTrophies = { "nurse_healthy" }, -- the nurse's Healthy
+		Outfit = { -- explorer look: pith helmet + flannel shirt and jeans
+			Hats = { 10705097 }, -- Tan Pith Helmet
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
+		},
+		SpawnPosition = Vector3.new(-80, 1.1, 743), -- left wall, terminal floor
+		SpawnYaw = 90, -- face east, into the hall
+		AvatarUserId = 1,
+		ArenaPosition = Vector3.new(-64, 1.1, 743), -- a few steps toward the hall centre
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Tic-Tac-Toe, dig-site style! You're X, I'm O — tap a square to lay your mark. Get"
+			.. " three in a row before I do. Best two out of three takes it. Step on the mark and hit Start!",
+		Dialog = {
+			Lines = {
+				"Greetings! I'm an archeologist, fresh off a dig.",
+				"Strategy is everything in the field — and on the grid.",
+			},
+			QualifiedLine = "You've got a healer's patience — care for a game of Tic-Tac-Toe?",
+			GateLine = "Come back with the nurse's Healthy badge and {threshold} followers, and we'll match wits.",
+			QualifiedChoices = { "Let's play", "Maybe later" },
+			GateChoices = { "Got it" },
+			TimeoutSeconds = 30,
+		},
+		TicTacToe = {
+			WinsNeeded = 2,
+			MoveTimeoutSeconds = 20,
+			RevealSeconds = 2,
+			RoundDelaySeconds = 1.5,
+			NpcMoveDelaySeconds = 0.6,
+			BaseReward = 40,
+			MatchBonus = 80,
+			PlayerMark = "X",
+			NpcMark = "O",
+		},
+	},
 } :: { [string]: NpcDef }
 
 return Npc

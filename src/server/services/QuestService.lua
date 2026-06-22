@@ -50,6 +50,7 @@ local questState: RemoteEvent
 local questAccept: RemoteEvent
 local questDecline: RemoteEvent
 local requestQuestTravel: RemoteEvent
+local requestCollect: RemoteEvent
 
 local sessions: { [Player]: Session } = {}
 local pilotModel: Model? = nil
@@ -250,11 +251,47 @@ local function onRequestTravel(player: Player, destination: unknown)
 	end
 end
 
+-- Server-authoritative package collection: the client triggers a beacon, the server confirms the
+-- player's real root position is within CollectRadius of that package, the package isn't already taken,
+-- and the phase is collecting. Only then does progress advance. Rejects spoofed far-away collects.
+local function onCollect(player: Player, index: unknown)
+	if type(index) ~= "number" or index % 1 ~= 0 then
+		return
+	end
+	local s = sessions[player]
+	if not s or s.phase ~= "collecting" then
+		return
+	end
+	if index < 1 or index > TOTAL or s.collected[index] then
+		return
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not (root and root:IsA("BasePart")) then
+		return
+	end
+	local target = Q.PackagePositions[index]
+	local flat = Vector3.new((root :: BasePart).Position.X, target.Y, (root :: BasePart).Position.Z)
+	if (flat - target).Magnitude > Q.CollectRadius then
+		return
+	end
+
+	s.collected[index] = true
+	s.count += 1
+	if s.count >= TOTAL then
+		s.phase = "returning"
+		fireState(player, "returning", s.count)
+	else
+		fireState(player, "collecting", s.count, clientDeadline(s))
+	end
+end
+
 function QuestService:Init()
 	questState = Net.Event("QuestState")
 	questAccept = Net.Event("QuestAccept")
 	questDecline = Net.Event("QuestDecline")
 	requestQuestTravel = Net.Event("RequestQuestTravel")
+	requestCollect = Net.Event("RequestCollectPackage")
 end
 
 function QuestService:Start()
@@ -281,6 +318,7 @@ function QuestService:Start()
 	questAccept.OnServerEvent:Connect(onAccept)
 	questDecline.OnServerEvent:Connect(onDecline)
 	requestQuestTravel.OnServerEvent:Connect(onRequestTravel)
+	requestCollect.OnServerEvent:Connect(onCollect)
 
 	Players.PlayerRemoving:Connect(clearSession)
 end

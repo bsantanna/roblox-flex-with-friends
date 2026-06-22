@@ -24,8 +24,8 @@ Update this table when an NPC is created, modified, or removed.
 | Policeman | Quick Draw (reaction) | Home (by Neighbor02, NE) | 350 followers **and** `sage_quickdraw` | 220 (3×45 + 85 bonus) | 👮 Protection (`policeman_protection`) |
 | Firefighter | Simon Says (pose-memory) | Home (by Neighbor01, NW) | 300 followers **and** `personal_trainer_strength` | 225 (50+75+100) | 🚒 Bravery (`firefighter_bravery`) |
 | Gardener | Simon Says (pose-memory) | Home (NW green quarter) | 450 followers **and** `policeman_protection` | 225 (50+75+100) | 🌱 Caretaking (`gardener_caretaking`) |
-| HomeBuilder | Simon Says (pose-memory) | Home (by Neighbor03, W) | 300 followers **and** `personal_trainer_strength` | 225 (50+75+100) | 🏠 Nice Home (`home_builder_nicehome`) |
-| Nurse | Rock-Paper-Scissors | Home (by Neighbor04, E) | 550 followers **and** `gardener_caretaking` | 160 (2×40 + 80 bonus) | 🩺 Healthy (`nurse_healthy`) |
+| HomeBuilder | Tic-Tac-Toe | Home (by Neighbor03, W) | 300 followers **and** `personal_trainer_strength` | 160 (2×40 + 80 bonus) | 🏠 Nice Home (`home_builder_nicehome`) |
+| Nurse | Memory (recognition) | Home (by Neighbor04, E) | 550 followers **and** `gardener_caretaking` | 225 (50+75+100) | 🩺 Healthy (`nurse_healthy`) |
 | TruckDriver | Quick Draw (reaction) | Home (SW ramp foot) | 450 followers **and** `taxi_driver_mobility` | 220 (3×45 + 85 bonus) | 🚚 Heavy Duty (`truck_driver_heavyduty`) |
 
 ## Unlocks
@@ -50,6 +50,14 @@ the `GateLine`. `MinigameService:Request` re-checks the unlock as defense in dep
   (best-of-`2*WinsNeeded-1`). Max = `(WinsNeeded × BaseReward) + MatchBonus`.
 - **Simon Says** — `BaseReward + (round-1) × RewardPerRound` per round cleared, over `MaxRounds`
   rounds (the sequence grows from `StartLength` arrows). Max = the sum across all rounds.
+- **Tic-Tac-Toe** — `BaseReward` per game won + `MatchBonus` for taking the match (best-of-`2*WinsNeeded-1`,
+  drawn games replay). The player is `PlayerMark` and moves first; the server plays the NPC (`NpcMark`)
+  with a medium tactical strategy (take the win, else block, else random). A `MoveTimeoutSeconds` lapse
+  forfeits the match. Max = `(WinsNeeded × BaseReward) + MatchBonus`.
+- **Memory** — `BaseReward + (round-1) × RewardPerRound` per round cleared, over `Rounds` rounds (the
+  count of emojis to memorize grows from `StartTargets`, shown for `ShowSeconds` before a `GridSize`-cell
+  recall grid). Player selects the cells, then Submits; a wrong set or a `SelectTimeoutSeconds` timeout
+  ends the game (rewards already earned are kept). Max = the sum across all rounds.
 - **Quick Draw** — `BaseReward` per draw won (react within `ReactWindowSeconds` of the DRAW signal) +
   `MatchBonus` for winning every draw. One miss (too slow or a false start) ends the duel; rewards for
   draws already won are kept. Max = `(Rounds × BaseReward) + MatchBonus`. The press is timed on the

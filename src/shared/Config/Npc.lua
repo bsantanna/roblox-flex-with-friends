@@ -60,6 +60,28 @@ type QuickDrawDef = {
 	MatchBonus: number, -- extra followers for winning every draw
 	DrawPose: string, -- animation asset id played on the NPC at the DRAW signal
 }
+type MemoryDef = {
+	Rounds: number, -- rounds to clear; clearing all awards the bonus reward + trophy
+	StartTargets: number, -- emojis to memorize in round 1 (grows by one per round)
+	GridSize: number, -- cells shown for recall (16 = a 4x4 grid)
+	ShowSeconds: number, -- how long the target emojis flash before the grid appears
+	SelectTimeoutSeconds: number, -- server-side deadline for the player to submit a selection
+	RoundDelaySeconds: number, -- pause between a cleared round and the next show phase
+	BaseReward: number, -- followers for clearing round 1
+	RewardPerRound: number, -- extra followers per round beyond the first
+	Emojis: { string }, -- object-emoji pool to draw the grid from (>= GridSize distinct)
+}
+type TicTacToeDef = {
+	WinsNeeded: number, -- first to this many game wins takes the match (draws replay the game)
+	MoveTimeoutSeconds: number, -- server-side deadline for the player to make a move
+	RevealSeconds: number, -- pause showing a finished game before the next
+	RoundDelaySeconds: number, -- pause before a new game's board appears
+	NpcMoveDelaySeconds: number, -- pause before the NPC plays its reply (so the player sees their move land)
+	BaseReward: number, -- followers for each game the player wins
+	MatchBonus: number, -- extra followers for winning the match
+	PlayerMark: string, -- the player's symbol
+	NpcMark: string, -- the NPC's symbol
+}
 -- Sidewalk/citizen walk config for NPCs that patrol the town (not doing chores).
 type CitizenWalkDef = {
 	Waypoints: { Vector3 }, -- ordered sidewalk waypoints the NPC visits in random order
@@ -99,6 +121,8 @@ type NpcDef = {
 	SimonSays: SimonSaysDef?, -- present iff this NPC hosts the Simon Says minigame
 	RockPaperScissors: RockPaperScissorsDef?, -- present iff this NPC hosts the Rock-Paper-Scissors minigame
 	QuickDraw: QuickDrawDef?, -- present iff this NPC hosts the Quick Draw reaction minigame
+	Memory: MemoryDef?, -- present iff this NPC hosts the recognition-memory minigame
+	TicTacToe: TicTacToeDef?, -- present iff this NPC hosts the tic-tac-toe minigame
 	Chore: {
 		HomePosition: Vector3, -- spawn / idle position where the NPC wanders from
 		Waypoints: { { position: Vector3, animationId: string, delaySeconds: number } }, -- ordered chore points
@@ -653,36 +677,29 @@ Npc.Npc = {
 		ArenaPosition = Vector3.new(-86, 0, 0), -- a step toward the plaza, clear sidewalk
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
-		Instructions = "Time to build! Watch the construction moves I make, then repeat them in order with the"
-			.. " on-screen buttons or arrow keys. Clear every round to bank followers. Step on the mark!",
+		Instructions = "Tic-Tac-Toe, builder style! You're X, I'm O — tap a square to lay your mark. Get"
+			.. " three in a row before I do. Best two out of three takes it. Step on the mark and hit Start!",
 		Dialog = {
 			Lines = {
 				"Howdy! I build the homes around this neighborhood.",
-				"Every house goes up step by step, in the right order. Think you can keep up?",
+				"Every house starts with a solid plan — three beams in a row. Fancy a game?",
 			},
-			QualifiedLine = "You've got the strength — ready to raise a house with me?",
+			QualifiedLine = "You've got the strength — up for a round of Tic-Tac-Toe?",
 			GateLine = "Come back with the trainer's badge and {threshold} followers, and we'll build together.",
-			QualifiedChoices = { "Let's build", "Maybe later" },
+			QualifiedChoices = { "Let's play", "Maybe later" },
 			GateChoices = { "Got it" },
 			TimeoutSeconds = 30,
 		},
-		SimonSays = {
-			StartLength = 1,
-			MaxRounds = 3,
-			ShowStepSeconds = 2.5,
-			ShowGapSeconds = 0.6,
-			StepLeadSeconds = 1.0,
+		TicTacToe = {
+			WinsNeeded = 2, -- best two out of three (draws replay the game)
+			MoveTimeoutSeconds = 20,
+			RevealSeconds = 2,
 			RoundDelaySeconds = 1.5,
-			InputTimeoutSeconds = 20,
-			BaseReward = 50,
-			RewardPerRound = 25,
-			Arrows = { "Left", "Up", "Right", "Down" },
-			Poses = {
-				Left = "rbxassetid://507770239",
-				Up = "rbxassetid://507770677",
-				Right = "rbxassetid://507770453",
-				Down = "rbxassetid://507771019",
-			},
+			NpcMoveDelaySeconds = 0.6,
+			BaseReward = 40, -- per game won
+			MatchBonus = 80, -- 2 x 40 + 80 = 160 max, matching the other best-of-three NPCs
+			PlayerMark = "X",
+			NpcMark = "O",
 		},
 		-- HomeBuilder patrols the W area near Neighbor03.
 		CitizenWalk = {
@@ -714,36 +731,53 @@ Npc.Npc = {
 		ArenaPosition = Vector3.new(86, 0, 0), -- a step toward the plaza, clear sidewalk
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
-		Instructions = "Health check! Quick game of Rock, Paper, Scissors to test your reflexes.\n  Pick yer hand, best two outta three. Step on the mark when you're ready!",
+		Instructions = "Memory check! I'll flash a few items — memorize them. Then a grid appears: tap the"
+			.. " ones you saw and hit Submit. Clear every round to bank followers. Step on the mark and hit Start!",
 		Dialog = {
 			Lines = {
 				"Hello! I'm the neighborhood nurse.",
-				"A sharp mind keeps you healthy — let's see how quick you are at a friendly game.",
+				"A sharp mind keeps you healthy — let's test your memory with a quick game.",
 			},
-			QualifiedLine = "You've earned your care — fancy a game o' Rock, Paper, Scissors? Best two outta three!",
+			QualifiedLine = "You've earned your care — fancy a memory test? Watch the items, then pick them out!",
 			GateLine = "Come back with the gardener's badge and {threshold} followers, and we'll play.",
 			QualifiedChoices = { "Let's play!", "Maybe later" },
 			GateChoices = { "Got it" },
 			TimeoutSeconds = 30,
 		},
-		RockPaperScissors = {
-			WinsNeeded = 2,
-			InputTimeoutSeconds = 15,
-			ReelSeconds = 2,
-			RevealSeconds = 1.5,
-			RoundDelaySeconds = 1,
-			BaseReward = 40,
-			MatchBonus = 80,
-			Choices = { "Rock", "Paper", "Scissors" },
-			Emoji = {
-				Rock = "\u{270A}", -- raised fist
-				Paper = "\u{270B}", -- raised hand
-				Scissors = "\u{270C}\u{FE0F}", -- victory hand
-			},
-			Poses = {
-				Rock = "rbxassetid://507770677", -- cheer (fist up)
-				Paper = "rbxassetid://507770239", -- wave (open hand)
-				Scissors = "rbxassetid://507770453", -- point
+		Memory = {
+			Rounds = 3,
+			StartTargets = 4, -- 4 -> 5 -> 6 items to memorize across the rounds
+			GridSize = 16, -- 4x4 recall grid
+			ShowSeconds = 4, -- the items flash for 4 seconds
+			SelectTimeoutSeconds = 20,
+			RoundDelaySeconds = 1.5,
+			BaseReward = 50,
+			RewardPerRound = 25, -- 50 + 75 + 100 = 225 max, matching the Simon Says clear
+			Emojis = {
+				"\u{1F34E}", -- apple
+				"\u{26BD}", -- soccer ball
+				"\u{1F3B8}", -- guitar
+				"\u{1F511}", -- key
+				"\u{1F388}", -- balloon
+				"\u{1F355}", -- pizza
+				"\u{1F6B2}", -- bicycle
+				"\u{1F4DA}", -- books
+				"\u{1F3B2}", -- die
+				"\u{2602}\u{FE0F}", -- umbrella
+				"\u{1F514}", -- bell
+				"\u{1F344}", -- mushroom
+				"\u{1F9E9}", -- puzzle piece
+				"\u{1FA81}", -- kite
+				"\u{1F941}", -- drum
+				"\u{1F9F8}", -- teddy bear
+				"\u{1F369}", -- doughnut
+				"\u{1F381}", -- gift
+				"\u{1F455}", -- t-shirt
+				"\u{1F3A9}", -- top hat
+				"\u{1F4A1}", -- light bulb
+				"\u{1F33B}", -- sunflower
+				"\u{1F4F7}", -- camera
+				"\u{1F570}\u{FE0F}", -- clock
 			},
 		},
 		-- Nurse patrols the plaza sidewalks near Neighbor04.

@@ -10,10 +10,8 @@ local RunService = game:GetService("RunService")
 -- Server -> client and client -> server events.
 local EVENTS = {
 	"FollowerChanged", -- server -> client: (followers: number)
-	"RequestTravel", -- client -> server: (placeId: string)
+	"RequestTravel", -- client -> server: () -- call a cab; server flips the player Home <-> Airport
 	"TravelComplete", -- server -> client: (success: boolean, reason: string?, placeId: string?)
-	"StartMinigame", -- server -> client: (kind: string, durationSeconds: number)
-	"MinigameInput", -- client -> server: () -- player acted (e.g. boarded)
 	"RequestPhotoCapture", -- client -> server: ()
 	"PhotoResult", -- server -> client: (success: boolean, reward: number, coop: boolean, reason: string?)
 	"UnlockNpc", -- server -> client: (npcId: string)
@@ -22,6 +20,7 @@ local EVENTS = {
 	"DialogChoose", -- client -> server: (choiceIndex: number) -- pick a branch-line choice
 	"DialogEnd", -- server -> client: () -- dismiss the dialog UI
 	"SetFollowers", -- client -> server: (value: number) -- dev cheat; server accepts in Studio only
+	"GrantAllTrophies", -- client -> server: () -- dev cheat; Studio only
 	-- Generic NPC-minigame pre-game flow (MinigameService); every minigame reuses these.
 	"MinigameAwaitReady", -- server -> client: () -- pre-game: head to the green ready-zone in front of the NPC
 	"MinigameInstructions", -- server -> client: (instructions: string) -- show the rules + a Start button
@@ -46,6 +45,18 @@ local EVENTS = {
 	"QuickDrawPress", -- client -> server: () -- the player struck (server times it against the signal)
 	"QuickDrawResult", -- server -> client: (outcome: string, roundReward: number, roundsWon: number) -- outcome: "win" | "slow" | "falsestart"
 	"QuickDrawGameOver", -- server -> client: (won: boolean, roundsWon: number, totalReward: number, npcId: string) -- duel decided
+	-- Memory gameplay (the Nurse's recognition-memory plugin owns these).
+	"MemoryShowTargets", -- server -> client: (targets: {string}, round: number, maxRounds: number) -- flash these emojis to memorize
+	"MemoryRecallPhase", -- server -> client: (grid: {string}, timeoutSeconds: number, round: number, maxRounds: number) -- show the 4x4 grid; accept a selection
+	"MemorySubmit", -- client -> server: (selectedIndices: {number}) -- the cells the player picked
+	"MemoryRoundResult", -- server -> client: (correct: boolean, reward: number) -- reward > 0 means round cleared
+	"MemoryGameOver", -- server -> client: (totalReward: number, roundsCompleted: number, cleared: boolean) -- game decided
+	-- Tic-Tac-Toe gameplay (the HomeBuilder's best-of-three plugin owns these).
+	"TttGameStart", -- server -> client: (board: {string}, gameNumber: number, playerWins: number, opponentWins: number) -- a fresh board; your turn (you're X)
+	"TttMove", -- client -> server: (cell: number) -- the 1-9 cell the player marks
+	"TttUpdate", -- server -> client: (board: {string}, yourTurn: boolean) -- board after a move; yourTurn false means the NPC is thinking
+	"TttGameResult", -- server -> client: (board: {string}, result: string, playerWins: number, opponentWins: number) -- result: "win" | "lose" | "draw"
+	"TttGameOver", -- server -> client: (won: boolean, playerWins: number, opponentWins: number, totalReward: number, npcId: string) -- match decided
 	-- Trophy rewards (TrophyService).
 	"TrophyEarned", -- server -> client: (trophies: { [string]: true }) -- full trophy map on join or new award
 	"TrophyUnlocked", -- server -> client: (Id: string, Name: string, Emoji: string) -- one-shot toast for new trophy

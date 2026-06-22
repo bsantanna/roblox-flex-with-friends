@@ -31,6 +31,7 @@ Config.Invite = Economy.Invite
 Config.Zones = World.Zones
 Config.Places = World.Places
 Config.Terrain = World.Terrain
+Config.Terminal = World.Terminal
 Config.Roads = World.Roads
 
 -- Green belt (Forest.lua) + farm (Farm.lua)

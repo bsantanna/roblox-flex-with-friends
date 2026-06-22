@@ -60,44 +60,47 @@ local function onCountdown(round: number, maxRounds: number)
 	armed = true
 	signalLabel.Text = "\u{2026}" -- ellipsis: wait for it
 	signalLabel.BackgroundColor3 = BRACE_COLOR
-	statusLabel.Text = `Round {round}/{maxRounds} — wait for DRAW!`
+	-- Be explicit that pressing now is a false start — wait for the DRAW flash.
+	statusLabel.Text = `Round {round}/{maxRounds} — steady... DON'T draw yet!`
 end
 
 local function onSignal(_windowSeconds: number)
 	signalLabel.Text = "DRAW!"
 	signalLabel.BackgroundColor3 = DRAW_COLOR
-	statusLabel.Text = "STRIKE!"
+	statusLabel.Text = "\u{26A1} STRIKE NOW!"
 end
 
 local function onResult(outcome: string, roundReward: number, roundsWon: number)
 	armed = false
+	-- Name the mistake so the player knows exactly what to fix next round.
 	if outcome == "win" then
 		signalLabel.Text = "\u{26A1}" -- lightning
 		signalLabel.BackgroundColor3 = WIN_COLOR
-		statusLabel.Text = `Hit! +{roundReward} followers`
+		statusLabel.Text = `Hit! Lightning reflexes — +{roundReward} followers`
 	elseif outcome == "falsestart" then
 		signalLabel.Text = "\u{270B}" -- raised hand
 		signalLabel.BackgroundColor3 = LOSE_COLOR
-		statusLabel.Text = "Too soon — you drew early!"
+		statusLabel.Text = "Too soon! You drew before DRAW — wait for the green flash."
 	else -- "slow"
 		signalLabel.Text = "\u{1F40C}" -- snail
 		signalLabel.BackgroundColor3 = LOSE_COLOR
-		statusLabel.Text = "Too slow!"
+		statusLabel.Text = "Too slow! Strike the instant you see DRAW."
 	end
 	scoreLabel.Text = `Draws won: {roundsWon}`
 end
 
-local function onGameOver(won: boolean, roundsWon: number, totalReward: number, _npcId: string)
+local function onGameOver(won: boolean, roundsWon: number, totalReward: number, npcId: string)
 	armed = false
+	local name = npcId or "opponent"
 	if won then
-		feedbackTitle.Text = "\u{1F3C6} You out-drew the sage!"
+		feedbackTitle.Text = `\u{1F3C6} You out-drew the {name}!`
 		feedbackTitle.TextColor3 = Color3.fromRGB(120, 240, 140)
-		feedbackSubtitle.Text = `\u{26A1} +{totalReward} followers and the Fast Hands trophy!`
+		feedbackSubtitle.Text = `\u{26A1} Every draw won — +{totalReward} followers and the trophy!`
 	else
-		feedbackTitle.Text = "\u{1F32B}\u{FE0F} The sage was quicker..."
+		feedbackTitle.Text = `\u{1F32B}\u{FE0F} The {name} was quicker...`
 		feedbackTitle.TextColor3 = Color3.fromRGB(255, 170, 90)
 		feedbackSubtitle.Text = if totalReward > 0
-			then `\u{26A1} {roundsWon} draws won — +{totalReward} followers. Return to the grove!`
+			then `\u{26A1} {roundsWon} draws won — +{totalReward} followers. Come back and sweep it!`
 			else `Not a single draw — train your reflexes and return!`
 	end
 	feedbackFrame.Visible = true

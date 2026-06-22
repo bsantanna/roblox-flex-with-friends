@@ -5,7 +5,6 @@ local Economy = {}
 
 Economy.Travel = {
 	CarbonFootprintLoss = 20, -- followers lost when traveling back Home
-	MinigameWindow = 5, -- seconds the player has to board the plane at the Airport
 }
 
 Economy.Photo = {

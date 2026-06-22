@@ -93,8 +93,8 @@ local function paintTerrain()
 		R.Moat.Material
 	)
 
-	local airport = Config.Zones.Airport
-	fillSlab(airport, T.Airport.Size, T.Airport.Size, T.Airport.Ground)
+	local airport = Config.Zones.Airport + T.Airport.Offset
+	fillSlab(airport, T.Airport.SizeX, T.Airport.SizeZ, T.Airport.Ground)
 
 	local beach = Config.Zones.Beach
 	fillSlab(beach, T.Beach.Size, T.Beach.Size, T.Beach.Ground)
@@ -170,9 +170,12 @@ function WorldService:Start()
 		zone.Name = zoneName
 		zone.Parent = world
 		local color = ZONE_FLOOR_COLOR[zoneName] or Color3.fromRGB(120, 120, 130)
-		local zoneSize = (Config.Terrain[zoneName] and Config.Terrain[zoneName].Size) or 120
+		local cfg = Config.Terrain[zoneName]
+		local sizeX = (cfg and (cfg.SizeX or cfg.Size)) or 120
+		local sizeZ = (cfg and (cfg.SizeZ or cfg.Size)) or 120
+		local offset = (cfg and cfg.Offset) or Vector3.zero
 		local floor =
-			makePart("Floor", Vector3.new(zoneSize, 1, zoneSize), zoneOrigin + Vector3.new(0, -1, 0), color, zone)
+			makePart("Floor", Vector3.new(sizeX, 1, sizeZ), zoneOrigin + offset + Vector3.new(0, -1, 0), color, zone)
 		floor.Transparency = 1
 	end
 

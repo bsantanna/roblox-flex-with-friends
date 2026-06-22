@@ -1,14 +1,13 @@
 --!strict
--- TravelController: opens the Cab destination picker, drives the Airport boarding-minigame UI,
--- and shows travel status with a screen fade. It only sends requests; PlaceService decides the
--- outcome. The picker lists the player's unlocked places (replicated via attributes) that are
--- real travel destinations, excluding the current one.
+-- TravelController: opens the "Call a Cab" confirmation and shows travel status with a screen fade.
+-- The cab is a binary shuttle, so there is no destination picker: it reads the player's CurrentPlace
+-- (replicated as an attribute) to phrase the prompt -- from Home it offers the Airport, from anywhere
+-- else it offers Home -- and only sends the request. PlaceService decides and performs the move.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 
 local TravelController = {}
@@ -17,23 +16,16 @@ local player = Players.LocalPlayer
 
 local requestTravel: RemoteEvent
 local travelComplete: RemoteEvent
-local startMinigame: RemoteEvent
-local minigameInput: RemoteEvent
 
-local pickerFrame: Frame
-local pickerList: Frame
-local minigameFrame: Frame
-local boardButton: TextButton
-local countdownLabel: TextLabel
+local confirmFrame: Frame
+local promptLabel: TextLabel
 local statusLabel: TextLabel
 local fade: Frame
 
-local minigameToken = 0
-
-local function makeButton(text: string, parent: Instance): TextButton
+local function makeButton(text: string, color: Color3, parent: Instance): TextButton
 	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(1, -16, 0, 40)
-	button.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
+	button.Size = UDim2.new(0.5, -12, 0, 44)
+	button.BackgroundColor3 = color
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
 	button.Font = Enum.Font.GothamBold
 	button.TextScaled = true
@@ -42,63 +34,24 @@ local function makeButton(text: string, parent: Instance): TextButton
 	return button
 end
 
-local function setPickerVisible(visible: boolean)
-	pickerFrame.Visible = visible
+local function setConfirmVisible(visible: boolean)
+	confirmFrame.Visible = visible
 end
 
-local function openPicker()
-	for _, child in pickerList:GetChildren() do
-		if child:IsA("TextButton") then
-			child:Destroy()
-		end
-	end
-
+-- Opened by the phone ("Call a Cab"). The destination is wherever the player is not: Home -> Airport,
+-- otherwise -> Home. The server re-derives this authoritatively; the label is just for the player.
+function TravelController:OpenCabConfirm()
 	local current = player:GetAttribute("CurrentPlace")
-	local unlocked = string.split(player:GetAttribute("UnlockedPlaces") :: string or "", ",")
-	for _, placeId in unlocked do
-		if Config.Places[placeId] and placeId ~= current then
-			local button = makeButton(placeId, pickerList)
-			button.Activated:Connect(function()
-				setPickerVisible(false)
-				requestTravel:FireServer(placeId)
-			end)
-		end
-	end
-
-	setPickerVisible(true)
-end
-
--- Opened by the phone ("Call a Cab"); the cab is no longer a standalone world prompt.
-function TravelController:OpenPicker()
-	openPicker()
+	local goingToAirport = current == "Home"
+	promptLabel.Text = if goingToAirport then "Take a cab to the Airport?" else "Take a cab back Home?"
+	setConfirmVisible(true)
 end
 
 local function tweenFade(transparency: number)
 	TweenService:Create(fade, TweenInfo.new(0.4), { BackgroundTransparency = transparency }):Play()
 end
 
-local function onStartMinigame(_kind: string, duration: number)
-	minigameToken += 1
-	local token = minigameToken
-	minigameFrame.Visible = true
-
-	task.spawn(function()
-		local remaining = duration
-		while remaining > 0 and token == minigameToken and minigameFrame.Visible do
-			countdownLabel.Text = `Board in {string.format("%.1f", remaining)}s`
-			task.wait(0.1)
-			remaining -= 0.1
-		end
-		if token == minigameToken then
-			minigameFrame.Visible = false
-		end
-	end)
-end
-
 local function onTravelComplete(success: boolean, reason: string?, placeId: string?)
-	minigameToken += 1 -- stop any running countdown
-	minigameFrame.Visible = false
-
 	if success then
 		statusLabel.Text = `Arrived at {placeId}`
 		tweenFade(0)
@@ -117,8 +70,6 @@ end
 function TravelController:Init()
 	requestTravel = Net.Event("RequestTravel")
 	travelComplete = Net.Event("TravelComplete")
-	startMinigame = Net.Event("StartMinigame")
-	minigameInput = Net.Event("MinigameInput")
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Travel"
@@ -131,55 +82,58 @@ function TravelController:Init()
 	fade.ZIndex = 10
 	fade.Parent = gui
 
-	-- Destination picker.
-	pickerFrame = Instance.new("Frame")
-	pickerFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-	pickerFrame.Position = UDim2.fromScale(0.5, 0.5)
-	pickerFrame.Size = UDim2.fromOffset(280, 320)
-	pickerFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-	pickerFrame.Visible = false
-	pickerFrame.Parent = gui
+	-- Cab confirmation dialog.
+	confirmFrame = Instance.new("Frame")
+	confirmFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	confirmFrame.Position = UDim2.fromScale(0.5, 0.5)
+	confirmFrame.Size = UDim2.fromOffset(320, 160)
+	confirmFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+	confirmFrame.Visible = false
+	confirmFrame.Parent = gui
 
-	local pickerTitle = Instance.new("TextLabel")
-	pickerTitle.Size = UDim2.new(1, 0, 0, 40)
-	pickerTitle.BackgroundTransparency = 1
-	pickerTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-	pickerTitle.Font = Enum.Font.GothamBold
-	pickerTitle.TextScaled = true
-	pickerTitle.Text = "Where to?"
-	pickerTitle.Parent = pickerFrame
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundTransparency = 1
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.GothamBold
+	title.TextScaled = true
+	title.Text = "🚕 Call a Cab"
+	title.Parent = confirmFrame
 
-	pickerList = Instance.new("Frame")
-	pickerList.Position = UDim2.fromOffset(8, 48)
-	pickerList.Size = UDim2.new(1, -16, 1, -56)
-	pickerList.BackgroundTransparency = 1
-	pickerList.Parent = pickerFrame
+	promptLabel = Instance.new("TextLabel")
+	promptLabel.Position = UDim2.fromOffset(12, 48)
+	promptLabel.Size = UDim2.new(1, -24, 0, 44)
+	promptLabel.BackgroundTransparency = 1
+	promptLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+	promptLabel.Font = Enum.Font.Gotham
+	promptLabel.TextScaled = true
+	promptLabel.TextWrapped = true
+	promptLabel.Text = ""
+	promptLabel.Parent = confirmFrame
 
-	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 8)
-	layout.Parent = pickerList
+	local buttonRow = Instance.new("Frame")
+	buttonRow.AnchorPoint = Vector2.new(0.5, 1)
+	buttonRow.Position = UDim2.new(0.5, 0, 1, -12)
+	buttonRow.Size = UDim2.new(1, -24, 0, 44)
+	buttonRow.BackgroundTransparency = 1
+	buttonRow.Parent = confirmFrame
 
-	-- Boarding minigame.
-	minigameFrame = Instance.new("Frame")
-	minigameFrame.AnchorPoint = Vector2.new(0.5, 1)
-	minigameFrame.Position = UDim2.fromScale(0.5, 0.9)
-	minigameFrame.Size = UDim2.fromOffset(280, 120)
-	minigameFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-	minigameFrame.Visible = false
-	minigameFrame.Parent = gui
+	local rowLayout = Instance.new("UIListLayout")
+	rowLayout.FillDirection = Enum.FillDirection.Horizontal
+	rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	rowLayout.Padding = UDim.new(0, 16)
+	rowLayout.Parent = buttonRow
 
-	countdownLabel = Instance.new("TextLabel")
-	countdownLabel.Size = UDim2.new(1, 0, 0, 40)
-	countdownLabel.BackgroundTransparency = 1
-	countdownLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	countdownLabel.Font = Enum.Font.Gotham
-	countdownLabel.TextScaled = true
-	countdownLabel.Text = ""
-	countdownLabel.Parent = minigameFrame
+	local yesButton = makeButton("Yes", Color3.fromRGB(60, 160, 90), buttonRow)
+	local noButton = makeButton("No", Color3.fromRGB(120, 60, 60), buttonRow)
 
-	boardButton = makeButton("Board the plane!", minigameFrame)
-	boardButton.Position = UDim2.fromOffset(8, 56)
-	boardButton.AnchorPoint = Vector2.new(0, 0)
+	yesButton.Activated:Connect(function()
+		setConfirmVisible(false)
+		requestTravel:FireServer()
+	end)
+	noButton.Activated:Connect(function()
+		setConfirmVisible(false)
+	end)
 
 	-- Status message.
 	statusLabel = Instance.new("TextLabel")
@@ -199,12 +153,6 @@ function TravelController:Init()
 end
 
 function TravelController:Start()
-	boardButton.Activated:Connect(function()
-		minigameFrame.Visible = false
-		minigameInput:FireServer()
-	end)
-
-	startMinigame.OnClientEvent:Connect(onStartMinigame)
 	travelComplete.OnClientEvent:Connect(onTravelComplete)
 end
 

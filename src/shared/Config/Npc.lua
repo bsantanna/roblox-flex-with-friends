@@ -60,6 +60,28 @@ type QuickDrawDef = {
 	MatchBonus: number, -- extra followers for winning every draw
 	DrawPose: string, -- animation asset id played on the NPC at the DRAW signal
 }
+type MemoryDef = {
+	Rounds: number, -- rounds to clear; clearing all awards the bonus reward + trophy
+	StartTargets: number, -- emojis to memorize in round 1 (grows by one per round)
+	GridSize: number, -- cells shown for recall (16 = a 4x4 grid)
+	ShowSeconds: number, -- how long the target emojis flash before the grid appears
+	SelectTimeoutSeconds: number, -- server-side deadline for the player to submit a selection
+	RoundDelaySeconds: number, -- pause between a cleared round and the next show phase
+	BaseReward: number, -- followers for clearing round 1
+	RewardPerRound: number, -- extra followers per round beyond the first
+	Emojis: { string }, -- object-emoji pool to draw the grid from (>= GridSize distinct)
+}
+type TicTacToeDef = {
+	WinsNeeded: number, -- first to this many game wins takes the match (draws replay the game)
+	MoveTimeoutSeconds: number, -- server-side deadline for the player to make a move
+	RevealSeconds: number, -- pause showing a finished game before the next
+	RoundDelaySeconds: number, -- pause before a new game's board appears
+	NpcMoveDelaySeconds: number, -- pause before the NPC plays its reply (so the player sees their move land)
+	BaseReward: number, -- followers for each game the player wins
+	MatchBonus: number, -- extra followers for winning the match
+	PlayerMark: string, -- the player's symbol
+	NpcMark: string, -- the NPC's symbol
+}
 -- Sidewalk/citizen walk config for NPCs that patrol the town (not doing chores).
 type CitizenWalkDef = {
 	Waypoints: { Vector3 }, -- ordered sidewalk waypoints the NPC visits in random order
@@ -99,6 +121,8 @@ type NpcDef = {
 	SimonSays: SimonSaysDef?, -- present iff this NPC hosts the Simon Says minigame
 	RockPaperScissors: RockPaperScissorsDef?, -- present iff this NPC hosts the Rock-Paper-Scissors minigame
 	QuickDraw: QuickDrawDef?, -- present iff this NPC hosts the Quick Draw reaction minigame
+	Memory: MemoryDef?, -- present iff this NPC hosts the recognition-memory minigame
+	TicTacToe: TicTacToeDef?, -- present iff this NPC hosts the tic-tac-toe minigame
 	Chore: {
 		HomePosition: Vector3, -- spawn / idle position where the NPC wanders from
 		Waypoints: { { position: Vector3, animationId: string, delaySeconds: number } }, -- ordered chore points
@@ -229,9 +253,12 @@ Npc.Npc = {
 		SpawnPosition = Vector3.new(300, 0, -120), -- inside the paddock, on grass north-east of the Farmer
 		SpawnYaw = 90, -- same facing as the Farmer (toward the pen approach)
 		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
-		Outfit = { -- cowboy look: a wide-brim cowboy hat
+		Outfit = { -- cowboy look: cowboy hat + plaid flannel shirt and western jeans
 			Hats = { 10473499273 }, -- Cowboy Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
 		},
 		ArenaPosition = Vector3.new(322, 0, -120), -- a short walk to clear pen floor for the duel
 		MoveSeconds = 2,
@@ -287,9 +314,12 @@ Npc.Npc = {
 		SpawnPosition = Vector3.new(40, 0, -40), -- central plaza area, near the town green
 		SpawnYaw = 180, -- face south, toward the approach from the spawn plaza
 		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
-		Outfit = { -- postal look: a peaked uniform officer cap
+		Outfit = { -- postal look: officer cap + white shirt and navy trousers (summer postal uniform)
 			Hats = { 13383061629 }, -- White Star Line Officer Cap
-			Layered = {},
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top
+				{ AssetId = 140048946599540, Type = Enum.AccessoryType.Pants }, -- navy uniform pants
+			},
 		},
 		ArenaPosition = Vector3.new(60, 0, -40), -- a short walk north for the duel
 		MoveSeconds = 2,
@@ -398,9 +428,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 300,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
-		Outfit = { -- cabbie look: a flat newsboy cap
+		Outfit = { -- cabbie look: newsboy cap + casual tee and jeans
 			Hats = { 78174478860906 }, -- Black Shelby Vintage Cap
-			Layered = {},
+			Layered = {
+				{ AssetId = 131452039626817, Type = Enum.AccessoryType.TShirt }, -- White Tank Top
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
 		},
 		SpawnPosition = Vector3.new(172, 0, -172), -- grass shoulder by the NE ramp, clear of the road
 		SpawnYaw = 90, -- face the open grass toward town
@@ -457,9 +490,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 350,
 		RequiredTrophies = { "sage_quickdraw" }, -- the Forest sage's Fast Hands
-		Outfit = { -- police look: a peaked police hat
+		Outfit = { -- police look: police hat + navy uniform jacket and trousers
 			Hats = { 15752686682 }, -- Police Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 90301601233454, Type = Enum.AccessoryType.Jacket }, -- police uniform jacket
+				{ AssetId = 140048946599540, Type = Enum.AccessoryType.Pants }, -- police uniform pants
+			},
 		},
 		SpawnPosition = Vector3.new(144, 0, -110), -- plaza-side sidewalk south of Neighbor02 (NE square)
 		SpawnYaw = 180, -- face south, toward the plaza approach
@@ -508,9 +544,11 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 300,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
-		Outfit = { -- firefighter look: a fire helmet
+		Outfit = { -- firefighter look: fire helmet + firefighter turnout pants
 			Hats = { 96463686997847 }, -- Firefighter Helmet
-			Layered = {},
+			Layered = {
+				{ AssetId = 9773731232, Type = Enum.AccessoryType.Pants }, -- Firefighter Pants
+			},
 		},
 		SpawnPosition = Vector3.new(-144, 0, -110), -- plaza-side sidewalk south of Neighbor01 (NW square)
 		SpawnYaw = 180, -- face south, toward the plaza approach
@@ -566,9 +604,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 450,
 		RequiredTrophies = { "policeman_protection" }, -- the policeman's Protection
-		Outfit = { -- gardener look: a straw hat (reuses the verified Farmer straw hat)
-			Hats = { 18358376553 }, -- Straw Hat
-			Layered = {},
+		Outfit = { -- gardener look: straw hat + flannel shirt under denim overalls
+			Hats = { 18358376553 }, -- Straw Hat (reuses the verified Farmer straw hat)
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 127189956586914, Type = Enum.AccessoryType.Pants }, -- Classic Blue Denim Overalls
+			},
 		},
 		SpawnPosition = Vector3.new(-171, 0, -117), -- grass strip in the NW quarter, west of Neighbor01
 		SpawnYaw = 180, -- face south toward the open sidewalk/plaza approach
@@ -624,9 +665,11 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 300,
 		RequiredTrophies = { "personal_trainer_strength" }, -- the gym trainer's Strength
-		Outfit = { -- builder look: a construction hard hat
+		Outfit = { -- builder look: hard hat + denim work overalls
 			Hats = { 84987146959152 }, -- Construction Hard Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 127189956586914, Type = Enum.AccessoryType.Pants }, -- Classic Blue Denim Overalls
+			},
 		},
 		SpawnPosition = Vector3.new(-100, 0, 0), -- plaza-side sidewalk east of Neighbor03 (W square)
 		SpawnYaw = 90, -- face east, toward the plaza approach
@@ -634,36 +677,29 @@ Npc.Npc = {
 		ArenaPosition = Vector3.new(-86, 0, 0), -- a step toward the plaza, clear sidewalk
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
-		Instructions = "Time to build! Watch the construction moves I make, then repeat them in order with the"
-			.. " on-screen buttons or arrow keys. Clear every round to bank followers. Step on the mark!",
+		Instructions = "Tic-Tac-Toe, builder style! You're X, I'm O — tap a square to lay your mark. Get"
+			.. " three in a row before I do. Best two out of three takes it. Step on the mark and hit Start!",
 		Dialog = {
 			Lines = {
 				"Howdy! I build the homes around this neighborhood.",
-				"Every house goes up step by step, in the right order. Think you can keep up?",
+				"Every house starts with a solid plan — three beams in a row. Fancy a game?",
 			},
-			QualifiedLine = "You've got the strength — ready to raise a house with me?",
+			QualifiedLine = "You've got the strength — up for a round of Tic-Tac-Toe?",
 			GateLine = "Come back with the trainer's badge and {threshold} followers, and we'll build together.",
-			QualifiedChoices = { "Let's build", "Maybe later" },
+			QualifiedChoices = { "Let's play", "Maybe later" },
 			GateChoices = { "Got it" },
 			TimeoutSeconds = 30,
 		},
-		SimonSays = {
-			StartLength = 1,
-			MaxRounds = 3,
-			ShowStepSeconds = 2.5,
-			ShowGapSeconds = 0.6,
-			StepLeadSeconds = 1.0,
+		TicTacToe = {
+			WinsNeeded = 2, -- best two out of three (draws replay the game)
+			MoveTimeoutSeconds = 20,
+			RevealSeconds = 2,
 			RoundDelaySeconds = 1.5,
-			InputTimeoutSeconds = 20,
-			BaseReward = 50,
-			RewardPerRound = 25,
-			Arrows = { "Left", "Up", "Right", "Down" },
-			Poses = {
-				Left = "rbxassetid://507770239",
-				Up = "rbxassetid://507770677",
-				Right = "rbxassetid://507770453",
-				Down = "rbxassetid://507771019",
-			},
+			NpcMoveDelaySeconds = 0.6,
+			BaseReward = 40, -- per game won
+			MatchBonus = 80, -- 2 x 40 + 80 = 160 max, matching the other best-of-three NPCs
+			PlayerMark = "X",
+			NpcMark = "O",
 		},
 		-- HomeBuilder patrols the W area near Neighbor03.
 		CitizenWalk = {
@@ -682,9 +718,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 550,
 		RequiredTrophies = { "gardener_caretaking" }, -- the gardener's Caretaking
-		Outfit = { -- nurse look: a white nurse cap
+		Outfit = { -- nurse look: nurse cap + medical scrubs top and trousers
 			Hats = { 10770260 }, -- Nurse Hat
-			Layered = {},
+			Layered = {
+				{ AssetId = 80960012829759, Type = Enum.AccessoryType.Jacket }, -- Medical Nurse Outfit Vet
+				{ AssetId = 13896827744, Type = Enum.AccessoryType.Pants }, -- Medical Scrubs Hospital Pants
+			},
 		},
 		SpawnPosition = Vector3.new(100, 0, 0), -- plaza-side sidewalk west of Neighbor04 (E square)
 		SpawnYaw = 270, -- face west, toward the plaza approach
@@ -692,36 +731,53 @@ Npc.Npc = {
 		ArenaPosition = Vector3.new(86, 0, 0), -- a step toward the plaza, clear sidewalk
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
-		Instructions = "Health check! Quick game of Rock, Paper, Scissors to test your reflexes.\n  Pick yer hand, best two outta three. Step on the mark when you're ready!",
+		Instructions = "Memory check! I'll flash a few items — memorize them. Then a grid appears: tap the"
+			.. " ones you saw and hit Submit. Clear every round to bank followers. Step on the mark and hit Start!",
 		Dialog = {
 			Lines = {
 				"Hello! I'm the neighborhood nurse.",
-				"A sharp mind keeps you healthy — let's see how quick you are at a friendly game.",
+				"A sharp mind keeps you healthy — let's test your memory with a quick game.",
 			},
-			QualifiedLine = "You've earned your care — fancy a game o' Rock, Paper, Scissors? Best two outta three!",
+			QualifiedLine = "You've earned your care — fancy a memory test? Watch the items, then pick them out!",
 			GateLine = "Come back with the gardener's badge and {threshold} followers, and we'll play.",
 			QualifiedChoices = { "Let's play!", "Maybe later" },
 			GateChoices = { "Got it" },
 			TimeoutSeconds = 30,
 		},
-		RockPaperScissors = {
-			WinsNeeded = 2,
-			InputTimeoutSeconds = 15,
-			ReelSeconds = 2,
-			RevealSeconds = 1.5,
-			RoundDelaySeconds = 1,
-			BaseReward = 40,
-			MatchBonus = 80,
-			Choices = { "Rock", "Paper", "Scissors" },
-			Emoji = {
-				Rock = "\u{270A}", -- raised fist
-				Paper = "\u{270B}", -- raised hand
-				Scissors = "\u{270C}\u{FE0F}", -- victory hand
-			},
-			Poses = {
-				Rock = "rbxassetid://507770677", -- cheer (fist up)
-				Paper = "rbxassetid://507770239", -- wave (open hand)
-				Scissors = "rbxassetid://507770453", -- point
+		Memory = {
+			Rounds = 3,
+			StartTargets = 4, -- 4 -> 5 -> 6 items to memorize across the rounds
+			GridSize = 16, -- 4x4 recall grid
+			ShowSeconds = 4, -- the items flash for 4 seconds
+			SelectTimeoutSeconds = 20,
+			RoundDelaySeconds = 1.5,
+			BaseReward = 50,
+			RewardPerRound = 25, -- 50 + 75 + 100 = 225 max, matching the Simon Says clear
+			Emojis = {
+				"\u{1F34E}", -- apple
+				"\u{26BD}", -- soccer ball
+				"\u{1F3B8}", -- guitar
+				"\u{1F511}", -- key
+				"\u{1F388}", -- balloon
+				"\u{1F355}", -- pizza
+				"\u{1F6B2}", -- bicycle
+				"\u{1F4DA}", -- books
+				"\u{1F3B2}", -- die
+				"\u{2602}\u{FE0F}", -- umbrella
+				"\u{1F514}", -- bell
+				"\u{1F344}", -- mushroom
+				"\u{1F9E9}", -- puzzle piece
+				"\u{1FA81}", -- kite
+				"\u{1F941}", -- drum
+				"\u{1F9F8}", -- teddy bear
+				"\u{1F369}", -- doughnut
+				"\u{1F381}", -- gift
+				"\u{1F455}", -- t-shirt
+				"\u{1F3A9}", -- top hat
+				"\u{1F4A1}", -- light bulb
+				"\u{1F33B}", -- sunflower
+				"\u{1F4F7}", -- camera
+				"\u{1F570}\u{FE0F}", -- clock
 			},
 		},
 		-- Nurse patrols the plaza sidewalks near Neighbor04.
@@ -741,9 +797,12 @@ Npc.Npc = {
 		Zone = "Home",
 		UnlockFollowers = 450,
 		RequiredTrophies = { "taxi_driver_mobility" }, -- the taxi driver's Mobility
-		Outfit = { -- trucker look: a trucker cap
+		Outfit = { -- trucker look: trucker cap + plaid flannel shirt and jeans
 			Hats = { 12356137971 }, -- Vintage Label Trucker Cap
-			Layered = {},
+			Layered = {
+				{ AssetId = 127156100983108, Type = Enum.AccessoryType.Shirt }, -- Red & Black Long Sleeve Plaid Flannel Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
 		},
 		SpawnPosition = Vector3.new(-172, 0, 172), -- grass shoulder by the SW ramp, clear of the road
 		SpawnYaw = 0, -- face the open grass toward the plaza

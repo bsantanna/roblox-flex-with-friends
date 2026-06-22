@@ -18,6 +18,9 @@ local player = Players.LocalPlayer
 
 local ORDER = { "Rock", "Paper", "Scissors" } -- on-screen button order
 local EMOJI = { Rock = "\u{270A}", Paper = "\u{270B}", Scissors = "\u{270C}\u{FE0F}" }
+-- The verb explaining why a hand beats the other — so every round's result teaches the rule
+-- (Simon Says-style per-step feedback). Rock crushes Scissors, Paper covers Rock, Scissors cut Paper.
+local VERB = { Rock = "crushes", Paper = "covers", Scissors = "cut" }
 local KEY_CHOICE: { [Enum.KeyCode]: string } = {
 	[Enum.KeyCode.One] = "Rock",
 	[Enum.KeyCode.Two] = "Paper",
@@ -87,7 +90,9 @@ local function onPickPhase(_choices: { string }, _timeoutSeconds: number, npcId:
 	reelToken = nil -- stop any leftover spin
 	resetButtons()
 	reelLabel.Text = "\u{2753}" -- question mark while waiting for the throw
-	statusLabel.Text = "Pick your hand!"
+	-- Restate the rule every round so the player always knows what beats what.
+	statusLabel.Text =
+		`Pick your hand!  {EMOJI.Rock} \u{25B8} {EMOJI.Scissors} \u{25B8} {EMOJI.Paper} \u{25B8} {EMOJI.Rock}`
 end
 
 -- Spins the reel through the emojis for `seconds`, then lands on `finalChoice` and runs `onLand`.
@@ -111,7 +116,7 @@ local function spinReel(finalChoice: string, seconds: number, onLand: () -> ())
 end
 
 local function onReveal(
-	_playerChoice: string,
+	playerChoice: string,
 	opponentChoice: string,
 	outcome: string,
 	reelSeconds: number,
@@ -121,15 +126,17 @@ local function onReveal(
 )
 	inputEnabled = false
 	local name = orderKey or "Cowboy"
-	statusLabel.Text = `${name} is throwing...`
+	statusLabel.Text = `{name} is throwing...`
 	spinReel(opponentChoice, reelSeconds, function()
 		setScore(playerWins, opponentWins)
+		local you, them = EMOJI[playerChoice], EMOJI[opponentChoice]
+		-- Spell out the matchup AND why it resolved the way it did, every round.
 		if outcome == "win" then
-			statusLabel.Text = `You win the round! +{roundReward} followers`
+			statusLabel.Text = `{you} {VERB[playerChoice]} {them} — you win! +{roundReward} followers`
 		elseif outcome == "lose" then
-			statusLabel.Text = `${name} wins the round!`
+			statusLabel.Text = `{them} {VERB[opponentChoice]} {you} — {name} takes the round!`
 		else
-			statusLabel.Text = "Tie — throw again!"
+			statusLabel.Text = `{you} vs {them} — tie! Throw again.`
 		end
 	end)
 end

@@ -903,10 +903,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(80, 1.1, 743), -- spawn / post
-				Vector3.new(64, 1.1, 743), -- towards hall centre
-				Vector3.new(80, 1.1, 721), -- south along right wall
-				Vector3.new(64, 1.1, 721), -- towards hall centre
+				Vector3.new(80, 1.1, 727), -- spawn / post (Z 719-727 corridor)
+				Vector3.new(64, 1.1, 727), -- in to inner wall
+				Vector3.new(80, 1.1, 719), -- along right wall
+				Vector3.new(64, 1.1, 719), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -978,10 +978,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(-80, 1.1, 677), -- spawn / post
-				Vector3.new(-64, 1.1, 677), -- towards hall centre
-				Vector3.new(-80, 1.1, 699), -- north along left wall
-				Vector3.new(-64, 1.1, 699), -- towards hall centre
+				Vector3.new(-80, 1.1, 687), -- spawn / post (Z 679-687 corridor)
+				Vector3.new(-64, 1.1, 687), -- in to inner wall
+				Vector3.new(-80, 1.1, 679), -- along left wall
+				Vector3.new(-64, 1.1, 679), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -1037,10 +1037,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(-80, 1.1, 699), -- spawn / post
-				Vector3.new(-64, 1.1, 699), -- towards hall centre
-				Vector3.new(-80, 1.1, 721), -- north along left wall
-				Vector3.new(-64, 1.1, 721), -- towards hall centre
+				Vector3.new(32, 1.1, 711), -- spawn / post (Z 703-711 corridor)
+				Vector3.new(16, 1.1, 711), -- in to center
+				Vector3.new(32, 1.1, 703), -- along center-right
+				Vector3.new(16, 1.1, 703), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -1087,10 +1087,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(80, 1.1, 721), -- spawn / post
-				Vector3.new(64, 1.1, 721), -- towards hall centre
-				Vector3.new(80, 1.1, 699), -- south along right wall
-				Vector3.new(64, 1.1, 699), -- towards hall centre
+				Vector3.new(-80, 1.1, 711), -- spawn / post (Z 711-719 corridor)
+				Vector3.new(-64, 1.1, 711), -- in to inner wall
+				Vector3.new(-80, 1.1, 719), -- along left wall
+				Vector3.new(-64, 1.1, 719), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -1162,10 +1162,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(-80, 1.1, 721), -- spawn / post
-				Vector3.new(-64, 1.1, 721), -- towards hall centre
-				Vector3.new(-80, 1.1, 743), -- south along left wall
-				Vector3.new(-64, 1.1, 743), -- towards hall centre
+				Vector3.new(-32, 1.1, 703), -- spawn / post (Z 695-703 corridor)
+				Vector3.new(-16, 1.1, 703), -- in to center
+				Vector3.new(-32, 1.1, 695), -- along center-left
+				Vector3.new(-16, 1.1, 695), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -1222,10 +1222,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(80, 1.1, 677), -- spawn / post
-				Vector3.new(64, 1.1, 677), -- towards hall centre
-				Vector3.new(80, 1.1, 699), -- north along right wall
-				Vector3.new(64, 1.1, 699), -- towards hall centre
+				Vector3.new(80, 1.1, 695), -- spawn / post (Z 687-695 corridor)
+				Vector3.new(64, 1.1, 695), -- in to inner wall
+				Vector3.new(80, 1.1, 687), -- along right wall
+				Vector3.new(64, 1.1, 687), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -1297,10 +1297,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(80, 1.1, 699), -- spawn / post
-				Vector3.new(64, 1.1, 699), -- towards hall centre
-				Vector3.new(80, 1.1, 677), -- south along right wall
-				Vector3.new(64, 1.1, 677), -- towards hall centre
+				Vector3.new(8, 1.1, 735), -- spawn / post (Z 727-735 corridor)
+				Vector3.new(-8, 1.1, 735), -- across center
+				Vector3.new(8, 1.1, 727), -- along center-right
+				Vector3.new(-8, 1.1, 727), -- towards center
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,
@@ -1350,10 +1350,10 @@ Npc.Npc = {
 		},
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(-80, 1.1, 743), -- spawn / post
-				Vector3.new(-64, 1.1, 743), -- towards hall centre
-				Vector3.new(-80, 1.1, 677), -- south along left wall
-				Vector3.new(-64, 1.1, 677), -- towards hall centre
+				Vector3.new(32, 1.1, 743), -- spawn / post (Z 735-743 corridor)
+				Vector3.new(16, 1.1, 743), -- in to center
+				Vector3.new(32, 1.1, 735), -- along center-right
+				Vector3.new(16, 1.1, 735), -- towards hall centre
 			},
 			WalkSpeed = 3,
 			PauseMin = 2,

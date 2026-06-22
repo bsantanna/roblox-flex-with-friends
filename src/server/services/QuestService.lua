@@ -51,6 +51,7 @@ local questAccept: RemoteEvent
 local questDecline: RemoteEvent
 local requestQuestTravel: RemoteEvent
 local requestCollect: RemoteEvent
+local cutscenePlay: RemoteEvent
 
 local sessions: { [Player]: Session } = {}
 local pilotModel: Model? = nil
@@ -110,8 +111,11 @@ local function deliver(player: Player)
 	end
 	profile.Data.CompletedQuests[Q.Id] = true
 
+	-- Cinematic ending: pan to the Pilot, happy pose + thank-you lines (presentation; the reward is
+	-- granted right away so a mid-cutscene disconnect can't lose it).
+	cutscenePlay:FireClient(player, "Ending")
 	task.spawn(function()
-		NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 5)
+		NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 6)
 		speak({ Q.Lines.Returned, Q.Lines.Ending })
 	end)
 
@@ -156,6 +160,9 @@ local function onTalk(player: Player)
 		count = 0,
 	}
 	sessions[player] = s
+	-- Cinematic intro: the camera pans to the Pilot while he frets (worried pose) and explains, then
+	-- the Accept/Decline choice appears once the lines have played and the camera has restored.
+	cutscenePlay:FireClient(player, "Intro")
 	task.spawn(function()
 		NpcActor.pose(pilotAnimator(), Q.Pose.Worried, Q.LineHoldSeconds * #Q.Lines.Intro)
 		speak(Q.Lines.Intro)
@@ -292,6 +299,7 @@ function QuestService:Init()
 	questDecline = Net.Event("QuestDecline")
 	requestQuestTravel = Net.Event("RequestQuestTravel")
 	requestCollect = Net.Event("RequestCollectPackage")
+	cutscenePlay = Net.Event("CutscenePlay")
 end
 
 function QuestService:Start()

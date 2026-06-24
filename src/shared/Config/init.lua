@@ -41,6 +41,7 @@ Config.Farm = require(script.Farm)
 -- Ambient traffic, ground + air (Traffic.lua)
 Config.Traffic = TrafficCfg.Traffic
 Config.AirTraffic = TrafficCfg.AirTraffic
+Config.HeliTraffic = TrafficCfg.HeliTraffic
 
 -- NPC minigame framework + roster (Npc.lua)
 Config.Minigame = Npc.Minigame

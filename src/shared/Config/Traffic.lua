@@ -58,4 +58,34 @@ Traffic.AirTraffic = {
 	},
 }
 
+-- Ambient helicopter shuttle (HeliTrafficService): a single decorative helicopter that lifts off a
+-- helipad on the central building's rooftop, cruises to a helipad on the airport's west apron,
+-- lands and holds, then flies back and lands on the rooftop -- one full round trip every TotalCycle.
+-- Same engine as AirTrafficService: an anchored primitive model under Workspace.Scenery driven by a
+-- pure evaluate(elapsed) -> CFrame across phases that are C0-continuous so the wrap is seamless.
+-- The two rotors spin continuously, independent of the flight clock. It cruises below the airliners'
+-- CruiseAltitude (130) and above the central building roof (~94), so it never conflicts with either.
+Traffic.HeliTraffic = {
+	TotalCycle = 300, -- seconds for one full rooftop -> airport -> rooftop round trip (5 minutes)
+	-- Rooftop helipad: a world-space point on the central building roof (the building is a GLB seated
+	-- on terrain at runtime, so this is tuned against the actual rooftop in Studio, not derived).
+	RooftopPad = Vector3.new(0, 88, -95),
+	AirportPad = Vector3.new(-100, 0, 80), -- airport helipad, offset from Zones.Airport (open west apron)
+	CruiseAltitude = 115, -- world Y the helicopter cruises at (above the roof ~94, below the airliners' 130)
+	RotorSpeed = 1500, -- main-rotor spin, degrees/second (tail rotor spins proportionally faster)
+	Pad = { Radius = 14, Thickness = 0.4 }, -- the painted helipad disc built at each end
+	-- Phase durations (seconds); these sum to TotalCycle. The two Hold phases also yaw the helicopter
+	-- 180 degrees in place so it always departs nose-first, keeping the cycle seamless on wrap.
+	Phases = {
+		RooftopLift = 6, -- vertical climb off the rooftop pad to cruise altitude
+		ToAirport = 70, -- horizontal cruise rooftop -> airport
+		AirportDescend = 8, -- vertical descent onto the airport pad
+		AirportHold = 26, -- sit on the airport pad (and yaw around to face home)
+		AirportLift = 6, -- vertical climb off the airport pad
+		ToRooftop = 70, -- horizontal cruise airport -> rooftop
+		RooftopDescend = 8, -- vertical descent onto the rooftop pad
+		RooftopHold = 106, -- sit on the rooftop pad (and yaw around to face the airport)
+	},
+}
+
 return Traffic

@@ -29,6 +29,7 @@ local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 local TrophyService = require(script.Parent.TrophyService)
 local PlaceService = require(script.Parent.PlaceService)
+local NpcPromptService = require(script.Parent.NpcPromptService)
 local NpcActor = require(script.Parent.minigame.NpcActor)
 
 local QuestService = {}
@@ -96,8 +97,10 @@ local function clearSession(player: Player)
 	sessions[player] = nil
 end
 
--- Delivery: the one-time completion. Single writer of CompletedQuests; asks FollowerService and
--- TrophyService to grant the reward (golden rule 2). The ending cinematic is added in a later phase.
+-- Delivery: the completion. Single writer of CompletedQuests; asks FollowerService and TrophyService
+-- to grant the reward (golden rule 2). The reward + trophy are one-time (first completion only) -- the
+-- quest is replayable for fun afterwards, but re-granting followers on every replay would be an
+-- exploit. The ending cinematic plays every time.
 local function deliver(player: Player)
 	clearSession(player)
 
@@ -105,35 +108,30 @@ local function deliver(player: Player)
 	if not profile then
 		return
 	end
-	-- Defend against a double-deliver: only reward the first time.
-	if profile.Data.CompletedQuests[Q.Id] then
-		return
+	-- First completion only: persist + grant (the reward lands right away so a mid-cutscene disconnect
+	-- can't lose it). Replays skip straight to the cinematic with no reward.
+	if not profile.Data.CompletedQuests[Q.Id] then
+		profile.Data.CompletedQuests[Q.Id] = true
+		FollowerService:Award(player, Q.Reward, "quest-pilot-packages")
+		TrophyService:AwardTrophy(player, Q.TrophyNpcId)
 	end
-	profile.Data.CompletedQuests[Q.Id] = true
 
-	-- Cinematic ending: pan to the Pilot, happy pose + thank-you lines (presentation; the reward is
-	-- granted right away so a mid-cutscene disconnect can't lose it).
+	-- Cinematic ending: pan to the Pilot, happy pose + thank-you lines. Hide his Talk prompt for the
+	-- duration so "Press E" doesn't float over the cutscene; restore it once the lines finish.
+	NpcPromptService:Hide(Q.Pilot.NpcId)
 	cutscenePlay:FireClient(player, "Ending")
 	task.spawn(function()
 		NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 6)
 		speak({ Q.Lines.Returned, Q.Lines.Ending })
+		NpcPromptService:Show(Q.Pilot.NpcId)
 	end)
 
-	FollowerService:Award(player, Q.Reward, "quest-pilot-packages")
-	TrophyService:AwardTrophy(player, Q.TrophyNpcId)
 	fireState(player, "complete", TOTAL)
 end
 
 local function onTalk(player: Player)
 	local profile = DataService:GetProfile(player)
 	if not profile then
-		return
-	end
-
-	-- One-time story quest: already completed -> warm replay line, no reward.
-	if profile.Data.CompletedQuests[Q.Id] then
-		task.spawn(speak, { Q.Lines.Replay })
-		fireState(player, "replay", 0)
 		return
 	end
 
@@ -149,8 +147,11 @@ local function onTalk(player: Player)
 		return
 	end
 
-	-- Never accepted -> the offer. The intro cinematic is added later; for now: the intro lines, then
-	-- the Accept/Decline choice on the interacting player's screen.
+	-- Fresh offer. A player who already finished it can replay (no reward the second time): greet them
+	-- with the warm replay line, still asking for help, instead of the first-time intro.
+	local replaying = profile.Data.CompletedQuests[Q.Id] == true
+	local introLines = if replaying then { Q.Lines.Replay, Q.Lines.Intro[2] } else Q.Lines.Intro
+
 	local s: Session = {
 		player = player,
 		phase = "offer",
@@ -161,11 +162,13 @@ local function onTalk(player: Player)
 	}
 	sessions[player] = s
 	-- Cinematic intro: the camera pans to the Pilot while he frets (worried pose) and explains, then
-	-- the Accept/Decline choice appears once the lines have played and the camera has restored.
+	-- the Accept/Decline choice appears once the lines have played and the camera has restored. Hide his
+	-- Talk prompt while the cinematic + the choice are on screen so "Press E" doesn't float over them.
+	NpcPromptService:Hide(Q.Pilot.NpcId)
 	cutscenePlay:FireClient(player, "Intro")
 	task.spawn(function()
-		NpcActor.pose(pilotAnimator(), Q.Pose.Worried, Q.LineHoldSeconds * #Q.Lines.Intro)
-		speak(Q.Lines.Intro)
+		NpcActor.pose(pilotAnimator(), Q.Pose.Worried, Q.LineHoldSeconds * #introLines)
+		speak(introLines)
 		if sessions[player] == s and s.phase == "offer" then
 			fireState(player, "offer", 0)
 		end
@@ -178,6 +181,8 @@ local function onAccept(player: Player)
 		return
 	end
 	s.phase = "accepted"
+	-- Choice resolved -> the player heads off; let the prompt return for the delivery (and others).
+	NpcPromptService:Show(Q.Pilot.NpcId)
 	NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 3)
 	task.spawn(speak, { Q.Lines.Accepted })
 	fireState(player, "accepted", 0)
@@ -189,6 +194,7 @@ local function onDecline(player: Player)
 		return
 	end
 	clearSession(player)
+	NpcPromptService:Show(Q.Pilot.NpcId)
 	task.spawn(speak, { Q.Lines.Declined })
 	fireState(player, "idle", 0)
 end
@@ -319,6 +325,7 @@ function QuestService:Start()
 		pilotRoot = result.root
 		local prompt = result.prompt
 		if prompt then
+			NpcPromptService.Register(Q.Pilot.NpcId, prompt)
 			prompt.Triggered:Connect(onTalk)
 		end
 	end)

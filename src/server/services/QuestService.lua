@@ -115,16 +115,18 @@ local function deliver(player: Player)
 	end
 	-- First completion only: persist + grant (the reward lands right away so a mid-cutscene disconnect
 	-- can't lose it). Replays skip straight to the cinematic with no reward.
-	if not profile.Data.CompletedQuests[Q.Id] then
+	local firstTime = not profile.Data.CompletedQuests[Q.Id]
+	if firstTime then
 		profile.Data.CompletedQuests[Q.Id] = true
 		FollowerService:Award(player, Q.Reward, "quest-pilot-packages")
 		TrophyService:AwardTrophy(player, Q.TrophyNpcId)
 	end
 
 	-- Cinematic ending: pan to the Pilot, happy pose + thank-you lines. Hide his Talk prompt for the
-	-- duration so "Press E" doesn't float over the cutscene; restore it once the lines finish.
+	-- duration so "Press E" doesn't float over the cutscene; restore it once the lines finish. The reward
+	-- (only on the first completion) rides along to the Mission Complete banner.
 	NpcPromptService:Hide(Q.Pilot.NpcId)
-	cutscenePlay:FireClient(player, "Ending")
+	cutscenePlay:FireClient(player, "Ending", if firstTime then Q.Reward else 0)
 	task.spawn(function()
 		NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 6)
 		speak({ Q.Lines.Returned, Q.Lines.Ending })

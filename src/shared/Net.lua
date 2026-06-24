@@ -71,7 +71,7 @@ local EVENTS = {
 	"QuestAccept", -- client -> server: () -- accept the Pilot's offer
 	"QuestDecline", -- client -> server: () -- decline the offer
 	"RequestCollectPackage", -- client -> server: (index: number) -- triggered a beacon; server validates proximity
-	"CutscenePlay", -- server -> client: (sequenceId: string) -- take camera control, play a named cutscene
+	"CutscenePlay", -- server -> client: (sequenceId: string, reward: number?) -- take camera control, play a named cutscene; reward (>0) shows on the Ending's Mission Complete banner
 	"CutsceneDone", -- client -> server: () -- cutscene finished/skipped; lets the server sequence the next beat
 }
 

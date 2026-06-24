@@ -70,9 +70,8 @@ local EVENTS = {
 	"QuestState", -- server -> client: (questId: string, phase: string, collected: number, total: number, deadline: number?) -- the one HUD/state sync
 	"QuestAccept", -- client -> server: () -- accept the Pilot's offer
 	"QuestDecline", -- client -> server: () -- decline the offer
-	"RequestQuestTravel", -- client -> server: (destination: string) -- phone fast-travel ("City"/"Airport"); validated vs quest state
 	"RequestCollectPackage", -- client -> server: (index: number) -- triggered a beacon; server validates proximity
-	"CutscenePlay", -- server -> client: (sequenceId: string) -- take camera control, play a named cutscene
+	"CutscenePlay", -- server -> client: (sequenceId: string, reward: number?) -- take camera control, play a named cutscene; reward (>0) shows on the Ending's Mission Complete banner
 	"CutsceneDone", -- client -> server: () -- cutscene finished/skipped; lets the server sequence the next beat
 }
 

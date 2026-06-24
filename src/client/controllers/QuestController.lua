@@ -275,7 +275,7 @@ local function onQuestState(_questId: string, phase: string, count: number, _tot
 	end
 	prevCount = count
 
-	if phase == "offer" or phase == "accepted" then
+	if phase == "offer" then
 		if count == 0 then
 			resetCollected()
 		end

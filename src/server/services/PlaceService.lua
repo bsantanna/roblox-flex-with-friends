@@ -59,8 +59,9 @@ local function onRequestTravel(player: Player)
 	teleport(player, dest)
 	setLocation(player, dest)
 	profile.Data.Stats.TripsTaken += 1
-	if dest == "Home" then
-		-- Returning home costs followers (carbon footprint); arriving at the Airport is free.
+	if dest == "Home" and not player:GetAttribute("QuestActive") then
+		-- Returning home costs followers (carbon footprint); arriving at the Airport is free. Quest trips
+		-- are exempt -- flying to the city to run an errand isn't a holiday (QuestService sets the flag).
 		FollowerService:Deduct(player, Config.Travel.CarbonFootprintLoss, "carbon-footprint")
 	end
 	travelComplete:FireClient(player, true, nil, dest)

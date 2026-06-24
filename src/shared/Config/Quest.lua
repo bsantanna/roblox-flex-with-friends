@@ -39,10 +39,6 @@ Quest.Reward = 200
 -- Key into TrophyService's TROPHY_DEFS for the one-time completion trophy (pilot_delivery).
 Quest.TrophyNpcId = "Pilot"
 
--- Fast-travel drop-offs (PlaceService:TravelTo lands the player here; zero carbon cost for the quest).
--- "City" is the Home neighbourhood plaza; the return goes to the Airport terminal beside the Pilot.
-Quest.CityDropOff = Vector3.new(0, 5, 0) -- Home plaza centre (Zones.Home + lift); Studio-verified
-
 -- The 4 packages to collect, at the four internal road crossings of the Home grid -- open asphalt, one
 -- per quadrant around the central plaza, ~100 studs from the spawn (well within the timer on foot). The
 -- (+/-120, +/-120) house-square corners were rejected in Studio: two sat under Forest trees.
@@ -102,19 +98,64 @@ Quest.CollectToasts = {
 	"That's all four -- back to the Pilot!",
 }
 
--- Cutscene camera keyframes (CutsceneController). eye/target are world offsets added to the Pilot's
--- position (rule 3) so framing is tuned without editing the controller. Each beat tweens over
--- TweenSeconds. Verified visually in Studio -- a CFrame that type-checks can still point at a wall.
+-- Cutscene camera keyframes (CutsceneController). All eye/target/positions below are WORLD offsets
+-- added to the Pilot's position (rule 3) so framing is tuned without editing the controller. The Pilot
+-- faces +Z; the apron/runway sits behind him toward -Z, so the plane takes off out over it. Every
+-- offset is a first pass -- a CFrame that type-checks can still point at a wall, so these are verified
+-- and tuned visually in Studio.
 Quest.Cutscene = {
+	-- "Intro": a simple two-beat pan over the fretting Pilot.
 	TweenSeconds = 2.5,
 	Intro = {
 		{ eye = Vector3.new(14, 6, 14), target = Vector3.new(0, 3, 0) },
 		{ eye = Vector3.new(7, 4, 9), target = Vector3.new(0, 3, 0) },
 	},
+	-- "Ending": a staged, personal (client-local) cinematic. The Pilot waves, a Pilot clone boards a
+	-- throwaway plane, the plane taxis and takes off out over the apron, then a tight "Mission Complete"
+	-- cockpit close-up. Only the questing player sees the plane/clone; the real shared Pilot is hidden
+	-- locally for the duration.
 	Ending = {
-		{ eye = Vector3.new(-10, 5, 10), target = Vector3.new(0, 3, 0) },
-		{ eye = Vector3.new(6, 4, 8), target = Vector3.new(0, 3, 0) },
+		ClimbPitch = 14, -- degrees nose-up through the climb-out
+		-- Farewell frames the waving Pilot, so its camera is offset from the PILOT's post. The Pilot
+		-- stands inside the glass terminal; he can't walk out to the plane, so after he waves we cut (on a
+		-- fade) to the plane already out on the runway -- the boarding is implied.
+		Farewell = {
+			Seconds = 3,
+			Cam = { eye = Vector3.new(6, 4, 9), target = Vector3.new(0, 3, 0) },
+		},
+		-- The plane lives on the real runway, so its path + the taxi/takeoff/cockpit framing are offsets
+		-- from the RUNWAY centre (Config.Zones.Airport). It takes off along +X out over the lake, the same
+		-- heading as the ambient fleet. Studio-verified against the runway geometry.
+		Plane = {
+			Start = Vector3.new(-180, 2.5, 0), -- threshold, nose facing +X (toward RollTo)
+			TaxiTo = Vector3.new(-120, 2.5, 0), -- end of the slow taxi roll
+			RollTo = Vector3.new(60, 2.5, 0), -- rotate / lift-off point
+			ClimbTo = Vector3.new(320, 110, 0), -- climb-away end, high over the lake
+		},
+		Taxi = {
+			Seconds = 2.5,
+			Cam = { eye = Vector3.new(-150, 14, 70), target = Vector3.new(-150, 4, 0) },
+		},
+		Takeoff = {
+			Seconds = 5,
+			Cam = { eye = Vector3.new(-40, 30, 90), target = Vector3.new(80, 25, 0) },
+		},
+		-- Cockpit: a tight close-up of the smiling Pilot clone, posed high over the runway against the sky.
+		Cockpit = {
+			Seconds = 3.5,
+			PilotSpot = Vector3.new(320, 110, 0),
+			Cam = { eye = Vector3.new(320, 111, 7), target = Vector3.new(320, 110.5, 0) },
+		},
 	},
+}
+
+-- GTA-style "Mission Complete" banner (CutsceneController), shown during the cockpit beat.
+Quest.MissionComplete = {
+	Title = "MISSION COMPLETE!",
+	Subtitle = "Packages delivered safely.",
+	-- First completion shows the reward; replays (reward 0) show the warm line instead.
+	RewardSuffix = " Followers   ✈ Delivery Hero",
+	ReplayLine = "Thanks for your help, hero!",
 }
 
 return Quest

@@ -16,9 +16,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Workspace = game:GetService("Workspace")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
@@ -116,29 +114,24 @@ local TABS: { [string]: { label: string, activeColor: Color3, inactiveColor: Col
 }
 
 local index = 1
-local mode: "carousel" | "social" | "quest" = "carousel"
+local mode: "carousel" | "social" = "carousel"
 local hasArt = false
 
--- Pilot-quest state, mirrored from the QuestState sync. Drives the "Quest" carousel item's gating and
--- the quest modal's readout.
+-- Pilot-quest phase, mirrored from the QuestState sync. While a quest is active the Call a Cab item is
+-- revealed for everyone (and the ride is free, waived server-side) so the player can travel to the city
+-- to run the errand and fly back themselves -- there's no dedicated quest-travel screen.
 local questPhase = "idle"
-local questCount = 0
-local questTotal = 0
-local questClientEnd: number? = nil -- GetServerTimeNow()-based countdown end while collecting
-local questTimerConn: RBXScriptConnection? = nil
-local requestQuestTravel: RemoteEvent
 
--- A quest is "active" (and the Quest item visible) only between accepting and finishing.
+-- A quest is "active" between accepting and finishing.
 local function questActive(): boolean
-	return questPhase == "accepted" or questPhase == "collecting" or questPhase == "returning"
+	return questPhase == "collecting" or questPhase == "returning"
 end
 
--- Whether a carousel item is currently hidden: Cab until the Mobility trophy, Quest until active.
+-- Whether a carousel item is currently hidden: Cab is gated behind the Mobility trophy, but always
+-- available while a quest is active so the player can travel to run the errand.
 local function isItemHidden(action: string): boolean
 	if action == "Cab" then
-		return not earnedTrophies["taxi_driver_mobility"]
-	elseif action == "Quest" then
-		return not questActive()
+		return not (earnedTrophies["taxi_driver_mobility"] or questActive())
 	end
 	return false
 end
@@ -160,7 +153,7 @@ local function renderCarousel(step: number?)
 	titleLabel.Text = item.label
 end
 
-local function setMode(m: "carousel" | "social" | "quest")
+local function setMode(m: "carousel" | "social")
 	mode = m
 	local carousel = m == "carousel"
 	emojiLabel.Visible = carousel
@@ -556,159 +549,10 @@ local function closeModal()
 	setMode("carousel")
 end
 
-local function disconnectQuestTimer()
-	if questTimerConn then
-		questTimerConn:Disconnect()
-		questTimerConn = nil
-	end
-end
-
-local function closeQuestModal()
-	disconnectQuestTimer()
-	if modal ~= nil then
-		modal:Destroy()
-		modal = nil
-	end
-	setMode("carousel")
-end
-
--- A modal button styled like the Social modal's Close button.
-local function makeModalButton(parent: Instance, label: string, enabled: boolean, onClick: () -> ()): TextButton
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.fromOffset(220, 44)
-	button.BackgroundColor3 = if enabled then Color3.fromRGB(60, 120, 80) else Color3.fromRGB(55, 60, 72)
-	button.AutoButtonColor = enabled
-	button.Text = label
-	button.TextColor3 = if enabled then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(150, 155, 165)
-	button.Font = Enum.Font.GothamBold
-	button.TextScaled = true
-	button.BorderSizePixel = 0
-	button.Parent = parent
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = button
-
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 8)
-	padding.PaddingBottom = UDim.new(0, 8)
-	padding.PaddingLeft = UDim.new(0, 14)
-	padding.PaddingRight = UDim.new(0, 14)
-	padding.Parent = button
-
-	if enabled then
-		button.Activated:Connect(onClick)
-	end
-	return button
-end
-
--- The Pilot-quest screen: a timer readout (while collecting), the objective count, and the two
--- fast-travel buttons. Only reachable while a quest is active. Rebuilt on each QuestState update.
-local function showQuestModal()
-	disconnectQuestTimer()
-	if modal ~= nil then
-		modal:Destroy()
-		modal = nil
-	end
-
-	local m = Instance.new("Frame")
-	m.Name = "QuestModal"
-	m.Size = UDim2.fromScale(0.6, 0.62)
-	m.AnchorPoint = Vector2.new(0.5, 0.5)
-	m.Position = UDim2.fromScale(0.5, 0.5)
-	m.BackgroundColor3 = Color3.fromRGB(36, 38, 52)
-	m.BackgroundTransparency = 0.15
-	m.BorderSizePixel = 0
-	m.Parent = gui
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = m
-
-	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 16)
-	padding.PaddingBottom = UDim.new(0, 16)
-	padding.PaddingLeft = UDim.new(0, 16)
-	padding.PaddingRight = UDim.new(0, 16)
-	padding.Parent = m
-
-	local listLayout = Instance.new("UIListLayout")
-	listLayout.FillDirection = Enum.FillDirection.Vertical
-	listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	listLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	listLayout.Padding = UDim.new(0, 14)
-	listLayout.Parent = m
-
-	local title = Instance.new("TextLabel")
-	title.LayoutOrder = 1
-	title.Size = UDim2.fromOffset(360, 36)
-	title.BackgroundTransparency = 1
-	title.Text = "✈️ Pilot's Packages"
-	title.TextScaled = true
-	title.TextColor3 = Color3.fromRGB(255, 255, 255)
-	title.Font = Enum.Font.GothamBold
-	title.Parent = m
-
-	local timerLabel = Instance.new("TextLabel")
-	timerLabel.LayoutOrder = 2
-	timerLabel.Size = UDim2.fromOffset(360, 28)
-	timerLabel.BackgroundTransparency = 1
-	timerLabel.Text = ""
-	timerLabel.TextScaled = true
-	timerLabel.TextColor3 = Color3.fromRGB(255, 210, 120)
-	timerLabel.Font = Enum.Font.GothamBold
-	timerLabel.Parent = m
-
-	local objLabel = Instance.new("TextLabel")
-	objLabel.LayoutOrder = 3
-	objLabel.Size = UDim2.fromOffset(360, 28)
-	objLabel.BackgroundTransparency = 1
-	objLabel.Text = `📦 Packages: {questCount}/{questTotal}`
-	objLabel.TextScaled = true
-	objLabel.TextColor3 = Color3.fromRGB(220, 230, 220)
-	objLabel.Font = Enum.Font.GothamBold
-	objLabel.Parent = m
-
-	local canGoCity = questPhase == "accepted" or questPhase == "collecting"
-	makeModalButton(m, "Go to City", canGoCity, function()
-		requestQuestTravel:FireServer("City")
-		closeQuestModal()
-		close()
-	end).LayoutOrder =
-		4
-
-	local canReturn = questPhase == "returning"
-	makeModalButton(m, "Return to Airport", canReturn, function()
-		requestQuestTravel:FireServer("Airport")
-		closeQuestModal()
-		close()
-	end).LayoutOrder =
-		5
-
-	makeModalButton(m, "Close", true, function()
-		closeQuestModal()
-	end).LayoutOrder = 6
-
-	-- Live countdown while collecting; the end time is server-synced so the display can't be cheated.
-	if questPhase == "collecting" and questClientEnd then
-		questTimerConn = RunService.Heartbeat:Connect(function()
-			local remaining = math.max(0, math.floor((questClientEnd :: number) - Workspace:GetServerTimeNow()))
-			timerLabel.Text = `⏱ {remaining}s`
-		end)
-	end
-
-	modal = m
-	setMode("quest")
-end
-
 -- A modal view is a leaf: any nav (left/right/ok) backs out to the carousel; only close exits.
 local function cycle(delta: number)
 	if mode == "social" then
 		closeModal()
-		return
-	elseif mode == "quest" then
-		closeQuestModal()
 		return
 	end
 	index = (index - 1 + delta) % #PHONE.Items + 1
@@ -718,9 +562,6 @@ end
 local function activate()
 	if mode == "social" then
 		closeModal()
-		return
-	elseif mode == "quest" then
-		closeQuestModal()
 		return
 	end
 	local action = PHONE.Items[index].action
@@ -734,26 +575,14 @@ local function activate()
 	elseif action == "Cab" then
 		close()
 		TravelController:OpenCabConfirm()
-	elseif action == "Quest" then
-		showQuestModal()
 	end
 end
 
--- Mirror the quest state for gating + the modal; refresh/close the modal if it's open.
-local function onQuestState(_questId: string, phase: string, collected: number, total: number, deadline: number?)
+-- Mirror the quest phase so the carousel reveals/hides Call a Cab as the quest activates/finishes.
+local function onQuestState(_questId: string, phase: string)
 	questPhase = phase
-	questCount = collected
-	questTotal = total
-	questClientEnd = deadline
-
-	if mode == "quest" then
-		if questActive() then
-			showQuestModal() -- rebuild with the latest count/timer/buttons
-		else
-			closeQuestModal()
-		end
-	elseif mode == "carousel" and phone.Visible then
-		renderCarousel() -- show/hide the Quest item as it activates/finishes
+	if mode == "carousel" and phone.Visible then
+		renderCarousel()
 	end
 end
 
@@ -888,8 +717,7 @@ function PhoneMenuController:Start()
 	-- Trophies: listen for initial seed and new awards from the server.
 	Net.Event("TrophyEarned").OnClientEvent:Connect(onTrophyEarned)
 
-	-- Pilot quest: track state for the gated "Quest" item + its modal.
-	requestQuestTravel = Net.Event("RequestQuestTravel")
+	-- Pilot quest: mirror the phase so Call a Cab is revealed (and free) while a quest is active.
 	Net.Event("QuestState").OnClientEvent:Connect(onQuestState)
 
 	-- Keyboard shortcuts while the phone is open.
@@ -906,11 +734,7 @@ function PhoneMenuController:Start()
 			activate()
 		elseif key == Enum.KeyCode.Escape then
 			if modal ~= nil then
-				if mode == "quest" then
-					closeQuestModal()
-				else
-					closeModal()
-				end
+				closeModal()
 			else
 				close()
 			end

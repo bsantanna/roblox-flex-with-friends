@@ -35,8 +35,6 @@ Ui.UI = {
 			{ emoji = "👥", label = "Invite Friends", action = "Invite" },
 			{ emoji = "🚕", label = "Call a Cab", action = "Cab" },
 			{ emoji = "🤩", label = "Social Media", action = "Social" },
-			-- Shown only while the Pilot quest is active (gated in PhoneMenuController).
-			{ emoji = "✈️", label = "Quest", action = "Quest" },
 		},
 	},
 }

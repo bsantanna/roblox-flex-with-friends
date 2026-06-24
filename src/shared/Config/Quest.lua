@@ -39,10 +39,6 @@ Quest.Reward = 200
 -- Key into TrophyService's TROPHY_DEFS for the one-time completion trophy (pilot_delivery).
 Quest.TrophyNpcId = "Pilot"
 
--- Fast-travel drop-offs (PlaceService:TravelTo lands the player here; zero carbon cost for the quest).
--- "City" is the Home neighbourhood plaza; the return goes to the Airport terminal beside the Pilot.
-Quest.CityDropOff = Vector3.new(0, 5, 0) -- Home plaza centre (Zones.Home + lift); Studio-verified
-
 -- The 4 packages to collect, at the four internal road crossings of the Home grid -- open asphalt, one
 -- per quadrant around the central plaza, ~100 studs from the spawn (well within the timer on foot). The
 -- (+/-120, +/-120) house-square corners were rejected in Studio: two sat under Forest trees.

@@ -34,7 +34,7 @@ local NpcActor = require(script.Parent.minigame.NpcActor)
 
 local QuestService = {}
 
-type Phase = "offer" | "accepted" | "collecting" | "returning"
+type Phase = "offer" | "collecting" | "returning"
 type Session = {
 	player: Player,
 	phase: Phase,
@@ -50,13 +50,16 @@ local TOTAL = #Q.PackagePositions
 local questState: RemoteEvent
 local questAccept: RemoteEvent
 local questDecline: RemoteEvent
-local requestQuestTravel: RemoteEvent
 local requestCollect: RemoteEvent
 local cutscenePlay: RemoteEvent
 
 local sessions: { [Player]: Session } = {}
 local pilotModel: Model? = nil
 local pilotRoot: BasePart? = nil
+
+-- Defined below (after the timer helpers) but called from onAccept above it: accepting the offer starts
+-- the timed collection right away, so it needs a forward declaration here.
+local startCollecting: (Session) -> ()
 
 local function pilotAnimator(): Animator?
 	local model = pilotModel
@@ -95,6 +98,8 @@ local function clearSession(player: Player)
 		s.alive = false
 	end
 	sessions[player] = nil
+	-- The quest is over for this player: their cab rides cost followers again (PlaceService reads this).
+	player:SetAttribute("QuestActive", false)
 end
 
 -- Delivery: the completion. Single writer of CompletedQuests; asks FollowerService and TrophyService
@@ -180,12 +185,13 @@ local function onAccept(player: Player)
 	if not s or s.phase ~= "offer" then
 		return
 	end
-	s.phase = "accepted"
-	-- Choice resolved -> the player heads off; let the prompt return for the delivery (and others).
+	-- Choice resolved: the prompt returns, the Pilot cheers, and the timed collection starts right away.
+	-- There's no separate "head to the city" step -- the timer is already running and the player uses
+	-- their own phone (Call a Cab, free while questing) to fly over and grab the packages.
 	NpcPromptService:Show(Q.Pilot.NpcId)
 	NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 3)
 	task.spawn(speak, { Q.Lines.Accepted })
-	fireState(player, "accepted", 0)
+	startCollecting(s)
 end
 
 local function onDecline(player: Player)
@@ -220,10 +226,13 @@ local function failQuest(player: Player)
 end
 
 -- Begins the timed collection: starts the server-authoritative deadline + its poll loop and tells the
--- client the countdown end time. Called when the player first arrives in the city.
-local function startCollecting(session: Session)
+-- client the countdown end time. Called the moment the player accepts the offer; from here the player
+-- uses their own phone to travel to the city and back.
+function startCollecting(session: Session)
 	session.phase = "collecting"
 	session.deadline = os.clock() + Q.TimeLimitSeconds
+	-- Flag the quest as active so the cab is free for these trips (PlaceService reads this attribute).
+	session.player:SetAttribute("QuestActive", true)
 	task.spawn(function()
 		while session.alive and session.phase == "collecting" and os.clock() < session.deadline do
 			task.wait(0.1)
@@ -233,35 +242,6 @@ local function startCollecting(session: Session)
 		end
 	end)
 	fireState(session.player, "collecting", session.count, clientDeadline(session))
-end
-
--- Phone fast travel between the airport and the city (the Home neighbourhood). Validated against quest
--- state; zero carbon cost. Going to the city the first time starts the timer.
-local function onRequestTravel(player: Player, destination: unknown)
-	if type(destination) ~= "string" then
-		return
-	end
-	local s = sessions[player]
-	if not s then
-		return
-	end
-	if destination == "City" then
-		if s.phase ~= "accepted" and s.phase ~= "collecting" then
-			return
-		end
-		PlaceService:TravelTo(player, "Home", Q.CityDropOff)
-		if s.phase == "accepted" then
-			startCollecting(s)
-		else
-			fireState(player, "collecting", s.count, clientDeadline(s))
-		end
-	elseif destination == "Airport" then
-		if s.phase ~= "collecting" and s.phase ~= "returning" then
-			return
-		end
-		PlaceService:TravelTo(player, "Airport")
-		fireState(player, s.phase, s.count)
-	end
 end
 
 -- Server-authoritative package collection: the client triggers a beacon, the server confirms the
@@ -303,7 +283,6 @@ function QuestService:Init()
 	questState = Net.Event("QuestState")
 	questAccept = Net.Event("QuestAccept")
 	questDecline = Net.Event("QuestDecline")
-	requestQuestTravel = Net.Event("RequestQuestTravel")
 	requestCollect = Net.Event("RequestCollectPackage")
 	cutscenePlay = Net.Event("CutscenePlay")
 end
@@ -332,7 +311,6 @@ function QuestService:Start()
 
 	questAccept.OnServerEvent:Connect(onAccept)
 	questDecline.OnServerEvent:Connect(onDecline)
-	requestQuestTravel.OnServerEvent:Connect(onRequestTravel)
 	requestCollect.OnServerEvent:Connect(onCollect)
 
 	Players.PlayerRemoving:Connect(clearSession)

@@ -68,6 +68,31 @@ local function onRequestTravel(player: Player)
 	traveling[player] = false
 end
 
+-- Quest fast travel: moves `player` to `zoneName` (optionally to an explicit `position` instead of the
+-- zone's default drop-off) WITHOUT the carbon-footprint follower loss -- that loss is a cab penalty,
+-- not a quest action. QuestService calls this so PlaceService stays the single owner of player
+-- location/teleport.
+function PlaceService:TravelTo(player: Player, zoneName: string, position: Vector3?)
+	local profile = DataService:GetProfile(player)
+	if not profile or traveling[player] then
+		return
+	end
+	traveling[player] = true
+	if position then
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			root.CFrame = CFrame.new(position)
+		end
+	else
+		teleport(player, zoneName)
+	end
+	setLocation(player, zoneName)
+	profile.Data.Stats.TripsTaken += 1
+	travelComplete:FireClient(player, true, nil, zoneName)
+	traveling[player] = false
+end
+
 function PlaceService:Init()
 	requestTravel = Net.Event("RequestTravel")
 	travelComplete = Net.Event("TravelComplete")

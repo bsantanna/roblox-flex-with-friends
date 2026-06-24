@@ -51,6 +51,12 @@ local function tweenFade(transparency: number)
 	TweenService:Create(fade, TweenInfo.new(0.4), { BackgroundTransparency = transparency }):Play()
 end
 
+-- Public fade so other controllers (e.g. CutsceneController hiding a hard camera cut) can reuse the
+-- same full-screen fade. 0 = to black, 1 = to clear.
+function TravelController:TweenFade(transparency: number)
+	tweenFade(transparency)
+end
+
 local function onTravelComplete(success: boolean, reason: string?, placeId: string?)
 	if success then
 		statusLabel.Text = `Arrived at {placeId}`

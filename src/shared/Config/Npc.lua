@@ -611,10 +611,10 @@ Npc.Npc = {
 				{ AssetId = 127189956586914, Type = Enum.AccessoryType.Pants }, -- Classic Blue Denim Overalls
 			},
 		},
-		SpawnPosition = Vector3.new(-171, 0, -117), -- grass strip in the NW quarter, west of Neighbor01
-		SpawnYaw = 180, -- face south toward the open sidewalk/plaza approach
+		SpawnPosition = Vector3.new(-20, 0, 150), -- park SW corner, surrounded by flower clusters
+		SpawnYaw = 180, -- face south toward the plaza
 		AvatarUserId = 1,
-		ArenaPosition = Vector3.new(-171, 0, -105), -- a few steps onto the open sidewalk
+		ArenaPosition = Vector3.new(0, 0, 144), -- park center among the flowers
 		MoveSeconds = 2,
 		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
 		Instructions = "Let's tend the garden! Watch the planting moves I make, then repeat them in order with"
@@ -648,13 +648,13 @@ Npc.Npc = {
 				Down = "rbxassetid://507771019",
 			},
 		},
-		-- Gardener patrols the NW area near Neighbor01.
+		-- Gardener patrols the park area among flower clusters.
 		CitizenWalk = {
 			Waypoints = {
-				Vector3.new(-171, 0, -117), -- spawn / post
-				Vector3.new(-171, 0, -105), -- north walk
-				Vector3.new(-185, 0, -117), -- west walk
-				Vector3.new(-171, 0, -129), -- south walk
+				Vector3.new(-20, 0, 150), -- SW corner of park (spawn / post)
+				Vector3.new(20, 0, 150), -- SE edge (walks east among flowers)
+				Vector3.new(20, 0, 130), -- NE corner
+				Vector3.new(-20, 0, 130), -- NW corner
 			},
 			WalkSpeed = 3, -- casual pace
 			PauseMin = 3, -- min seconds between waypoints

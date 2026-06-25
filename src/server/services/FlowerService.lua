@@ -41,6 +41,7 @@ local function makeCluster(
 	local stem = Instance.new("Part")
 	stem.Name = "FlowerStem"
 	stem.Anchored = true
+	stem.CanCollide = false
 	stem.Size = Vector3.new(stemWidth, sh, stemWidth)
 	stem.CFrame = cf
 	stem.Color = Flowers.StemColor
@@ -51,6 +52,7 @@ local function makeCluster(
 	local ring = Instance.new("Part")
 	ring.Name = "FlowerRing"
 	ring.Anchored = true
+	ring.CanCollide = false
 	ring.Shape = Enum.PartType.Cylinder
 	ring.Size = Vector3.new(ringSize, 0.15, ringSize)
 	ring.CFrame = base * CFrame.new(x, ringSize / 2, z)
@@ -66,6 +68,7 @@ local function makeCluster(
 		local head = Instance.new("Part")
 		head.Name = "FlowerHead"
 		head.Anchored = true
+		head.CanCollide = false
 		head.Shape = Enum.PartType.Ball
 		head.Size = Vector3.new(headSize, headSize, headSize)
 		head.CFrame = base * CFrame.new(x + offsetX, headY, z + offsetZ)

@@ -19,7 +19,7 @@ Flowers.Palette = {
 
 Flowers.StemColor = Color3.fromRGB(60, 180, 50)
 
--- One cluster every ~8 studs in the green belt.
+-- Green-belt candidate grid: sites step every Density^2 studs, each jittered by +/-Density.
 Flowers.Density = 8
 
 -- Park square gets denser planting.

@@ -65,7 +65,7 @@ Config.OutfitEditor = Outfit.OutfitEditor
 Config.DevConsole = Ui.DevConsole
 Config.UI = Ui.UI
 
--- Flower clusters scattered across the Home zone (Flowers.lua)
+-- Flower clusters scattered across the Home zone (Flower.lua)
 Config.Flower = require(script.Flower)
 
 return Config

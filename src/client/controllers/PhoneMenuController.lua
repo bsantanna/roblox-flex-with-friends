@@ -10,7 +10,7 @@
 --
 -- The Social Modal (opened via "Social" item) features a tabbed trophy gallery:
 -- "City" tab shows trophies from town NPCs; "Airport" tab shows airport NPC trophies.
--- Each tab has its own 3×4 grid; tabs are swapped by clicking the tab bar.
+-- Each tab has a large 2-card carousel with arrow navigation and dot indicators;
 --
 -- Trophy zones are mapped in TROPHY_ZONE (mirrors Config.Npc zone assignments).
 
@@ -47,6 +47,10 @@ local followerLabel: TextLabel?
 
 -- Trophy state: trophyId -> true. Populated on join and on TrophyEarned events.
 local earnedTrophies: { [string]: true } = {}
+
+-- Trophy carousel state: current page index per tab.
+local currentIndex_City: number = 1
+local currentIndex_Airport: number = 1
 
 -- Trophy definitions mirrored from server TrophyService.
 local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
@@ -176,115 +180,323 @@ local function close()
 	assert(launcherLabel).Visible = true
 end
 
-local function buildCell(parentFrame: Frame, trophyId: string?, zone: string): Frame?
-	-- Build a single trophy cell (earned or empty placeholder).
-	-- If trophyId is nil, creates an empty placeholder cell.
-	-- Returns nil if trophyId is provided but doesn't match the zone.
-	if trophyId then
-		local def = TROPHY_DEFS[trophyId]
-		if not def or TROPHY_ZONE[trophyId] ~= zone then
-			return nil
-		end
-
-		local cell = Instance.new("Frame")
-		cell.Name = "TrophySlot"
-		cell.Size = UDim2.fromOffset(180, 140)
-		cell.BackgroundColor3 = Color3.fromRGB(40, 55, 30)
-		cell.BackgroundTransparency = 0.25
-		cell.BorderSizePixel = 0
-		cell.Parent = parentFrame
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 12)
-		corner.Parent = cell
-
-		local emoji = Instance.new("TextLabel")
-		emoji.Name = "TrophyEmoji"
-		emoji.Size = UDim2.fromScale(1, 0.65)
-		emoji.Position = UDim2.fromOffset(0, 2)
-		emoji.BackgroundTransparency = 1
-		emoji.Text = def.Emoji
-		emoji.TextSize = 120
-		emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
-		emoji.Font = Enum.Font.GothamBold
-		emoji.TextXAlignment = Enum.TextXAlignment.Center
-		emoji.TextYAlignment = Enum.TextYAlignment.Center
-		emoji.Parent = cell
-
-		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Name = "TrophyName"
-		nameLabel.Size = UDim2.fromScale(0.9, 0.25)
-		nameLabel.Position = UDim2.fromScale(0.05, 0.68)
-		nameLabel.BackgroundTransparency = 1
-		nameLabel.Text = def.Name
-		nameLabel.TextSize = 32
-		nameLabel.TextColor3 = Color3.fromRGB(180, 220, 160)
-		nameLabel.Font = Enum.Font.GothamBold
-		nameLabel.TextWrapped = true
-		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		nameLabel.TextXAlignment = Enum.TextXAlignment.Center
-		nameLabel.Parent = cell
-
-		return cell
-	else
-		local cell = Instance.new("Frame")
-		cell.Name = "TrophySlot"
-		cell.Size = UDim2.fromOffset(180, 140)
-		cell.BackgroundColor3 = Color3.fromRGB(30, 32, 44)
-		cell.BackgroundTransparency = 0.3
-		cell.BorderSizePixel = 0
-		cell.Parent = parentFrame
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 12)
-		corner.Parent = cell
-
-		return cell
+-- Build a single large trophy card.
+local function buildTrophyCard(parent: Frame, trophyId: string)
+	local def = TROPHY_DEFS[trophyId]
+	if not def then
+		return
 	end
+
+	-- Card frame: large rounded card with gold tint.
+	local card = Instance.new("Frame")
+	card.Name = "TrophyCard_" .. trophyId
+	card.Size = UDim2.fromOffset(220, 180)
+	card.BackgroundColor3 = Color3.fromRGB(255, 215, 0)
+	card.BackgroundTransparency = 0.75
+	card.BorderSizePixel = 0
+	card.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 20)
+	corner.Parent = card
+
+	-- Subtle gold border.
+	local border = Instance.new("UIStroke")
+	border.Color = Color3.fromRGB(255, 215, 0)
+	border.Thickness = 2
+	border.Transparency = 0.5
+	border.Parent = card
+
+	-- Emoji: large, centered in the upper portion of the card (TextScaled fills the box).
+	local emoji = Instance.new("TextLabel")
+	emoji.Name = "TrophyEmoji"
+	emoji.Size = UDim2.fromOffset(110, 110)
+	emoji.AnchorPoint = Vector2.new(0.5, 0.5)
+	emoji.Position = UDim2.fromScale(0.5, 0.38)
+	emoji.BackgroundTransparency = 1
+	emoji.Text = def.Emoji
+	emoji.TextScaled = true
+	emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
+	emoji.Font = Enum.Font.GothamBold
+	emoji.TextXAlignment = Enum.TextXAlignment.Center
+	emoji.TextYAlignment = Enum.TextYAlignment.Center
+	emoji.Parent = card
+
+	-- Trophy name: centered below the emoji.
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Name = "TrophyName"
+	nameLabel.Size = UDim2.fromOffset(200, 36)
+	nameLabel.AnchorPoint = Vector2.new(0.5, 0)
+	nameLabel.Position = UDim2.fromScale(0.5, 0.7)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = def.Name
+	nameLabel.TextSize = 24
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextWrapped = true
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+	nameLabel.TextYAlignment = Enum.TextYAlignment.Center
+	nameLabel.Parent = card
+
+	return card
 end
 
-local function populateTrophies(gridFrame: Frame, zone: string)
-	-- Clear any existing cells.
+-- Render earned trophies in the grid (2 per page) and update dots/arrows.
+local function renderCarousels(gridFrame: Frame, dotsFrame: Frame, container: Frame, zone: string)
+	-- Clear existing trophies.
 	for _, child in gridFrame:GetChildren() do
-		if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("UICorner") or child:IsA("UIPadding") then
+		if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("UICorner") or child:IsA("UIStroke") then
 			child:Destroy()
 		end
 	end
 
-	local slotIndex = 1
-	local maxSlots = 12
-
-	-- Place each earned trophy that matches the zone.
+	-- Collect earned trophies for this zone.
+	local trophyIds: { [number]: string } = {}
 	for trophyId, _ in earnedTrophies do
-		if slotIndex > maxSlots then
-			break
-		end
 		if TROPHY_ZONE[trophyId] == zone then
-			buildCell(gridFrame, trophyId, zone)
-			slotIndex += 1
+			table.insert(trophyIds, trophyId)
 		end
 	end
 
-	-- Fill remaining slots with empty placeholders.
-	for _ = slotIndex, maxSlots do
-		buildCell(gridFrame, nil, zone)
+	local totalCards = #trophyIds
+	local totalPages = math.max(math.ceil(totalCards / 2), 1)
+	local currentPage = zone == "City" and currentIndex_City or currentIndex_Airport
+
+	-- Clamp to valid range.
+	if currentPage < 1 then
+		currentPage = 1
 	end
+	if currentPage > totalPages then
+		currentPage = totalPages
+	end
+
+	-- Index range for the current page (up to 2 cards). endIdx is an index, not a count -- the
+	-- previous code used the count as the loop bound, so every page past the first rendered nothing.
+	local startIdx = (currentPage - 1) * 2 + 1
+	local endIdx = math.min(startIdx + 1, totalCards)
+	local visibleCount = endIdx - startIdx + 1
+
+	-- Adjust grid size based on how many cards this page shows.
+	if visibleCount <= 1 then
+		gridFrame.Size = UDim2.fromOffset(240, 200)
+	else
+		gridFrame.Size = UDim2.fromOffset(500, 200)
+	end
+
+	if totalCards == 0 then
+		-- Empty zone: show a placeholder instead of a bare frame.
+		local empty = Instance.new("TextLabel")
+		empty.Name = "EmptyState"
+		empty.Text = "No trophies yet"
+		empty.TextColor3 = Color3.fromRGB(160, 162, 176)
+		empty.TextSize = 20
+		empty.Font = Enum.Font.Gotham
+		empty.BackgroundTransparency = 1
+		empty.Parent = gridFrame
+	end
+
+	-- Only show the current page's cards.
+	for i = startIdx, endIdx do
+		if trophyIds[i] then
+			buildTrophyCard(gridFrame, trophyIds[i])
+		end
+	end
+
+	-- Update dot indicators.
+	for _, child in dotsFrame:GetChildren() do
+		child:Destroy()
+	end
+
+	for i = 1, totalPages do
+		local dot = Instance.new("TextLabel")
+		dot.Name = "Dot_" .. i
+		dot.Size = UDim2.fromOffset(10, 10)
+		dot.BackgroundTransparency = 1
+		dot.Text = (i == currentPage) and "\u{25CF}" or "\u{25CB}"
+		dot.TextColor3 = (i == currentPage) and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 122, 136)
+		dot.TextSize = 14
+		dot.Font = Enum.Font.GothamBold
+		dot.TextXAlignment = Enum.TextXAlignment.Center
+		dot.TextYAlignment = Enum.TextYAlignment.Center
+		dot.Parent = dotsFrame
+	end
+
+	-- Arrow visibility.
+	local leftArrow = container:FindFirstChild("CarouselLeft", true) :: TextButton?
+	local rightArrow = container:FindFirstChild("CarouselRight", true) :: TextButton?
+	if leftArrow then
+		leftArrow.Visible = currentPage > 1
+	end
+	if rightArrow then
+		rightArrow.Visible = currentPage < totalPages
+	end
+end
+
+-- Re-render a zone's carousel by walking modal -> carousel -> container -> grid/dots. Centralizing
+-- this walk keeps every caller (navigation, tab switch, live trophy award) in sync and is the single
+-- place the TrophyContainer hierarchy is traversed. The grid is nested under TrophyRow, so the lookup
+-- is recursive; the dots sit directly under the container.
+local function rerenderZone(zone: string)
+	if modal == nil then
+		return
+	end
+	local carousel =
+		modal:FindFirstChild(zone == "City" and "TrophyCarousel_City" or "TrophyCarousel_Airport") :: Frame?
+	if not carousel then
+		return
+	end
+	local container = carousel:FindFirstChild("TrophyContainer") :: Frame?
+	if not container then
+		return
+	end
+	local grid = container:FindFirstChild("TrophyGrid", true) :: Frame?
+	local dots = container:FindFirstChild("TrophyDots") :: Frame?
+	if grid and dots then
+		renderCarousels(grid, dots, container, zone)
+	end
+end
+
+-- Navigate the carousel (step direction ±1 page = ±2 trophies).
+local function navigateCarousel(zone: string, dir: number)
+	local indexRef = zone == "City" and currentIndex_City or currentIndex_Airport
+	local trophyIds: { [number]: string } = {}
+	for trophyId, _ in earnedTrophies do
+		if TROPHY_ZONE[trophyId] == zone then
+			table.insert(trophyIds, trophyId)
+		end
+	end
+	local totalPages = math.max(math.ceil(math.max(#trophyIds, 0) / 2), 1)
+	local newIndex = indexRef + dir
+	if newIndex >= 1 and newIndex <= totalPages then
+		if zone == "City" then
+			currentIndex_City = newIndex
+		else
+			currentIndex_Airport = newIndex
+		end
+		rerenderZone(zone)
+	end
+end
+
+-- Build the trophy carousel UI: a centered row of ◀ grid ▶, with page dots below.
+local function buildCarousels(carouselFrame: Frame, zone: string)
+	-- Container: vertical stack of the arrow/card row and the dots beneath it.
+	local container = Instance.new("Frame")
+	container.Name = "TrophyContainer"
+	container.Size = UDim2.fromScale(1, 1)
+	container.BackgroundTransparency = 1
+	container.Parent = carouselFrame
+
+	local vLayout = Instance.new("UIListLayout")
+	vLayout.FillDirection = Enum.FillDirection.Vertical
+	vLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	vLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	vLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	vLayout.Padding = UDim.new(0, 12)
+	vLayout.Parent = container
+
+	-- Row: ◀ arrow | grid | ▶ arrow, laid horizontally and centered. Width auto-fits the grid so the
+	-- arrows always flank it as the page size toggles between 1 and 2 cards.
+	local row = Instance.new("Frame")
+	row.Name = "TrophyRow"
+	row.Size = UDim2.fromOffset(0, 200)
+	row.AutomaticSize = Enum.AutomaticSize.X
+	row.BackgroundTransparency = 1
+	row.LayoutOrder = 1
+	row.Parent = container
+
+	local hLayout = Instance.new("UIListLayout")
+	hLayout.FillDirection = Enum.FillDirection.Horizontal
+	hLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	hLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	hLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	hLayout.Padding = UDim.new(0, 12)
+	hLayout.Parent = row
+
+	-- Left arrow.
+	local leftArrow = Instance.new("TextButton")
+	leftArrow.Name = "CarouselLeft"
+	leftArrow.Size = UDim2.fromOffset(40, 200)
+	leftArrow.BackgroundColor3 = Color3.fromRGB(50, 52, 68)
+	leftArrow.BackgroundTransparency = 0.5
+	leftArrow.Text = "\u{25C0}"
+	leftArrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+	leftArrow.TextScaled = true
+	leftArrow.Font = Enum.Font.GothamBold
+	leftArrow.BorderSizePixel = 0
+	leftArrow.LayoutOrder = 1
+	leftArrow.Parent = row
+	local leftCorner = Instance.new("UICorner")
+	leftCorner.CornerRadius = UDim.new(0, 8)
+	leftCorner.Parent = leftArrow
+	leftArrow.Activated:Connect(function()
+		navigateCarousel(zone, -1)
+	end)
+
+	-- Trophy grid: up to 2 cards per page.
+	local trophyGrid = Instance.new("Frame")
+	trophyGrid.Name = "TrophyGrid"
+	trophyGrid.Size = UDim2.fromOffset(500, 200)
+	trophyGrid.BackgroundTransparency = 1
+	trophyGrid.LayoutOrder = 2
+	trophyGrid.Parent = row
+
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.FillDirection = Enum.FillDirection.Horizontal
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	gridLayout.CellSize = UDim2.fromOffset(220, 180)
+	gridLayout.CellPadding = UDim2.fromOffset(20, 10)
+	gridLayout.Parent = trophyGrid
+
+	-- Right arrow.
+	local rightArrow = Instance.new("TextButton")
+	rightArrow.Name = "CarouselRight"
+	rightArrow.Size = UDim2.fromOffset(40, 200)
+	rightArrow.BackgroundColor3 = Color3.fromRGB(50, 52, 68)
+	rightArrow.BackgroundTransparency = 0.5
+	rightArrow.Text = "\u{25B6}"
+	rightArrow.TextColor3 = Color3.fromRGB(255, 255, 255)
+	rightArrow.TextScaled = true
+	rightArrow.Font = Enum.Font.GothamBold
+	rightArrow.BorderSizePixel = 0
+	rightArrow.LayoutOrder = 3
+	rightArrow.Parent = row
+	local rightCorner = Instance.new("UICorner")
+	rightCorner.CornerRadius = UDim.new(0, 8)
+	rightCorner.Parent = rightArrow
+	rightArrow.Activated:Connect(function()
+		navigateCarousel(zone, 1)
+	end)
+
+	-- Dots indicator, centered below the row. Auto-sizes so all page dots fit.
+	local dotsFrame = Instance.new("Frame")
+	dotsFrame.Name = "TrophyDots"
+	dotsFrame.Size = UDim2.fromOffset(0, 20)
+	dotsFrame.AutomaticSize = Enum.AutomaticSize.X
+	dotsFrame.BackgroundTransparency = 1
+	dotsFrame.LayoutOrder = 2
+	dotsFrame.Parent = container
+
+	local dotsLayout = Instance.new("UIListLayout")
+	dotsLayout.FillDirection = Enum.FillDirection.Horizontal
+	dotsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dotsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	dotsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	dotsLayout.Padding = UDim.new(0, 4)
+	dotsLayout.Parent = dotsFrame
+
+	-- Render initial state.
+	renderCarousels(trophyGrid, dotsFrame, container, zone)
 end
 
 local function onTrophyEarned(trophies: { [string]: true })
 	earnedTrophies = trophies
 
-	-- If the social modal is open, re-populate the active grid immediately.
-	if modal ~= nil then
-		local cityGrid = modal:FindFirstChild("TrophiesGrid_City") :: Frame?
-		local airportGrid = modal:FindFirstChild("TrophiesGrid_Airport") :: Frame?
-		if cityGrid then
-			populateTrophies(cityGrid, "City")
-		end
-		if airportGrid then
-			populateTrophies(airportGrid, "Airport")
-		end
-	end
+	-- If the social modal is open, refresh both zones (each rerenderZone no-ops if modal is nil; only
+	-- the visible carousel is shown, so refreshing the hidden one is harmless and keeps it in sync).
+	rerenderZone("City")
+	rerenderZone("Airport")
 
 	-- Re-render the carousel so a newly earned Mobility trophy reveals "Call a Cab" live.
 	if mode == "carousel" and phone.Visible then
@@ -292,9 +504,9 @@ local function onTrophyEarned(trophies: { [string]: true })
 	end
 end
 
-local function updateFollowerLabel(count: number)
+local function updateFollowerLabel(followerCount: number)
 	if followerLabel ~= nil then
-		followerLabel.Text = `❤ {count}`
+		followerLabel.Text = tostring(followerCount)
 	end
 end
 
@@ -307,7 +519,7 @@ local function showSocialModal()
 
 	local m = Instance.new("Frame")
 	m.Name = "SocialModal"
-	m.Size = UDim2.fromScale(0.9, 0.85)
+	m.Size = UDim2.fromScale(0.9, 0.65)
 	m.AnchorPoint = Vector2.new(0.5, 0.5)
 	m.Position = UDim2.fromScale(0.5, 0.5)
 	m.BackgroundColor3 = Color3.fromRGB(36, 38, 52)
@@ -352,7 +564,7 @@ local function showSocialModal()
 	local fl = Instance.new("TextLabel")
 	fl.Name = "Followers"
 	fl.LayoutOrder = 1
-	fl.Size = UDim2.fromOffset(200, 30)
+	fl.Size = UDim2.fromOffset(160, 24)
 	fl.BackgroundTransparency = 1
 	fl.Text = `❤ {followersValue}`
 	fl.TextScaled = true
@@ -361,46 +573,34 @@ local function showSocialModal()
 	fl.Parent = m
 	followerLabel = fl
 
-	-- Trophy grid: 3 columns x 4 rows (two grids, one per tab). A UIListLayout only arranges visible
-	-- siblings, so the hidden grid reserves no space — both can live directly under the modal.
-	-- City grid (visible by default).
-	local cityGrid = Instance.new("Frame")
-	cityGrid.Name = "TrophiesGrid_City"
-	cityGrid.LayoutOrder = 2
-	cityGrid.Size = UDim2.fromScale(0.85, 0.58)
-	cityGrid.BackgroundTransparency = 1
-	cityGrid.Visible = true
-	cityGrid.Parent = m
+	-- Trophy carousel for City (visible by default).
+	local cityCarousel = Instance.new("Frame")
+	cityCarousel.Name = "TrophyCarousel_City"
+	cityCarousel.LayoutOrder = 2
+	cityCarousel.Size = UDim2.fromScale(0.95, 0.55)
+	cityCarousel.BackgroundTransparency = 1
+	cityCarousel.Visible = true
+	cityCarousel.Parent = m
 
-	local cityGridLayout = Instance.new("UIGridLayout")
-	cityGridLayout.FillDirection = Enum.FillDirection.Horizontal
-	cityGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	cityGridLayout.CellSize = UDim2.fromOffset(180, 140)
-	cityGridLayout.CellPadding = UDim2.fromOffset(12, 12)
-	cityGridLayout.Parent = cityGrid
+	buildCarousels(cityCarousel, "City")
 
-	-- Airport trophy grid (hidden initially).
-	local airportGrid = Instance.new("Frame")
-	airportGrid.Name = "TrophiesGrid_Airport"
-	airportGrid.LayoutOrder = 2
-	airportGrid.Size = UDim2.fromScale(0.85, 0.58)
-	airportGrid.BackgroundTransparency = 1
-	airportGrid.Visible = false
-	airportGrid.Parent = m
+	-- Trophy carousel for Airport (hidden initially).
+	local airportCarousel = Instance.new("Frame")
+	airportCarousel.Name = "TrophyCarousel_Airport"
+	airportCarousel.LayoutOrder = 2
+	airportCarousel.Size = UDim2.fromScale(0.95, 0.55)
+	airportCarousel.BackgroundTransparency = 1
+	airportCarousel.Visible = false
+	airportCarousel.Parent = m
 
-	local airportGridLayout = Instance.new("UIGridLayout")
-	airportGridLayout.FillDirection = Enum.FillDirection.Horizontal
-	airportGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	airportGridLayout.CellSize = UDim2.fromOffset(180, 140)
-	airportGridLayout.CellPadding = UDim2.fromOffset(12, 12)
-	airportGridLayout.Parent = airportGrid
+	buildCarousels(airportCarousel, "Airport")
 
 	-- Tab bar: horizontal button row with City/Airport tabs.
-	-- Placed after grids so switchTab closure can reference them.
+	-- Placed after carousels so switchTab closure can reference them.
 	local tabBar = Instance.new("Frame")
 	tabBar.Name = "TrophyTabBar"
 	tabBar.LayoutOrder = 3
-	tabBar.Size = UDim2.fromOffset(340, 36)
+	tabBar.Size = UDim2.fromOffset(280, 34)
 	tabBar.BackgroundTransparency = 1
 	tabBar.Parent = m
 
@@ -410,13 +610,6 @@ local function showSocialModal()
 	tabBarLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabBarLayout.Padding = UDim.new(0, 8)
 	tabBarLayout.Parent = tabBar
-
-	local tabBarPadding = Instance.new("UIPadding")
-	tabBarPadding.PaddingTop = UDim.new(0, 4)
-	tabBarPadding.PaddingBottom = UDim.new(0, 4)
-	tabBarPadding.PaddingLeft = UDim.new(0, 8)
-	tabBarPadding.PaddingRight = UDim.new(0, 8)
-	tabBarPadding.Parent = tabBar
 
 	-- City tab button.
 	local cityTab = Instance.new("TextButton")
@@ -459,7 +652,7 @@ local function showSocialModal()
 	-- unresponsive (switchTab early-returns when the clicked tab already equals activeTab).
 	local activeTab = "City"
 
-	-- Tab switch callback (captures cityGrid/airportGrid by closure).
+	-- Tab switch callback (captures cityCarousel/airportCarousel by closure).
 	local function switchTab(newTab: string)
 		if newTab == activeTab then
 			return
@@ -484,9 +677,16 @@ local function showSocialModal()
 			cityTab.Font = Enum.Font.Gotham
 		end
 
-		-- Swap grid visibility.
-		cityGrid.Visible = newTab == "City"
-		airportGrid.Visible = newTab == "Airport"
+		-- Swap carousel visibility and reset index.
+		cityCarousel.Visible = newTab == "City"
+		airportCarousel.Visible = newTab == "Airport"
+		if newTab == "City" then
+			currentIndex_City = 1
+		else
+			currentIndex_Airport = 1
+		end
+		-- Re-render the now-visible carousel.
+		rerenderZone(newTab)
 	end
 
 	cityTab.Activated:Connect(function()
@@ -497,10 +697,7 @@ local function showSocialModal()
 		switchTab("Airport")
 	end)
 
-	-- Populate both grids.
-	populateTrophies(cityGrid, "City")
-	populateTrophies(airportGrid, "Airport")
-
+	-- Carousels are rendered inside buildCarousels().
 	-- Bottom-centered Close button, matching DialogController's button style.
 	local closeBtn = Instance.new("TextButton")
 	closeBtn.Name = "CloseBtn"

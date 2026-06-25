@@ -207,30 +207,15 @@ local function buildTrophyCard(parent: Frame, trophyId: string)
 	border.Transparency = 0.5
 	border.Parent = card
 
-	-- Emoji: large centered circle background.
-	local emojiBg = Instance.new("Frame")
-	emojiBg.Name = "TrophyEmojiBg"
-	emojiBg.Size = UDim2.fromOffset(72, 72)
-	emojiBg.AnchorPoint = Vector2.new(0.5, 0)
-	emojiBg.Position = UDim2.fromScale(0.5, 0.12)
-	emojiBg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	emojiBg.BackgroundTransparency = 0.5
-	emojiBg.BorderSizePixel = 0
-	emojiBg.Parent = card
-
-	local emojiCorner = Instance.new("UICorner")
-	emojiCorner.CornerRadius = UDim.new(1, 0)
-	emojiCorner.Parent = emojiBg
-
-	-- Emoji text.
+	-- Emoji: large, centered in the upper portion of the card (TextScaled fills the box).
 	local emoji = Instance.new("TextLabel")
 	emoji.Name = "TrophyEmoji"
-	emoji.Size = UDim2.fromOffset(56, 56)
+	emoji.Size = UDim2.fromOffset(110, 110)
 	emoji.AnchorPoint = Vector2.new(0.5, 0.5)
-	emoji.Position = UDim2.fromScale(0.5, 0.5)
+	emoji.Position = UDim2.fromScale(0.5, 0.38)
 	emoji.BackgroundTransparency = 1
 	emoji.Text = def.Emoji
-	emoji.TextSize = 48
+	emoji.TextScaled = true
 	emoji.TextColor3 = Color3.fromRGB(255, 255, 255)
 	emoji.Font = Enum.Font.GothamBold
 	emoji.TextXAlignment = Enum.TextXAlignment.Center
@@ -286,19 +271,33 @@ local function renderCarousels(gridFrame: Frame, dotsFrame: Frame, container: Fr
 		currentPage = totalPages
 	end
 
-	-- Calculate visible cards for current page.
+	-- Index range for the current page (up to 2 cards). endIdx is an index, not a count -- the
+	-- previous code used the count as the loop bound, so every page past the first rendered nothing.
 	local startIdx = (currentPage - 1) * 2 + 1
-	local visibleCards = math.min(startIdx + 1, totalCards) - startIdx + 1
+	local endIdx = math.min(startIdx + 1, totalCards)
+	local visibleCount = endIdx - startIdx + 1
 
-	-- Adjust grid size based on visible cards.
-	if visibleCards == 1 then
+	-- Adjust grid size based on how many cards this page shows.
+	if visibleCount <= 1 then
 		gridFrame.Size = UDim2.fromOffset(240, 200)
 	else
 		gridFrame.Size = UDim2.fromOffset(500, 200)
 	end
 
+	if totalCards == 0 then
+		-- Empty zone: show a placeholder instead of a bare frame.
+		local empty = Instance.new("TextLabel")
+		empty.Name = "EmptyState"
+		empty.Text = "No trophies yet"
+		empty.TextColor3 = Color3.fromRGB(160, 162, 176)
+		empty.TextSize = 20
+		empty.Font = Enum.Font.Gotham
+		empty.BackgroundTransparency = 1
+		empty.Parent = gridFrame
+	end
+
 	-- Only show the current page's cards.
-	for i = startIdx, visibleCards do
+	for i = startIdx, endIdx do
 		if trophyIds[i] then
 			buildTrophyCard(gridFrame, trophyIds[i])
 		end
@@ -324,13 +323,37 @@ local function renderCarousels(gridFrame: Frame, dotsFrame: Frame, container: Fr
 	end
 
 	-- Arrow visibility.
-	local leftArrow = container:FindFirstChild("CarouselLeft") :: TextButton?
-	local rightArrow = container:FindFirstChild("CarouselRight") :: TextButton?
+	local leftArrow = container:FindFirstChild("CarouselLeft", true) :: TextButton?
+	local rightArrow = container:FindFirstChild("CarouselRight", true) :: TextButton?
 	if leftArrow then
 		leftArrow.Visible = currentPage > 1
 	end
 	if rightArrow then
 		rightArrow.Visible = currentPage < totalPages
+	end
+end
+
+-- Re-render a zone's carousel by walking modal -> carousel -> container -> grid/dots. Centralizing
+-- this walk keeps every caller (navigation, tab switch, live trophy award) in sync and is the single
+-- place the TrophyContainer hierarchy is traversed. The grid is nested under TrophyRow, so the lookup
+-- is recursive; the dots sit directly under the container.
+local function rerenderZone(zone: string)
+	if modal == nil then
+		return
+	end
+	local carousel =
+		modal:FindFirstChild(zone == "City" and "TrophyCarousel_City" or "TrophyCarousel_Airport") :: Frame?
+	if not carousel then
+		return
+	end
+	local container = carousel:FindFirstChild("TrophyContainer") :: Frame?
+	if not container then
+		return
+	end
+	local grid = container:FindFirstChild("TrophyGrid", true) :: Frame?
+	local dots = container:FindFirstChild("TrophyDots") :: Frame?
+	if grid and dots then
+		renderCarousels(grid, dots, container, zone)
 	end
 end
 
@@ -351,40 +374,44 @@ local function navigateCarousel(zone: string, dir: number)
 		else
 			currentIndex_Airport = newIndex
 		end
-		-- Re-render.
-		if modal ~= nil then
-			local carousel =
-				modal:FindFirstChild(zone == "City" and "TrophyCarousel_City" or "TrophyCarousel_Airport") :: Frame?
-			if carousel then
-				local cont = carousel:FindFirstChild("TrophyContainer") :: Frame?
-				if cont then
-					local grid = cont:FindFirstChild("TrophyGrid") :: Frame?
-					local dots = cont:FindFirstChild("TrophyDots") :: Frame?
-					if grid and dots then
-						renderCarousels(grid, dots, cont, zone)
-					end
-				end
-			end
-		end
+		rerenderZone(zone)
 	end
 end
 
--- Build the trophy carousel UI: arrows (left/right), grid (centered), dots (bottom).
+-- Build the trophy carousel UI: a centered row of ◀ grid ▶, with page dots below.
 local function buildCarousels(carouselFrame: Frame, zone: string)
-	-- Container: arrows on the sides, grid in the center.
+	-- Container: vertical stack of the arrow/card row and the dots beneath it.
 	local container = Instance.new("Frame")
 	container.Name = "TrophyContainer"
 	container.Size = UDim2.fromScale(1, 1)
 	container.BackgroundTransparency = 1
 	container.Parent = carouselFrame
 
-	-- Horizontal layout for arrows (left), grid (center), dots (right/bottom).
+	local vLayout = Instance.new("UIListLayout")
+	vLayout.FillDirection = Enum.FillDirection.Vertical
+	vLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	vLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	vLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	vLayout.Padding = UDim.new(0, 12)
+	vLayout.Parent = container
+
+	-- Row: ◀ arrow | grid | ▶ arrow, laid horizontally and centered. Width auto-fits the grid so the
+	-- arrows always flank it as the page size toggles between 1 and 2 cards.
+	local row = Instance.new("Frame")
+	row.Name = "TrophyRow"
+	row.Size = UDim2.fromOffset(0, 200)
+	row.AutomaticSize = Enum.AutomaticSize.X
+	row.BackgroundTransparency = 1
+	row.LayoutOrder = 1
+	row.Parent = container
+
 	local hLayout = Instance.new("UIListLayout")
 	hLayout.FillDirection = Enum.FillDirection.Horizontal
 	hLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	hLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	hLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	hLayout.Padding = UDim.new(0, 12)
-	hLayout.Parent = container
+	hLayout.Parent = row
 
 	-- Left arrow.
 	local leftArrow = Instance.new("TextButton")
@@ -398,13 +425,29 @@ local function buildCarousels(carouselFrame: Frame, zone: string)
 	leftArrow.Font = Enum.Font.GothamBold
 	leftArrow.BorderSizePixel = 0
 	leftArrow.LayoutOrder = 1
-	leftArrow.Parent = container
+	leftArrow.Parent = row
 	local leftCorner = Instance.new("UICorner")
 	leftCorner.CornerRadius = UDim.new(0, 8)
 	leftCorner.Parent = leftArrow
 	leftArrow.Activated:Connect(function()
 		navigateCarousel(zone, -1)
 	end)
+
+	-- Trophy grid: up to 2 cards per page.
+	local trophyGrid = Instance.new("Frame")
+	trophyGrid.Name = "TrophyGrid"
+	trophyGrid.Size = UDim2.fromOffset(500, 200)
+	trophyGrid.BackgroundTransparency = 1
+	trophyGrid.LayoutOrder = 2
+	trophyGrid.Parent = row
+
+	local gridLayout = Instance.new("UIGridLayout")
+	gridLayout.FillDirection = Enum.FillDirection.Horizontal
+	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	gridLayout.CellSize = UDim2.fromOffset(220, 180)
+	gridLayout.CellPadding = UDim2.fromOffset(20, 10)
+	gridLayout.Parent = trophyGrid
 
 	-- Right arrow.
 	local rightArrow = Instance.new("TextButton")
@@ -418,7 +461,7 @@ local function buildCarousels(carouselFrame: Frame, zone: string)
 	rightArrow.Font = Enum.Font.GothamBold
 	rightArrow.BorderSizePixel = 0
 	rightArrow.LayoutOrder = 3
-	rightArrow.Parent = container
+	rightArrow.Parent = row
 	local rightCorner = Instance.new("UICorner")
 	rightCorner.CornerRadius = UDim.new(0, 8)
 	rightCorner.Parent = rightArrow
@@ -426,31 +469,19 @@ local function buildCarousels(carouselFrame: Frame, zone: string)
 		navigateCarousel(zone, 1)
 	end)
 
-	-- Trophy grid: 2 cards per row.
-	local trophyGrid = Instance.new("Frame")
-	trophyGrid.Name = "TrophyGrid"
-	trophyGrid.Size = UDim2.fromOffset(500, 200)
-	trophyGrid.BackgroundTransparency = 1
-	trophyGrid.Parent = container
-
-	local gridLayout = Instance.new("UIGridLayout")
-	gridLayout.FillDirection = Enum.FillDirection.Horizontal
-	gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	gridLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	gridLayout.CellSize = UDim2.fromOffset(220, 180)
-	gridLayout.CellPadding = UDim2.fromOffset(20, 10)
-	gridLayout.Parent = trophyGrid
-
-	-- Dots indicator (bottom, below the grid).
+	-- Dots indicator, centered below the row. Auto-sizes so all page dots fit.
 	local dotsFrame = Instance.new("Frame")
 	dotsFrame.Name = "TrophyDots"
-	dotsFrame.Size = UDim2.fromOffset(60, 20)
+	dotsFrame.Size = UDim2.fromOffset(0, 20)
+	dotsFrame.AutomaticSize = Enum.AutomaticSize.X
 	dotsFrame.BackgroundTransparency = 1
+	dotsFrame.LayoutOrder = 2
 	dotsFrame.Parent = container
 
 	local dotsLayout = Instance.new("UIListLayout")
 	dotsLayout.FillDirection = Enum.FillDirection.Horizontal
 	dotsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dotsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	dotsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	dotsLayout.Padding = UDim.new(0, 4)
 	dotsLayout.Parent = dotsFrame
@@ -462,40 +493,10 @@ end
 local function onTrophyEarned(trophies: { [string]: true })
 	earnedTrophies = trophies
 
-	-- If the social modal is open, re-render the active carousel immediately.
-	if modal ~= nil then
-		local tabBar = modal:FindFirstChild("TrophyTabBar") :: Frame?
-		if tabBar then
-			local cityTabBtn = tabBar:FindFirstChild("Tab_City") :: TextButton?
-			local airportTabBtn = tabBar:FindFirstChild("Tab_Airport") :: TextButton?
-			if cityTabBtn and cityTabBtn.BackgroundColor3 == TABS.City.activeColor then
-				local cityCarousel = modal:FindFirstChild("TrophyCarousel_City") :: Frame?
-				if cityCarousel then
-					local cityCont = cityCarousel:FindFirstChild("TrophyContainer") :: Frame?
-					if cityCont then
-						local cityGrid = cityCont:FindFirstChild("TrophyGrid") :: Frame?
-						local cityDots = cityCont:FindFirstChild("TrophyDots") :: Frame?
-						if cityGrid and cityDots then
-							renderCarousels(cityGrid, cityDots, cityCont, "City")
-						end
-					end
-				end
-			end
-			if airportTabBtn and airportTabBtn.BackgroundColor3 == TABS.Airport.activeColor then
-				local airportCarousel = modal:FindFirstChild("TrophyCarousel_Airport") :: Frame?
-				if airportCarousel then
-					local airportCont = airportCarousel:FindFirstChild("TrophyContainer") :: Frame?
-					if airportCont then
-						local airportGrid = airportCont:FindFirstChild("TrophyGrid") :: Frame?
-						local airportDots = airportCont:FindFirstChild("TrophyDots") :: Frame?
-						if airportGrid and airportDots then
-							renderCarousels(airportGrid, airportDots, airportCont, "Airport")
-						end
-					end
-				end
-			end
-		end
-	end
+	-- If the social modal is open, refresh both zones (each rerenderZone no-ops if modal is nil; only
+	-- the visible carousel is shown, so refreshing the hidden one is harmless and keeps it in sync).
+	rerenderZone("City")
+	rerenderZone("Airport")
 
 	-- Re-render the carousel so a newly earned Mobility trophy reveals "Call a Cab" live.
 	if mode == "carousel" and phone.Visible then
@@ -684,26 +685,8 @@ local function showSocialModal()
 		else
 			currentIndex_Airport = 1
 		end
-		-- Re-render the visible carousel.
-		if cityCarousel.Visible then
-			local cityCont = cityCarousel:FindFirstChild("TrophyContainer") :: Frame?
-			if cityCont then
-				local cityTrophyGrid = cityCont:FindFirstChild("TrophyGrid") :: Frame?
-				local cityDots = cityCont:FindFirstChild("TrophyDots") :: Frame?
-				if cityTrophyGrid and cityDots then
-					renderCarousels(cityTrophyGrid, cityDots, cityCont, "City")
-				end
-			end
-		else
-			local airportCont = airportCarousel:FindFirstChild("TrophyContainer") :: Frame?
-			if airportCont then
-				local airportTrophyGrid = airportCont:FindFirstChild("TrophyGrid") :: Frame?
-				local airportDots = airportCont:FindFirstChild("TrophyDots") :: Frame?
-				if airportTrophyGrid and airportDots then
-					renderCarousels(airportTrophyGrid, airportDots, airportCont, "Airport")
-				end
-			end
-		end
+		-- Re-render the now-visible carousel.
+		rerenderZone(newTab)
 	end
 
 	cityTab.Activated:Connect(function()

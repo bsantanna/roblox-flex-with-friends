@@ -30,6 +30,12 @@ Quest.Pilot = {
 	},
 }
 
+-- The Pilot quest's config is the top-level Quest table (getQ returns it for PilotPackages), so its NPC
+-- identity must be readable flat here -- the same shape FirstQuest uses. Mirror it from Quest.Pilot (single
+-- source) so QuestService/CutsceneController can resolve the giver via cfg.NpcId / cfg.Zone for either quest.
+Quest.NpcId = Quest.Pilot.NpcId
+Quest.Zone = Quest.Pilot.Zone
+
 -- The 2-minute collection window; starts when the player arrives in the city, enforced server-side.
 Quest.TimeLimitSeconds = 120
 
@@ -49,6 +55,12 @@ Quest.PackagePositions = {
 	Vector3.new(-72, 0, -72),
 }
 Quest.CollectRadius = 14 -- studs; server validates the player's real root is within this of a package
+
+-- Player-facing quest labels (QuestController reads the active quest's): the HUD objective icon, the
+-- beacon prompt's object name, and the "return to the giver" HUD line shown once everything is collected.
+Quest.ObjectiveIcon = "📦"
+Quest.CollectableName = "Package"
+Quest.ReturnLabel = "Deliver to the Pilot!"
 
 -- Objective beacon visuals (client-rendered per QuestController): a neon pickup part at the package
 -- position with a light + particles and a beam shooting skyward, gently pulsing. Tuned by looking in
@@ -184,6 +196,9 @@ Quest.FirstQuest = {
 	CollectRadius = 14, -- studs
 	BoxHeight = 3, -- centre height of the pickup part above the collect position
 	TotalCollectibles = 1,
+	ObjectiveIcon = "🥪",
+	CollectableName = "Lunch Box",
+	ReturnLabel = "Bring it back to Tim!",
 	TimeLimitSeconds = 90,
 	Reward = 200,
 	TrophyNpcId = "FirstQuest",

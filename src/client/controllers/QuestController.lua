@@ -20,7 +20,30 @@ local QuestController = {}
 
 local player = Players.LocalPlayer
 local Q = Config.Quest
-local TOTAL = #Q.PackagePositions
+
+-- The active quest's config + derived collectible positions, set from each QuestState sync (the server
+-- threads the questId). Defaults to the Pilot quest until the first sync arrives.
+local activeQ: any = Q
+local activePositions: { Vector3 } = Q.PackagePositions
+local total = #Q.PackagePositions -- objective count; the server sends the authoritative value each sync
+
+local function getQuestConfig(questId: string): any
+	if questId == Q.Id then
+		return Q
+	end
+	return Q.FirstQuest
+end
+
+-- A quest's collectible world positions: an explicit list (Pilot's packages) or the single CollectPosition.
+local function questPositions(qc: any): { Vector3 }
+	if qc.PackagePositions then
+		return qc.PackagePositions
+	end
+	if qc.CollectPosition then
+		return { qc.CollectPosition }
+	end
+	return {}
+end
 
 local questState: RemoteEvent
 local questAccept: RemoteEvent
@@ -144,7 +167,7 @@ local function collectFeedback(model: Model)
 end
 
 local function makeBeacon(index: number, ground: Vector3): Model
-	local B = Q.Beacon
+	local B = activeQ.Beacon
 	local model = Instance.new("Model")
 	model.Name = `QuestBeacon{index}`
 
@@ -195,10 +218,10 @@ local function makeBeacon(index: number, ground: Vector3): Model
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Collect"
-	prompt.ObjectText = "Package"
+	prompt.ObjectText = activeQ.CollectableName or "Package"
 	prompt.HoldDuration = 0
 	prompt.RequiresLineOfSight = false
-	prompt.MaxActivationDistance = Q.CollectRadius
+	prompt.MaxActivationDistance = activeQ.CollectRadius
 	prompt.Parent = part
 	prompt.Triggered:Connect(function()
 		if collectedLocal[index] then
@@ -220,7 +243,7 @@ end
 
 -- Spawns beacons for packages this client hasn't collected yet (idempotent: skips existing ones).
 local function spawnBeacons()
-	for index, ground in Q.PackagePositions do
+	for index, ground in activePositions do
 		if not collectedLocal[index] and not beacons[index] then
 			beacons[index] = makeBeacon(index, ground)
 		end
@@ -228,7 +251,7 @@ local function spawnBeacons()
 end
 
 local function resetCollected()
-	for i = 1, TOTAL do
+	for i = 1, #activePositions do
 		collectedLocal[i] = false
 	end
 end
@@ -240,7 +263,7 @@ local function setHud(visible: boolean)
 end
 
 local function updateObjective()
-	objLabel.Text = `📦 {questCount}/{TOTAL}`
+	objLabel.Text = `{activeQ.ObjectiveIcon or "📦"} {questCount}/{total}`
 end
 
 -- A brief encouraging toast (auto-hides). Latest call wins via the token.
@@ -258,7 +281,10 @@ end
 
 -- State sync -----------------------------------------------------------------------------------
 
-local function onQuestState(_questId: string, phase: string, count: number, _total: number, deadline: number?)
+local function onQuestState(questId: string, phase: string, count: number, serverTotal: number, deadline: number?)
+	activeQ = getQuestConfig(questId)
+	activePositions = questPositions(activeQ)
+	total = serverTotal
 	questPhase = phase
 	questCount = count
 	questDeadline = deadline
@@ -269,9 +295,9 @@ local function onQuestState(_questId: string, phase: string, count: number, _tot
 		hideOffer()
 	end
 
-	-- A package was just confirmed (count climbed) -> an encouraging toast.
+	-- A collectible was just confirmed (count climbed) -> an encouraging toast.
 	if (phase == "collecting" or phase == "returning") and count > prevCount then
-		showToast(Q.CollectToasts[math.min(count, #Q.CollectToasts)])
+		showToast(activeQ.CollectToasts[math.min(count, #activeQ.CollectToasts)])
 	end
 	prevCount = count
 
@@ -303,10 +329,10 @@ local function onHeartbeat(dt: number)
 	for _, model in beacons do
 		local part = model.PrimaryPart
 		if part then
-			part.CFrame = part.CFrame * CFrame.Angles(0, math.rad(Q.Beacon.SpinSpeed) * dt, 0)
+			part.CFrame = part.CFrame * CFrame.Angles(0, math.rad(activeQ.Beacon.SpinSpeed) * dt, 0)
 			local light = part:FindFirstChildOfClass("PointLight")
 			if light then
-				light.Brightness = Q.Beacon.LightBrightness * (0.65 + 0.35 * math.sin(now * 4))
+				light.Brightness = activeQ.Beacon.LightBrightness * (0.65 + 0.35 * math.sin(now * 4))
 			end
 		end
 	end
@@ -316,7 +342,7 @@ local function onHeartbeat(dt: number)
 			local remaining = math.max(0, math.floor((questDeadline :: number) - now))
 			timerLabel.Text = `⏱ {remaining}s`
 		elseif questPhase == "returning" then
-			timerLabel.Text = "Deliver to the Pilot!"
+			timerLabel.Text = activeQ.ReturnLabel or "Deliver it back!"
 		end
 	end
 end
@@ -374,7 +400,7 @@ function QuestController:Init()
 	objLabel.Position = UDim2.fromScale(0, 0.5)
 	objLabel.Size = UDim2.fromScale(1, 0.5)
 	objLabel.BackgroundTransparency = 1
-	objLabel.Text = `📦 0/{TOTAL}`
+	objLabel.Text = ""
 	objLabel.TextScaled = true
 	objLabel.TextColor3 = Color3.fromRGB(220, 230, 220)
 	objLabel.Font = Enum.Font.GothamBold

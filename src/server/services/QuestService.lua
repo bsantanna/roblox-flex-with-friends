@@ -150,7 +150,7 @@ local function deliver(player: Player, questId: string)
 
 	local npcId = cfg.NpcId
 	NpcPromptService:Hide(npcId)
-	cutscenePlay:FireClient(player, "Ending", if firstTime then cfg.Reward else 0)
+	cutscenePlay:FireClient(player, questId, "Ending", if firstTime then cfg.Reward else 0)
 	task.spawn(function()
 		NpcActor.pose(questNpcAnimator(npcId), cfg.Pose.Happy, 6)
 		speak(questId, { cfg.Lines.Returned, cfg.Lines.Ending })
@@ -212,7 +212,7 @@ local function handleTalk(player: Player, questId: string)
 	sessions[player] = s
 	local npcId = cfg.NpcId
 	NpcPromptService:Hide(npcId)
-	cutscenePlay:FireClient(player, "Intro")
+	cutscenePlay:FireClient(player, questId, "Intro")
 	task.spawn(function()
 		NpcActor.pose(questNpcAnimator(npcId), cfg.Pose.Worried, lineHold(cfg) * #introLines)
 		speak(questId, introLines)

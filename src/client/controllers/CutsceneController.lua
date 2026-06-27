@@ -31,6 +31,15 @@ local CutsceneController = {}
 local Q = Config.Quest
 local FADE_SECONDS = 0.4
 local HOLD_SECONDS = 0.6 -- pause on the final Intro beat before restoring control
+local BANNER_HOLD_SECONDS = 3 -- how long a plane-less ending holds the banner on the giver before fading
+
+-- Resolve the quest config for a questId the server threaded into the CutscenePlay event.
+local function getQuestConfig(questId: string): any
+	if questId == Q.Id then
+		return Q
+	end
+	return Q.FirstQuest
+end
 
 local PLANE_BODY = Color3.fromRGB(245, 245, 245)
 local PLANE_STRIPE = Color3.fromRGB(212, 175, 55)
@@ -50,16 +59,16 @@ local bannerTitle: TextLabel
 local bannerSubtitle: TextLabel
 local bannerReward: TextLabel
 
--- The Pilot model is server-spawned and replicated, so the client can read his post + clone him. Returns
--- nil if he isn't present yet (then we skip the cinematic gracefully).
-local function pilotModel(): Model?
+-- A quest's giver model is server-spawned under Workspace.World.<Zone>.<NpcId> and replicated, so the
+-- client can read its post + clone it. Returns nil if it isn't present yet (then we skip gracefully).
+local function questNpcModel(qc: any): Model?
 	local world = Workspace:FindFirstChild("World")
-	local airport = world and world:FindFirstChild("Airport")
-	local pilot = airport and airport:FindFirstChild(Q.Pilot.NpcId)
-	return (pilot and pilot:IsA("Model")) and pilot or nil
+	local zone = world and world:FindFirstChild(qc.Zone)
+	local npc = zone and zone:FindFirstChild(qc.NpcId)
+	return (npc and npc:IsA("Model")) and npc or nil
 end
 
-local function pilotPosition(model: Model?): Vector3?
+local function npcPosition(model: Model?): Vector3?
 	if not model then
 		return nil
 	end
@@ -167,8 +176,7 @@ local function setLetterbox(visible: boolean)
 	letterboxBottom.Visible = visible
 end
 
-local function showBanner(reward: number)
-	local M = Q.MissionComplete
+local function showBanner(M: any, reward: number)
 	bannerTitle.Text = M.Title
 	bannerSubtitle.Text = M.Subtitle
 	bannerReward.Text = if reward > 0 then `+{reward}{M.RewardSuffix}` else M.ReplayLine
@@ -181,10 +189,11 @@ local function hideBanner()
 	banner.Visible = false
 end
 
--- "Intro": the original two-beat keyframe pan over the Pilot.
-local function playKeyframes(sequenceId: string)
-	local keyframes = (Q.Cutscene :: any)[sequenceId]
-	local base = pilotPosition(pilotModel())
+-- "Intro": the original two-beat keyframe pan over the quest giver.
+local function playKeyframes(questId: string, sequenceId: string)
+	local qc = getQuestConfig(questId)
+	local keyframes = (qc.Cutscene :: any)[sequenceId]
+	local base = npcPosition(questNpcModel(qc))
 	if not keyframes or #keyframes == 0 or not base then
 		cutsceneDone:FireServer()
 		return
@@ -200,7 +209,7 @@ local function playKeyframes(sequenceId: string)
 
 	for i = 2, #keyframes do
 		local kf = keyframes[i]
-		tweenCamera(camera, base + kf.eye, base + kf.target, Q.Cutscene.TweenSeconds)
+		tweenCamera(camera, base + kf.eye, base + kf.target, qc.Cutscene.TweenSeconds)
 	end
 	task.wait(HOLD_SECONDS)
 
@@ -213,18 +222,21 @@ local function playKeyframes(sequenceId: string)
 	cutsceneDone:FireServer()
 end
 
--- "Ending": the staged personal cinematic (see the file header). The Farewell is framed on the Pilot's
--- post; the plane beats are framed on the runway centre (Config.Zones.Airport).
-local function playEnding(reward: number)
-	local real = pilotModel()
-	local pilotBase = pilotPosition(real)
-	if not pilotBase or not real then
+-- "Ending": the staged personal cinematic (see the file header). The Farewell is always framed on the
+-- quest giver's post; quests that define a Plane block (the Pilot) then play the runway take-off beats,
+-- while plane-less quests (e.g. Tim) hold the Mission Complete banner on the giver and fade out.
+local function playEnding(questId: string, reward: number)
+	local qc = getQuestConfig(questId)
+	local real = questNpcModel(qc)
+	local npcBase = npcPosition(real)
+	if not npcBase or not real then
 		cutsceneDone:FireServer()
 		return
 	end
 	playing = true
 
-	local E = Q.Cutscene.Ending
+	local E = qc.Cutscene.Ending
+	local M = qc.MissionComplete
 	local runwayBase = Config.Zones.Airport
 	local camera = Workspace.CurrentCamera
 	local plane: Model? = nil
@@ -255,15 +267,27 @@ local function playEnding(reward: number)
 		cutsceneDone:FireServer()
 	end
 
-	-- BEAT 1: Farewell -- frame the real Pilot (posed Happy + speaking server-side) waving from his post.
+	-- BEAT 1: Farewell -- frame the real giver (posed Happy + speaking server-side) waving from his post.
 	TravelController:TweenFade(0)
 	task.wait(FADE_SECONDS)
 	camera.CameraType = Enum.CameraType.Scriptable
 	setLetterbox(true)
-	camera.CFrame = CFrame.lookAt(pilotBase + E.Farewell.Cam.eye, pilotBase + E.Farewell.Cam.target)
+	camera.CFrame = CFrame.lookAt(npcBase + E.Farewell.Cam.eye, npcBase + E.Farewell.Cam.target)
 	TravelController:TweenFade(1)
 	task.wait(E.Farewell.Seconds)
 	if aborted then
+		return finish()
+	end
+
+	-- Plane-less ending (e.g. Tim): reveal the Mission Complete banner over the smiling giver, hold, fade.
+	if not E.Plane then
+		showBanner(M, reward)
+		task.wait(BANNER_HOLD_SECONDS)
+		if aborted then
+			return finish()
+		end
+		TravelController:TweenFade(0)
+		task.wait(FADE_SECONDS)
 		return finish()
 	end
 
@@ -316,10 +340,10 @@ local function playEnding(reward: number)
 	clone = pilotClone
 	pilotClone:PivotTo(CFrame.lookAt(spot, Vector3.new(camEye.X, spot.Y, camEye.Z)))
 	pilotClone.Parent = Workspace
-	poseEmote(pilotClone, Q.Pose.Happy, E.Cockpit.Seconds + 1)
+	poseEmote(pilotClone, qc.Pose.Happy, E.Cockpit.Seconds + 1)
 	camera.CFrame = CFrame.lookAt(camEye, runwayBase + E.Cockpit.Cam.target)
 	TravelController:TweenFade(1)
-	showBanner(reward)
+	showBanner(M, reward)
 	task.wait(E.Cockpit.Seconds)
 
 	TravelController:TweenFade(0)
@@ -406,14 +430,14 @@ function CutsceneController:Init()
 end
 
 function CutsceneController:Start()
-	cutscenePlay.OnClientEvent:Connect(function(sequenceId: string, reward: number?)
+	cutscenePlay.OnClientEvent:Connect(function(questId: string, sequenceId: string, reward: number?)
 		if playing then
 			return
 		end
 		if sequenceId == "Ending" then
-			task.spawn(playEnding, reward or 0)
+			task.spawn(playEnding, questId, reward or 0)
 		else
-			task.spawn(playKeyframes, sequenceId)
+			task.spawn(playKeyframes, questId, sequenceId)
 		end
 	end)
 end

@@ -158,4 +158,88 @@ Quest.MissionComplete = {
 	ReplayLine = "Thanks for your help, hero!",
 }
 
+-- Quest 003 "Tim's Lost Lunch Box" (FirstQuest). Tim is in the central plaza near the Postman,
+-- in the Home zone. He left his lunch box at the airport terminal and needs the player to
+-- retrieve it. This quest has a hard gate: the player must already hold the taxi_driver_mobility
+-- trophy (earned from the TaxiDriver minigame) before Tim will talk to them. Single box to collect
+-- at the Airport terminal, shorter timer than the Pilot (90s vs 120s).
+Quest.FirstQuest = {
+	NpcId = "FirstQuest",
+	Zone = "Home",
+	AvatarUserId = 1, -- Roblox default avatar, dressed via Outfit
+	SpawnPosition = Vector3.new(55, 0, -45), -- central plaza, NE of the Postman's post
+	SpawnYaw = 180, -- face south toward player approach from the plaza
+	Outfit = { -- casual look: blue tee + jeans
+		Hats = { 78174478860906 }, -- Black Shelby Vintage Cap
+		Layered = {
+			{ AssetId = 140799784089779, Type = Enum.AccessoryType.Shirt }, -- Sky Blue T-Shirt
+			{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+		},
+	},
+	-- Hard gate: player must hold this trophy before Tim will talk.
+	RequiredTrophies = { "taxi_driver_mobility" },
+	-- The single lunch box to retrieve, at the Airport terminal arrivals area.
+	-- The Airport zone origin is at (0, 0, 0) in world space; this is near the glass doors.
+	CollectPosition = Vector3.new(0, 1.5, 690),
+	CollectRadius = 14, -- studs
+	BoxHeight = 3, -- centre height of the pickup part above the collect position
+	TotalCollectibles = 1,
+	TimeLimitSeconds = 90,
+	Reward = 200,
+	TrophyNpcId = "FirstQuest",
+	Beacon = {
+		Color = Color3.fromRGB(255, 140, 40), -- bright orange (lunch box)
+		PartSize = Vector3.new(2.5, 2.5, 2.5),
+		PartHeight = 3,
+		BeamHeight = 40,
+		BeamWidth = 4,
+		LightRange = 18,
+		LightBrightness = 4,
+		ParticleRate = 14,
+		SpinSpeed = 60,
+	},
+	Pose = {
+		Worried = "rbxassetid://507770453", -- point (anxious gesturing during the intro)
+		Happy = "rbxassetid://507770677", -- cheer (the grateful ending)
+	},
+	Lines = {
+		Intro = {
+			"Uh oh... I left my lunch box at the airport!",
+			"I was so excited to see everyone off, I completely forgot it on the bench!",
+			"Could you be a hero and bring it back to me? Please?",
+		},
+		Accepted = "Thank you so much! The airport is just a quick cab ride -- hurry!",
+		Declined = "Oh... okay. Maybe next time, thanks for listening!",
+		Nudge = "Did you make it to the airport yet? I'm getting hungry!",
+		Returned = "You got my lunch box! I can't believe you did that so fast!",
+		Ending = "You really are the kindest person I know. That lunch means the world to me!",
+		Fail = "Aww, you didn't make it in time... but I appreciate you trying, friend!",
+		Replay = "Thanks again for bringing my lunch back! I couldn't have done it without you!",
+	},
+	LineHoldSeconds = 4,
+	CollectToasts = {
+		"Got it! That's my lunch box! 🥪",
+	},
+	Cutscene = {
+		TweenSeconds = 2.5,
+		Intro = {
+			{ eye = Vector3.new(14, 6, 14), target = Vector3.new(0, 3, 0) },
+			{ eye = Vector3.new(7, 4, 9), target = Vector3.new(0, 3, 0) },
+		},
+		Ending = {
+			-- Farewell frames Tim happily holding his lunch box.
+			Farewell = {
+				Seconds = 3,
+				Cam = { eye = Vector3.new(6, 4, 9), target = Vector3.new(0, 3, 0) },
+			},
+		},
+	},
+	MissionComplete = {
+		Title = "MISSION COMPLETE!",
+		Subtitle = "Lunch box recovered safely.",
+		RewardSuffix = " Followers   🥪 Lunch Hero",
+		ReplayLine = "Thanks again for your kindness, hero!",
+	},
+}
+
 return Quest

@@ -38,6 +38,8 @@ export type ProfileData = {
 	Friends: { [string]: OutfitData }, -- customizable NPC id -> the look the player created for it
 	-- (key present == befriended; gates first-meet vs friend dialog). Written only by OutfitService.
 	CompletedQuests: { [string]: true }, -- questId -> true (finished); written only by QuestService
+	IsVip: boolean, -- owns the VIP game pass; resolved on join, written only by MonetizationService
+	PurchaseIdCache: { string }, -- recent granted developer-product PurchaseIds (idempotent receipts)
 }
 
 -- Minimal shim over ProfileStore's Profile<T>. The Wally wrapper module re-exports
@@ -45,10 +47,14 @@ export type ProfileData = {
 -- the members DataService uses here. `Data` is what consumers actually read.
 export type PlayerProfile = {
 	Data: ProfileData,
+	LastSavedData: ProfileData, -- data as of the last successful save; used to confirm receipt persistence
 	Reconcile: (self: any) -> (),
 	EndSession: (self: any) -> (),
+	IsActive: (self: any) -> boolean,
+	Save: (self: any) -> (),
 	AddUserId: (self: any, userId: number) -> (),
 	OnSessionEnd: { Connect: (self: any, listener: () -> ()) -> { Disconnect: (self: any) -> () } },
+	OnAfterSave: { Wait: (self: any) -> () }, -- fires after each save completes
 }
 
 return Types

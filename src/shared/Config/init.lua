@@ -68,4 +68,7 @@ Config.UI = Ui.UI
 -- Flower clusters scattered across the Home zone (Flower.lua)
 Config.Flower = require(script.Flower)
 
+-- Robux monetization: VIP game pass + philanthropy developer products (Monetization.lua)
+Config.Monetization = require(script.Monetization)
+
 return Config

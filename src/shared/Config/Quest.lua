@@ -176,7 +176,8 @@ Quest.MissionComplete = {
 -- trophy (earned from the TaxiDriver minigame) before Tim will talk to them. Single box to collect
 -- at the Airport terminal, shorter timer than the Pilot (90s vs 120s).
 Quest.FirstQuest = {
-	NpcId = "FirstQuest",
+	NpcId = "FirstQuest", -- persisted/registry key (don't rename; CompletedQuests + trophy mapping depend on it)
+	NpcDisplayName = "Tim", -- the player-facing name shown on the Talk prompt (NpcId is an internal key)
 	Zone = "Home",
 	AvatarUserId = 1, -- Roblox default avatar, dressed via Outfit
 	SpawnPosition = Vector3.new(55, 0, -45), -- central plaza, NE of the Postman's post
@@ -190,9 +191,10 @@ Quest.FirstQuest = {
 	},
 	-- Hard gate: player must hold this trophy before Tim will talk.
 	RequiredTrophies = { "taxi_driver_mobility" },
-	-- The single lunch box to retrieve, at the Airport terminal arrivals area.
-	-- The Airport zone origin is at (0, 0, 0) in world space; this is near the glass doors.
-	CollectPosition = Vector3.new(0, 1.5, 690),
+	-- The single lunch box to retrieve, in the Airport terminal hall by the gates (world space; the
+	-- Airport zone origin is Config.Zones.Airport = (0, 0, 560), the gates/arrivals sit ahead at z~690).
+	-- Offset off the Pilot's exact post (0,1.1,690) so the box reads as left-behind, not on the Pilot.
+	CollectPosition = Vector3.new(-14, 1.5, 690),
 	CollectRadius = 14, -- studs
 	BoxHeight = 3, -- centre height of the pickup part above the collect position
 	TotalCollectibles = 1,

@@ -363,6 +363,7 @@ local function spawnQuestNpcs()
 			outfit = Q.FirstQuest.Outfit,
 			promptText = "Talk",
 			promptDistance = 12,
+			displayName = Q.FirstQuest.NpcDisplayName,
 		})
 		if result.model and result.root then
 			local hum = result.model:FindFirstChildOfClass("Humanoid")

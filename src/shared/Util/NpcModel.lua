@@ -23,6 +23,7 @@ export type BuildSpec = {
 	outfit: any?, -- NpcOutfit: { Hats: {number}, Layered: {{AssetId: number, Type: Enum.AccessoryType}} }
 	promptText: string?, -- ProximityPrompt ActionText; nil = no prompt
 	promptDistance: number?, -- MaxActivationDistance (default 12)
+	displayName: string?, -- ProximityPrompt ObjectText (the player-facing name); defaults to npcId
 }
 
 export type BuildResult = {
@@ -111,7 +112,7 @@ function NpcModel.build(spec: BuildSpec): BuildResult
 		local p = Instance.new("ProximityPrompt")
 		p.Name = spec.npcId
 		p.ActionText = spec.promptText
-		p.ObjectText = spec.npcId
+		p.ObjectText = spec.displayName or spec.npcId
 		p.HoldDuration = 0
 		p.RequiresLineOfSight = false
 		p.MaxActivationDistance = spec.promptDistance or 12

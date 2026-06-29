@@ -127,6 +127,13 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Delivery Hero",
 		Emoji = "\u{2708}", -- airplane emoji
 	},
+	-- Quest 003 "Tim's Lost Lunch Box" completion trophy (awarded by QuestService on delivery).
+	-- Shows in the Social Modal's City tab.
+	FirstQuest = {
+		Id = "kindness",
+		Name = "Kindness",
+		Emoji = "\u{2B50}", -- star emoji
+	},
 }
 
 local trophyEarned: RemoteEvent

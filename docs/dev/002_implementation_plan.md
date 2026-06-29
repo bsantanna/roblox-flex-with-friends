@@ -146,11 +146,16 @@ the automated equivalent.)
 
 ---
 
-## Phase 1 — MVP vertical slice
+## Phase 1 — MVP vertical slice — ✅ COMPLETE
 
 Definition of done: a player spawns at Home, travels (Airport minigame → Beach), takes a photo
 (solo or co-op) to gain followers, unlocks + trains with the Personal Trainer NPC for followers,
 invites a friend for a bonus, and **all of it persists across rejoins**.
+
+**Shipped (steps 1.1–1.8):** `DataService` (ProfileStore), `FollowerService` + leaderstats HUD,
+the Home lobby + phone/cab travel, the Airport→Beach travel flow, the photo system (solo + co-op),
+the first NPC + minigame, the friend-invite bonus (`FriendInviteService`), and offline decay
+(`Logic/Decay`, off by default). Pure logic lives in `src/shared/Logic/` with Lune specs.
 
 ### 1.1 Data persistence
 - **Build:** `DataService` wraps ProfileStore; loads profile on join, releases on leave, provides `GetProfile(player)`; defines the schema above with reconciliation for new keys.
@@ -161,7 +166,7 @@ invites a friend for a bonus, and **all of it persists across rejoins**.
   - **Verify:** Awarding 100 updates HUD and native leaderboard instantly; value survives rejoin.
 
 ### 1.3 Home lobby
-- **Build:** Generate a simple Home interior as ProceduralModels (`generate_procedural_model`), falling back to Creator Store; set as spawn; place ProximityPrompts for Phone, Computer, Cab (Cab opens the travel picker).
+- **Build:** Generate a simple Home interior as ProceduralModels (`generate_procedural_model`), falling back to Creator Store; set as spawn; place ProximityPrompts for Phone and Cab (the phone's "Call a Cab" opens the travel picker). *(The originally-planned Computer prompt was dropped — the phone absorbs it.)*
   - **Verify:** Player spawns in Home; prompts appear and fire their client events.
 
 ### 1.4 Travel: Airport minigame → Beach
@@ -206,42 +211,97 @@ Flamework/typed-networking added):
 
 ---
 
-## Phase 2 — Breadth: places & real travel
+## Phase 2 — Single-place world & systems breadth — ✅ COMPLETE (shipped through PR #27)
 
-- Convert destinations to **separate places** with `TeleportService` (public open-world servers, no chat) + reserved co-op sessions for parties.
-- Implement the full place list incrementally with **unlock-by-follower-count** gating: Beachside Riviera, Paradise Island, Infinite Pool High-Rise, Music Festival, Nightclub High-Rise, Mediterranean Cliff, Alpine Holiday, Formula Race Paddock, Euro City.
-- Per-place follower behavior driven by reputation (good rep → faster gain).
-- Computer flight-booking UI; Cab→Airport flow; per-place ambient follower trickle by time spent.
-- **Verify per place:** locked until threshold; teleport in/out works; arrival/behavior rewards fire; persists.
+**Pivot from the original plan.** The original Phase 2 — convert destinations to *separate places*
+via `TeleportService` (public open-world servers + reserved party sessions) — was **not** the path
+taken. Multi-place teleport added operational complexity (separate place files, cross-place data,
+party-session brokering) without a proven gameplay need at this stage, so the project instead built
+a single rich **explorable world** where "travel" repositions the player between zones (the Phase-1
+model, extended). Multi-place `TeleportService` is **deferred** — revisit only if single-place hits
+a real limit (see Open questions).
 
-## Phase 3 — NPC roster & minigames
+What shipped instead — a populated single-place world with themed zones and the ambient systems that
+make them read as alive:
 
-- Add remaining collectible NPCs: Butler, Hairdresser, PR Agent, Rich Friend (M), Rich Friend (F).
-- Each unlocks a distinct minigame; build a small reusable minigame framework (session, timer, scoring, payout) so new minigames are data-driven.
-- Companion system: bring an NPC on trips; **party mode** when friends + NPCs travel together (funny interactions).
-- **Verify:** each NPC unlock gated; each minigame server-validated and rewarding; companion travels and persists.
+- **Zones:** Home/town, Airport (terminal interior + gates), Beach/Island, Gym, Farm, Forest
+  (`WorldService`, `TerminalService`, `IslandService`, `GymService`, `FarmService`, `ForestService`).
+- **Travel:** phone "Call a Cab" → travel picker → cab/airport flow (`TravelController`,
+  `PlaceService`). The Computer booking prompt was dropped; the phone absorbs it.
+- **Ambient life:** roads + ground/air/heli traffic and scattered flowers (`RoadService`,
+  `TrafficService`, `AirTrafficService`, `HeliTrafficService`, `FlowerService`).
+- **Scenery pipeline:** code-built primitives (`SceneryService`) + GLB/OBJ mesh assets loaded by id
+  (`MeshSceneryService`), per [003_binary_asset_management.md](003_binary_asset_management.md).
 
-## Phase 4 — Systems depth
+**Verify (done):** each zone is reachable and Studio-verified spatially; travel between zones works
+and persists `Stats.TripsTaken`; ambient systems run without perf regressions in a play session.
 
-- **Phone services:** order food/services (timed buffs, small follower/reputation effects).
-- **Computer feed & news:** player feed, news websites, decisions that nudge reputation.
-- **Events / moral dilemmas:** server-driven prompts adjusting `Reputation`; reputation modulates follower swings.
-- Educational-question bank for minigames (data-driven, expandable).
-- **Verify:** reputation changes flow into follower behavior; events fire and persist outcomes.
+## Phase 3 — NPC roster, minigames & quests — ✅ LARGELY COMPLETE (shipped through PR #27)
 
-## Phase 5 — Monetization & VIP
+Built ahead of the original schedule, interleaved with the Phase-2 world work:
 
-- Robux developer products / game passes: **VIP** (exclusive places, aura buffers), **philanthropy** purchase that raises followers.
-- VIP gating in `PlaceService`; aura/buff system.
-- **Verify:** purchases grant entitlements server-side; entitlements persist; receipts handled idempotently (`ProcessReceipt`).
+- **Minigame-NPC roster + framework:** a generic pre-game flow + plugin registry (`MinigameService`,
+  `minigame/games/`) hosting Rock-Paper-Scissors, Simon Says, Quick Draw, Tic-Tac-Toe, and Memory.
+  Each NPC is follower- + trophy-gated (`NpcService`, `TrophyService`); pure game logic lives in
+  `src/shared/Logic/` and is Lune-tested. See `docs/dev/npc/`.
+- **Gym friends:** customizable, per-player NPCs with a "create your friend" catalog editor and a
+  branching chat — ambient, no minigames (`GymFriendService`, `OutfitService`, `Config.GymFriends`).
+- **Quest framework (multi-quest):** a reusable quest pipeline — giver NPC, objective beacons, timed
+  collection, HUD, cinematic intro/ending cutscenes, completion trophies, replay/fail polish, and
+  persistence via `Profile.Data.CompletedQuests`. Two quests shipped: "The Pilot's Forgotten
+  Packages" and "Tim's Lost Lunch Box" (trophy-gated). `QuestService`, `QuestController`,
+  `CutsceneController`, `Config.Quest`. See `docs/dev/quests/`.
 
-## Phase 6 — Polish, balance, hardening
+**Still open from the original Phase 3:** the *companion / party-travel* system (bring an NPC on
+trips, funny party interactions) was **not** built — it folds into the next release's quest/NPC
+track if pursued.
 
-- Anti-exploit pass (all rewards server-authoritative; rate limits; remote validation).
-- Economy balancing of `Config` thresholds/rewards/decay.
-- Analytics events for the funnel (travel, photos, unlocks, purchases).
-- Performance: streaming for open-world places, asset budgets.
-- Onboarding/tutorial for the core loop.
+---
+
+## Next release — content, monetization & hardening
+
+Three parallel workstreams for the upcoming release, scoped 2026-06-29. Each follows the repo
+conventions (single writers, `Config` tunables, remotes registered + validated in `Net.lua`, one
+verifiable step per commit) and is Studio-verified spatially where it touches the world.
+
+### A. More quests & NPCs (extend what shipped)
+- **Build:** Add new story quests on the existing multi-quest framework — data + `Config.Quest`
+  entries + giver placement, **no new framework**. Add minigame NPCs and/or gym friends. Optionally
+  build the deferred **companion / party-travel** system from Phase 3.
+  - **Verify:** each new quest is gated/timed/rewarded and persists `CompletedQuests`; each new NPC
+    unlock is follower-/trophy-gated; new minigame logic has a Lune spec; givers/NPCs are
+    Studio-verified in place.
+
+### B. Monetization & VIP (was Phase 5)
+- **Build:** Robux developer products / game passes — **VIP** (exclusive zones/areas, aura buffs)
+  and a **philanthropy** product that raises followers. VIP gating in `PlaceService`; entitlements
+  written server-side and persisted; `ProcessReceipt` handled idempotently. New remotes in `Net.lua`.
+  - **Verify:** purchases grant entitlements server-side and persist across rejoin; receipts are
+    idempotent (no double-grant on retry); VIP gates actually block non-VIP players.
+
+### C. Polish & hardening (was Phase 6)
+- **Build:** anti-exploit pass (audit every reward path is server-authoritative; rate-limit remotes;
+  validate all inputs); economy balancing of `Config` thresholds/rewards/decay; onboarding/tutorial
+  for the core loop; performance pass (asset budgets, streaming where it helps); fill out funnel
+  analytics (`Util/Analytics`) for travel/photos/unlocks/quests/purchases.
+  - **Verify:** a client cannot self-award any resource (red-team the remotes); funnel events fire
+    for each tracked action; a new player reaches the first follower reward without external guidance.
+
+## Deferred / backlog (not scheduled)
+
+- **Companion / party-travel** — carried over from Phase 3; may be picked up in workstream A above.
+- **Multi-place via `TeleportService`** — only if the single-place world hits a real limit (see Open
+  questions).
+- **Phone services:** order food/services for timed buffs (small follower/reputation effects).
+- **Educational-question bank** for minigames (data-driven, expandable).
+- **Reputation moral-dilemma events** — ⚠️ *pending analysis, not confirmed.* Server-driven prompts
+  that adjust `Reputation`, which would modulate follower swings. Needs a design/UX decision before
+  scheduling (cadence, tone for the young audience, how visibly reputation should swing). Revisit
+  after the next release.
+
+**Removed from scope:** the **Computer feed & news** system (player feed / news websites) is
+**dropped** — the phone covers the player's needs and a second device adds UI surface without a
+proven gameplay payoff.
 
 ---
 
@@ -261,7 +321,12 @@ Flamework/typed-networking added):
 
 ## Open questions / assumptions to revisit
 
-- **Multi-place vs single-place** is a real fork at Phase 2 — confirm reserved-server party model before building it.
-- **Educational-question theme/source** (Phase 3/4) — needs a content decision (topics, age range).
+- **Multi-place vs single-place** — *resolved:* the project chose **single-place** (Phase 2 above).
+  Multi-place via `TeleportService` (and its reserved-server party model) stays deferred in the
+  backlog; revisit only if the single-place world hits a real limit (perf, content scale).
+- **Reputation moral-dilemma events** — pending analysis (see Deferred / backlog): a design/UX
+  decision is needed before scheduling. The **Computer feed & news** idea that previously paired
+  with it has been dropped from scope.
+- **Educational-question theme/source** — needs a content decision (topics, age range).
 - **Decay aggressiveness** (1.8) — left off-by-default until playtested; tune with real data.
 - **Asset pipeline** — superseded by [003_binary_asset_management.md](003_binary_asset_management.md). Current state: stylized scenery is **code-built primitives** (`SceneryService`, no upload), and real art is a **GLB/OBJ → Open Cloud → asset-id → runtime-load** pipeline (`MeshSceneryService`, sources in Git LFS; OBJ is converted to GLB at upload). The GenAI `generate_procedural_model` path is unused while its backend is unavailable. No binary instances are committed to the `.rbxl`.

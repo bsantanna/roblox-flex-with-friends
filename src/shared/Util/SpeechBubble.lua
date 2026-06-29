@@ -36,7 +36,7 @@ function SpeechBubble.create(root: BasePart): SpeechBubble
 	local tail = Instance.new("Frame")
 	tail.Name = "Tail"
 	tail.AnchorPoint = Vector2.new(0.5, 0.5)
-	tail.Position = UDim2.fromScale(0.5, 0.8)
+	tail.Position = UDim2.fromScale(0.5, 0.78)
 	tail.Size = UDim2.fromScale(0.18, 0.42)
 	tail.Rotation = 45
 	tail.BackgroundColor3 = BG
@@ -69,6 +69,20 @@ function SpeechBubble.create(root: BasePart): SpeechBubble
 	bstroke.Transparency = 1
 	bstroke.Parent = bubble
 
+	-- Seam: a border-less BG strip over the neck that erases the bubble's bottom-border
+	-- segment where the tail attaches, so the outline flows from bubble into tail with no
+	-- line cutting across. Sits above the bubble (2) but below the text (4).
+	local seam = Instance.new("Frame")
+	seam.Name = "Seam"
+	seam.AnchorPoint = Vector2.new(0.5, 0.5)
+	seam.Position = UDim2.fromScale(0.5, 0.78)
+	seam.Size = UDim2.fromScale(0.26, 0.05)
+	seam.BackgroundColor3 = BG
+	seam.BackgroundTransparency = 1
+	seam.BorderSizePixel = 0
+	seam.ZIndex = 3
+	seam.Parent = gui
+
 	local text = Instance.new("TextLabel")
 	text.Name = "Text"
 	text.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -81,7 +95,7 @@ function SpeechBubble.create(root: BasePart): SpeechBubble
 	text.TextScaled = true
 	text.TextColor3 = INK
 	text.TextTransparency = 1
-	text.ZIndex = 3 -- BillboardGui ZIndex is Global; must beat the bubble (2)
+	text.ZIndex = 4 -- BillboardGui ZIndex is Global; must beat the bubble (2) and seam (3)
 	text.Parent = bubble
 
 	local fades: { Fade } = {
@@ -89,6 +103,7 @@ function SpeechBubble.create(root: BasePart): SpeechBubble
 		{ inst = bstroke, prop = "Transparency" },
 		{ inst = tail, prop = "BackgroundTransparency" },
 		{ inst = tstroke, prop = "Transparency" },
+		{ inst = seam, prop = "BackgroundTransparency" },
 		{ inst = text, prop = "TextTransparency" },
 	}
 

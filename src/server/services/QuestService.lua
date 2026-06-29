@@ -1,21 +1,17 @@
 --!strict
--- QuestService: the server-authoritative state machine for "The Pilot's Forgotten Packages"
--- (Quest 002) -- the game's first quest and the template for a quest system. It spawns the Pilot
--- quest-giver (via the shared Util.NpcModel build) and runs a PER-PLAYER session through the
+-- QuestService: the server-authoritative state machine for all active quests.
+-- Each quest is configured in Config.Quest (see Quest.lua); the service spawns each quest-giver NPC
+-- via the shared Util.NpcModel, validates every remote, and runs a PER-PLAYER session through the
 -- lifecycle:
 --
---   idle --talk--> offer --accept--> accepted --(phone: city)--> collecting --4/4--> returning
+--   idle --talk--> offer --accept--> accepting --(travel)--> collecting --goal met--> returning
 --                    |                                               |
 --                    decline-> idle                          timer expires -> failed -> idle
 --   returning --talk--> complete (reward + one-time trophy, persisted)
 --
--- It mirrors MinigameService's lifecycle *pattern* (alive flag + os.clock deadline + clean cancel) but
--- keeps its own per-player sessions so many players can quest at once. QuestService is the single
--- writer of Profile.Data.CompletedQuests; it asks FollowerService/TrophyService to grant the reward.
--- Tunables live in Config.Quest; every remote is declared in Net.lua and validated here.
---
--- Phase A: spawn + offer/accept/decline/replay + delivery (reward & persistence). Fast travel, the
--- timed collection, and the cinematics are layered on in later phases.
+-- Multi-quest: a questNpcs registry maps each quest's NpcId to its spawned model. onTalk resolves
+-- the quest from the NPC lookup, checks any RequiredTrophies gate, then runs the same
+-- offer/accept/collect/return flow for whichever quest the player is talking to.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,15 +33,15 @@ local QuestService = {}
 type Phase = "offer" | "collecting" | "returning"
 type Session = {
 	player: Player,
+	questId: string,
 	phase: Phase,
 	alive: boolean,
-	deadline: number, -- os.clock() expiry while collecting; 0 before the timer starts
+	deadline: number,
 	collected: { boolean },
 	count: number,
 }
 
 local Q = Config.Quest
-local TOTAL = #Q.PackagePositions
 
 local questState: RemoteEvent
 local questAccept: RemoteEvent
@@ -54,40 +50,76 @@ local requestCollect: RemoteEvent
 local cutscenePlay: RemoteEvent
 
 local sessions: { [Player]: Session } = {}
-local pilotModel: Model? = nil
-local pilotRoot: BasePart? = nil
+-- NPC registry: npcId -> { model, root, animator }
+local questNpcs: { [string]: { model: Model, root: BasePart, animator: Animator? } } = {}
 
--- Defined below (after the timer helpers) but called from onAccept above it: accepting the offer starts
--- the timed collection right away, so it needs a forward declaration here.
+-- Reverse lookup: NpcId -> questId.
+local npcToQuestId: { [string]: string } = {}
+
+local PilotQuestId = Q.Id -- "PilotPackages"
+
+-- Forward declarations for functions defined later that startCollecting needs.
+local failQuest: (Player) -> ()
+local clientDeadline: (Session) -> number
 local startCollecting: (Session) -> ()
 
-local function pilotAnimator(): Animator?
-	local model = pilotModel
-	if not model then
-		return nil
+-- --- Helpers ---
+
+local function getQ(questId: string): any
+	if questId == PilotQuestId then
+		return Q
 	end
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	return humanoid and humanoid:FindFirstChildOfClass("Animator")
+	return Q.FirstQuest
 end
 
--- Sends the one HUD/state sync. `phase` is a plain string so transient phases (idle/failed/complete/
--- replay) that aren't session phases can be reported too. `deadline` (workspace:GetServerTimeNow()-
--- based absolute end time) drives the client countdown; nil when no timer is running.
-local function fireState(player: Player, phase: string, count: number, deadline: number?)
-	questState:FireClient(player, Q.Id, phase, count, TOTAL, deadline)
+local function questNpcAnimator(npcId: string): Animator?
+	local n = questNpcs[npcId]
+	return n and n.animator
 end
 
--- Speaks a sequence of lines in the Pilot's server-side bubble (all nearby players see them). Yields.
-local function speak(lines: { string })
-	local root = pilotRoot
-	if not root then
+local function totalCollectibles(questId: string): number
+	local q = getQ(questId)
+	if q.TotalCollectibles then
+		return q.TotalCollectibles
+	end
+	local pos = q.PackagePositions
+	return pos and #pos or 0
+end
+
+local function getCollectPosition(questId: string): Vector3?
+	local q = getQ(questId)
+	if q.CollectPosition then
+		return q.CollectPosition
+	end
+	local pos = q.PackagePositions
+	return pos and pos[1] or nil
+end
+
+local function collectRadius(questId: string): number
+	local q = getQ(questId)
+	return q.CollectRadius or 14
+end
+
+local function lineHold(q: any): number
+	return q.LineHoldSeconds or 4
+end
+
+local function fireState(player: Player, questId: string, phase: string, count: number, deadline: number?)
+	questState:FireClient(player, questId, phase, count, totalCollectibles(questId), deadline)
+end
+
+local function speak(questId: string, lines: { string })
+	local cfg = getQ(questId)
+	local npcId = cfg.NpcId
+	local n = questNpcs[npcId]
+	if not n or not n.root then
 		return
 	end
-	local bubble = SpeechBubble.create(root)
+	local bubble = SpeechBubble.create(n.root)
 	bubble:show()
 	for _, line in lines do
 		bubble:setText(line)
-		task.wait(Q.LineHoldSeconds)
+		task.wait(lineHold(cfg))
 	end
 	bubble:hide()
 end
@@ -98,45 +130,37 @@ local function clearSession(player: Player)
 		s.alive = false
 	end
 	sessions[player] = nil
-	-- The quest is over for this player: their cab rides cost followers again (PlaceService reads this).
 	player:SetAttribute("QuestActive", false)
 end
 
--- Delivery: the completion. Single writer of CompletedQuests; asks FollowerService and TrophyService
--- to grant the reward (golden rule 2). The reward + trophy are one-time (first completion only) -- the
--- quest is replayable for fun afterwards, but re-granting followers on every replay would be an
--- exploit. The ending cinematic plays every time.
-local function deliver(player: Player)
+local function deliver(player: Player, questId: string)
 	clearSession(player)
 
 	local profile = DataService:GetProfile(player)
 	if not profile then
 		return
 	end
-	-- First completion only: persist + grant (the reward lands right away so a mid-cutscene disconnect
-	-- can't lose it). Replays skip straight to the cinematic with no reward.
-	local firstTime = not profile.Data.CompletedQuests[Q.Id]
+	local cfg = getQ(questId)
+	local firstTime = not profile.Data.CompletedQuests[questId]
 	if firstTime then
-		profile.Data.CompletedQuests[Q.Id] = true
-		FollowerService:Award(player, Q.Reward, "quest-pilot-packages")
-		TrophyService:AwardTrophy(player, Q.TrophyNpcId)
+		profile.Data.CompletedQuests[questId] = true
+		FollowerService:Award(player, cfg.Reward, "quest-" .. questId:lower())
+		TrophyService:AwardTrophy(player, cfg.TrophyNpcId)
 	end
 
-	-- Cinematic ending: pan to the Pilot, happy pose + thank-you lines. Hide his Talk prompt for the
-	-- duration so "Press E" doesn't float over the cutscene; restore it once the lines finish. The reward
-	-- (only on the first completion) rides along to the Mission Complete banner.
-	NpcPromptService:Hide(Q.Pilot.NpcId)
-	cutscenePlay:FireClient(player, "Ending", if firstTime then Q.Reward else 0)
+	local npcId = cfg.NpcId
+	NpcPromptService:Hide(npcId)
+	cutscenePlay:FireClient(player, questId, "Ending", if firstTime then cfg.Reward else 0)
 	task.spawn(function()
-		NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 6)
-		speak({ Q.Lines.Returned, Q.Lines.Ending })
-		NpcPromptService:Show(Q.Pilot.NpcId)
+		NpcActor.pose(questNpcAnimator(npcId), cfg.Pose.Happy, 6)
+		speak(questId, { cfg.Lines.Returned, cfg.Lines.Ending })
+		NpcPromptService:Show(npcId)
 	end)
 
-	fireState(player, "complete", TOTAL)
+	fireState(player, questId, "complete", totalCollectibles(questId))
 end
 
-local function onTalk(player: Player)
+local function handleTalk(player: Player, questId: string)
 	local profile = DataService:GetProfile(player)
 	if not profile then
 		return
@@ -145,95 +169,63 @@ local function onTalk(player: Player)
 	local session = sessions[player]
 	if session then
 		if session.phase == "returning" then
-			deliver(player)
+			deliver(player, questId)
 		elseif session.phase ~= "offer" then
-			-- Active mid-quest -> a gentle nudge; resync the HUD/phone. (offer = intro in progress.)
-			task.spawn(speak, { Q.Lines.Nudge })
-			fireState(player, session.phase, session.count)
+			local cfg = getQ(questId)
+			task.spawn(function()
+				speak(questId, { cfg.Lines.Nudge })
+			end)
+			fireState(player, questId, session.phase, session.count)
 		end
 		return
 	end
 
-	-- Fresh offer. A player who already finished it can replay (no reward the second time): greet them
-	-- with the warm replay line, still asking for help, instead of the first-time intro.
-	local replaying = profile.Data.CompletedQuests[Q.Id] == true
-	local introLines = if replaying then { Q.Lines.Replay, Q.Lines.Intro[2] } else Q.Lines.Intro
+	-- Check RequiredTrophies gate.
+	local cfg = getQ(questId)
+	if cfg.RequiredTrophies then
+		for _, trophyId in cfg.RequiredTrophies do
+			if not profile.Data.Trophies[trophyId] then
+				local npcId = cfg.NpcId
+				NpcPromptService:Hide(npcId)
+				task.spawn(function()
+					speak(questId, { "You need to unlock more skills before I can help with this!" })
+				end)
+				NpcPromptService:Show(npcId)
+				return
+			end
+		end
+	end
+
+	-- Fresh offer.
+	local replaying = profile.Data.CompletedQuests[questId] == true
+	local introLines = if replaying then { cfg.Lines.Replay, cfg.Lines.Intro[2] } else cfg.Lines.Intro
 
 	local s: Session = {
 		player = player,
+		questId = questId,
 		phase = "offer",
 		alive = true,
 		deadline = 0,
-		collected = table.create(TOTAL, false),
+		collected = table.create(totalCollectibles(questId), false),
 		count = 0,
 	}
 	sessions[player] = s
-	-- Cinematic intro: the camera pans to the Pilot while he frets (worried pose) and explains, then
-	-- the Accept/Decline choice appears once the lines have played and the camera has restored. Hide his
-	-- Talk prompt while the cinematic + the choice are on screen so "Press E" doesn't float over them.
-	NpcPromptService:Hide(Q.Pilot.NpcId)
-	cutscenePlay:FireClient(player, "Intro")
+	local npcId = cfg.NpcId
+	NpcPromptService:Hide(npcId)
+	cutscenePlay:FireClient(player, questId, "Intro")
 	task.spawn(function()
-		NpcActor.pose(pilotAnimator(), Q.Pose.Worried, Q.LineHoldSeconds * #introLines)
-		speak(introLines)
+		NpcActor.pose(questNpcAnimator(npcId), cfg.Pose.Worried, lineHold(cfg) * #introLines)
+		speak(questId, introLines)
 		if sessions[player] == s and s.phase == "offer" then
-			fireState(player, "offer", 0)
+			fireState(player, questId, "offer", 0)
 		end
 	end)
 end
 
-local function onAccept(player: Player)
-	local s = sessions[player]
-	if not s or s.phase ~= "offer" then
-		return
-	end
-	-- Choice resolved: the prompt returns, the Pilot cheers, and the timed collection starts right away.
-	-- There's no separate "head to the city" step -- the timer is already running and the player uses
-	-- their own phone (Call a Cab, free while questing) to fly over and grab the packages.
-	NpcPromptService:Show(Q.Pilot.NpcId)
-	NpcActor.pose(pilotAnimator(), Q.Pose.Happy, 3)
-	task.spawn(speak, { Q.Lines.Accepted })
-	startCollecting(s)
-end
-
-local function onDecline(player: Player)
-	local s = sessions[player]
-	if not s or s.phase ~= "offer" then
-		return
-	end
-	clearSession(player)
-	NpcPromptService:Show(Q.Pilot.NpcId)
-	task.spawn(speak, { Q.Lines.Declined })
-	fireState(player, "idle", 0)
-end
-
--- Absolute end time the client counts down to: GetServerTimeNow() is synced client/server, so the
--- client can render the remaining time without trusting its own clock. The server's os.clock() deadline
--- stays the sole authority on expiry.
-local function clientDeadline(session: Session): number
-	return Workspace:GetServerTimeNow() + math.max(0, session.deadline - os.clock())
-end
-
--- Gentle failure: snap the player back to the airport, drop the session, let the Pilot give an
--- understanding line. Only fires while collecting (the timer ran out).
-local function failQuest(player: Player)
-	local s = sessions[player]
-	if not s or s.phase ~= "collecting" then
-		return
-	end
-	clearSession(player)
-	PlaceService:TravelTo(player, "Airport")
-	task.spawn(speak, { Q.Lines.Fail })
-	fireState(player, "failed", 0)
-end
-
--- Begins the timed collection: starts the server-authoritative deadline + its poll loop and tells the
--- client the countdown end time. Called the moment the player accepts the offer; from here the player
--- uses their own phone to travel to the city and back.
 function startCollecting(session: Session)
 	session.phase = "collecting"
-	session.deadline = os.clock() + Q.TimeLimitSeconds
-	-- Flag the quest as active so the cab is free for these trips (PlaceService reads this attribute).
+	local cfg = getQ(session.questId)
+	session.deadline = os.clock() + cfg.TimeLimitSeconds
 	session.player:SetAttribute("QuestActive", true)
 	task.spawn(function()
 		while session.alive and session.phase == "collecting" and os.clock() < session.deadline do
@@ -243,12 +235,56 @@ function startCollecting(session: Session)
 			failQuest(session.player)
 		end
 	end)
-	fireState(session.player, "collecting", session.count, clientDeadline(session))
+	fireState(session.player, session.questId, "collecting", session.count, clientDeadline(session))
 end
 
--- Server-authoritative package collection: the client triggers a beacon, the server confirms the
--- player's real root position is within CollectRadius of that package, the package isn't already taken,
--- and the phase is collecting. Only then does progress advance. Rejects spoofed far-away collects.
+local function onAccept(player: Player)
+	local s = sessions[player]
+	if not s or s.phase ~= "offer" then
+		return
+	end
+	local cfg = getQ(s.questId)
+	local npcId = cfg.NpcId
+	NpcPromptService:Show(npcId)
+	NpcActor.pose(questNpcAnimator(npcId), cfg.Pose.Happy, 3)
+	task.spawn(function()
+		speak(s.questId, { cfg.Lines.Accepted })
+	end)
+	startCollecting(s)
+end
+
+local function onDecline(player: Player)
+	local s = sessions[player]
+	if not s or s.phase ~= "offer" then
+		return
+	end
+	clearSession(player)
+	local cfg = getQ(s.questId)
+	NpcPromptService:Show(cfg.NpcId)
+	task.spawn(function()
+		speak(s.questId, { cfg.Lines.Declined })
+	end)
+	fireState(player, s.questId, "idle", 0)
+end
+
+function clientDeadline(session: Session): number
+	return Workspace:GetServerTimeNow() + math.max(0, session.deadline - os.clock())
+end
+
+function failQuest(player: Player)
+	local s = sessions[player]
+	if not s or s.phase ~= "collecting" then
+		return
+	end
+	clearSession(player)
+	PlaceService:TravelTo(player, "Airport")
+	local cfg = getQ(s.questId)
+	task.spawn(function()
+		speak(s.questId, { cfg.Lines.Fail })
+	end)
+	fireState(player, s.questId, "failed", 0)
+end
+
 local function onCollect(player: Player, index: unknown)
 	if type(index) ~= "number" or index % 1 ~= 0 then
 		return
@@ -257,7 +293,8 @@ local function onCollect(player: Player, index: unknown)
 	if not s or s.phase ~= "collecting" then
 		return
 	end
-	if index < 1 or index > TOTAL or s.collected[index] then
+	local total = totalCollectibles(s.questId)
+	if index < 1 or index > total or s.collected[index] then
 		return
 	end
 	local character = player.Character
@@ -265,32 +302,28 @@ local function onCollect(player: Player, index: unknown)
 	if not (root and root:IsA("BasePart")) then
 		return
 	end
-	local target = Q.PackagePositions[index]
+	local target = getCollectPosition(s.questId)
+	if not target then
+		return
+	end
 	local flat = Vector3.new((root :: BasePart).Position.X, target.Y, (root :: BasePart).Position.Z)
-	if (flat - target).Magnitude > Q.CollectRadius then
+	if (flat - target).Magnitude > collectRadius(s.questId) then
 		return
 	end
 
 	s.collected[index] = true
 	s.count += 1
-	if s.count >= TOTAL then
+	if s.count >= total then
 		s.phase = "returning"
-		fireState(player, "returning", s.count)
+		fireState(player, s.questId, "returning", s.count)
 	else
-		fireState(player, "collecting", s.count, clientDeadline(s))
+		fireState(player, s.questId, "collecting", s.count, clientDeadline(s))
 	end
 end
 
-function QuestService:Init()
-	questState = Net.Event("QuestState")
-	questAccept = Net.Event("QuestAccept")
-	questDecline = Net.Event("QuestDecline")
-	requestCollect = Net.Event("RequestCollectPackage")
-	cutscenePlay = Net.Event("CutscenePlay")
-end
-
-function QuestService:Start()
-	-- Spawn the Pilot quest-giver in the arrivals terminal and wire his Talk prompt to the quest.
+-- Spawn all quest NPCs and wire their Talk prompts.
+local function spawnQuestNpcs()
+	-- Pilot.
 	task.spawn(function()
 		local result = NpcModel.build({
 			npcId = Q.Pilot.NpcId,
@@ -302,14 +335,64 @@ function QuestService:Start()
 			promptText = "Talk",
 			promptDistance = 12,
 		})
-		pilotModel = result.model
-		pilotRoot = result.root
-		local prompt = result.prompt
-		if prompt then
-			NpcPromptService.Register(Q.Pilot.NpcId, prompt)
-			prompt.Triggered:Connect(onTalk)
+		if result.model and result.root then
+			local hum = result.model:FindFirstChildOfClass("Humanoid")
+			questNpcs[Q.Pilot.NpcId] = {
+				model = result.model,
+				root = result.root,
+				animator = hum and hum:FindFirstChildOfClass("Animator"),
+			}
+			npcToQuestId[Q.Pilot.NpcId] = PilotQuestId
+			if result.prompt then
+				NpcPromptService.Register(Q.Pilot.NpcId, result.prompt)
+				result.prompt.Triggered:Connect(function(player)
+					handleTalk(player, PilotQuestId)
+				end)
+			end
 		end
 	end)
+
+	-- FirstQuest (Tim).
+	task.spawn(function()
+		local result = NpcModel.build({
+			npcId = Q.FirstQuest.NpcId,
+			zone = Q.FirstQuest.Zone,
+			avatarUserId = Q.FirstQuest.AvatarUserId,
+			spawnPosition = Q.FirstQuest.SpawnPosition,
+			spawnYaw = Q.FirstQuest.SpawnYaw,
+			outfit = Q.FirstQuest.Outfit,
+			promptText = "Talk",
+			promptDistance = 12,
+			displayName = Q.FirstQuest.NpcDisplayName,
+		})
+		if result.model and result.root then
+			local hum = result.model:FindFirstChildOfClass("Humanoid")
+			questNpcs[Q.FirstQuest.NpcId] = {
+				model = result.model,
+				root = result.root,
+				animator = hum and hum:FindFirstChildOfClass("Animator"),
+			}
+			npcToQuestId[Q.FirstQuest.NpcId] = "FirstQuest"
+			if result.prompt then
+				NpcPromptService.Register(Q.FirstQuest.NpcId, result.prompt)
+				result.prompt.Triggered:Connect(function(player)
+					handleTalk(player, "FirstQuest")
+				end)
+			end
+		end
+	end)
+end
+
+function QuestService:Init()
+	questState = Net.Event("QuestState")
+	questAccept = Net.Event("QuestAccept")
+	questDecline = Net.Event("QuestDecline")
+	requestCollect = Net.Event("RequestCollectPackage")
+	cutscenePlay = Net.Event("CutscenePlay")
+end
+
+function QuestService:Start()
+	spawnQuestNpcs()
 
 	questAccept.OnServerEvent:Connect(onAccept)
 	questDecline.OnServerEvent:Connect(onDecline)

@@ -264,28 +264,50 @@ Three parallel workstreams for the upcoming release, scoped 2026-06-29. Each fol
 conventions (single writers, `Config` tunables, remotes registered + validated in `Net.lua`, one
 verifiable step per commit) and is Studio-verified spatially where it touches the world.
 
-### A. More quests & NPCs (extend what shipped)
+### A. More quests & NPCs (extend what shipped) — ⏳ NOT STARTED
 - **Build:** Add new story quests on the existing multi-quest framework — data + `Config.Quest`
   entries + giver placement, **no new framework**. Add minigame NPCs and/or gym friends. Optionally
   build the deferred **companion / party-travel** system from Phase 3.
   - **Verify:** each new quest is gated/timed/rewarded and persists `CompletedQuests`; each new NPC
     unlock is follower-/trophy-gated; new minigame logic has a Lune spec; givers/NPCs are
     Studio-verified in place.
+  - **Status:** deferred — this stream is content whose correctness is *spatial* (giver/NPC
+    placement, arenas), so it needs a **live Rojo-synced Studio** to run the edit→capture→adjust
+    placement loop (golden rule #6). Pick it up once live sync is connected.
 
-### B. Monetization & VIP (was Phase 5)
+### B. Monetization & VIP (was Phase 5) — ✅ COMPLETE (`feat/phase-2-f`, 2026-06-30)
 - **Build:** Robux developer products / game passes — **VIP** (exclusive zones/areas, aura buffs)
   and a **philanthropy** product that raises followers. VIP gating in `PlaceService`; entitlements
   written server-side and persisted; `ProcessReceipt` handled idempotently. New remotes in `Net.lua`.
   - **Verify:** purchases grant entitlements server-side and persist across rejoin; receipts are
     idempotent (no double-grant on retry); VIP gates actually block non-VIP players.
+  - **Shipped:** `MonetizationService` owns `ProcessReceipt` for the **philanthropy "Donate"**
+    developer product, granted exactly once via ProfileStore's documented PurchaseId-cache pattern
+    (pure `Logic/Receipts`, Lune-tested + cross-runtime verified). **VIP** game-pass entitlement is
+    resolved on join, persisted (`IsVip`) and granted live on purchase; its **aura buff** multiplies
+    photo follower rewards server-side, so a non-VIP is blocked from the buffed reward. A phone
+    **Shop** (`RequestPurchase`/`PurchaseResult` remotes, validated) prompts the real purchases —
+    visually verified in Studio. Tunables in `Config.Monetization`; real asset ids are `0` until
+    created in the Creator Dashboard. *(A dedicated VIP-exclusive zone was not built — the buff is
+    the VIP perk; an exclusive area can follow with the Studio spatial loop.)*
 
-### C. Polish & hardening (was Phase 6)
+### C. Polish & hardening (was Phase 6) — ◑ MOSTLY COMPLETE (`feat/phase-2-f`, 2026-06-30)
 - **Build:** anti-exploit pass (audit every reward path is server-authoritative; rate-limit remotes;
   validate all inputs); economy balancing of `Config` thresholds/rewards/decay; onboarding/tutorial
   for the core loop; performance pass (asset budgets, streaming where it helps); fill out funnel
   analytics (`Util/Analytics`) for travel/photos/unlocks/quests/purchases.
   - **Verify:** a client cannot self-award any resource (red-team the remotes); funnel events fire
     for each tracked action; a new player reaches the first follower reward without external guidance.
+  - **Shipped:** **anti-exploit** — red-teamed every reward path (dev cheats Studio-gated; photo
+    cooldown; quest collect validates type/range/dedupe/proximity; minigames session-gated) and added
+    a pure token-bucket (`Logic/RateLimit`, Lune-tested) + `Util/Throttle`, applied to the two
+    unguarded remotes (`RequestTravel`, `RequestPurchase`). **Funnel analytics** filled out (Travel,
+    PhotoTaken, QuestAccepted/Completed, VIP Purchase; economy + unlocks already instrumented).
+    **Onboarding tutorial** — a `Logic/Tutorial` state machine (Lune-tested) drives a first-time
+    banner guiding the player to their first photo reward unguided; verified live in Studio.
+  - **Still open:** economy **balancing** (left for real playtest data, per the decay decision) and a
+    **performance pass** (asset budgets / streaming — needs profiling a running session, not a blind
+    Config change).
 
 ## Deferred / backlog (not scheduled)
 

@@ -11,8 +11,17 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
+local MonetizationService = require(script.Parent.MonetizationService)
 
 local PhotoService = {}
+
+-- VIP's "aura buff": photo follower rewards are multiplied for VIP players.
+local function vipAdjusted(player: Player, amount: number): number
+	if MonetizationService:IsVip(player) then
+		return amount * Config.Monetization.Vip.PhotoMultiplier
+	end
+	return amount
+end
 
 local requestPhotoCapture: RemoteEvent
 local photoResult: RemoteEvent
@@ -81,14 +90,15 @@ local function onRequestPhotoCapture(capturer: Player)
 	local coParticipants = findCoParticipants(capturer)
 	local isCoop = #coParticipants >= 1
 
-	-- Capturer always gets the base reward; co-op adds the bonus to everyone posing.
-	local capturerReward = Config.Photo.BaseReward + (if isCoop then Config.Photo.CoopBonus else 0)
+	-- Capturer always gets the base reward; co-op adds the bonus to everyone posing. VIP players
+	-- earn a multiplied reward (the VIP aura buff), applied per participant.
+	local capturerReward = vipAdjusted(capturer, Config.Photo.BaseReward + (if isCoop then Config.Photo.CoopBonus else 0))
 	FollowerService:Award(capturer, capturerReward, "photo")
 	profile.Data.Stats.PhotosTaken += 1
 
 	if isCoop then
 		for _, participant in coParticipants do
-			FollowerService:Award(participant, Config.Photo.CoopBonus, "photo-coop")
+			FollowerService:Award(participant, vipAdjusted(participant, Config.Photo.CoopBonus), "photo-coop")
 		end
 	end
 

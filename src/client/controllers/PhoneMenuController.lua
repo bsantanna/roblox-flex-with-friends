@@ -178,6 +178,8 @@ local function open()
 	phone.Visible = true
 	launcher.Visible = false
 	assert(launcherLabel).Visible = false
+	-- Client-local signal for the onboarding HintController (stays on the client; never replicates).
+	player:SetAttribute("PhoneOpened", true)
 	setMode("carousel")
 end
 

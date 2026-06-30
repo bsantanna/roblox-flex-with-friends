@@ -5,6 +5,8 @@ local Economy = {}
 
 Economy.Travel = {
 	CarbonFootprintLoss = 20, -- followers lost when traveling back Home
+	RequestRatePerSec = 1, -- throttle: sustained Call-a-Cab requests per second
+	RequestBurst = 3, -- throttle: cab requests tolerated back-to-back before throttling
 }
 
 Economy.Photo = {

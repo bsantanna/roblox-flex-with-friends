@@ -12,6 +12,10 @@ local Monetization = {}
 -- (ProfileStore's documented pattern). FIFO-capped so the profile can't grow unbounded.
 Monetization.MaxPurchaseCache = 100
 
+-- Throttle on the RequestPurchase remote (defense-in-depth against prompt spam).
+Monetization.PromptRatePerSec = 0.5 -- sustained purchase prompts per second
+Monetization.PromptBurst = 3 -- prompts tolerated back-to-back before throttling
+
 -- VIP game pass. Ownership is resolved on join (MarketplaceService:UserOwnsGamePassAsync) and the
 -- result is cached on the profile + mirrored to the player's "IsVip" attribute for client gating.
 Monetization.VipGamePassId = 0 -- 0 = unset

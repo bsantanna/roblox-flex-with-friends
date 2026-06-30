@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
+local Throttle = require(ReplicatedStorage.Shared.Util.Throttle)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 
@@ -17,6 +18,7 @@ local PlaceService = {}
 
 local requestTravel: RemoteEvent
 local travelComplete: RemoteEvent
+local travelGate: (Player) -> boolean
 
 local location: { [Player]: string } = {} -- current zone per player ("Home" or "Airport")
 local traveling: { [Player]: boolean } = {} -- guards against concurrent travel
@@ -45,6 +47,9 @@ local function teleport(player: Player, zoneName: string)
 end
 
 local function onRequestTravel(player: Player)
+	if not travelGate(player) then
+		return
+	end
 	local profile = DataService:GetProfile(player)
 	if not profile or traveling[player] then
 		return
@@ -97,6 +102,7 @@ end
 function PlaceService:Init()
 	requestTravel = Net.Event("RequestTravel")
 	travelComplete = Net.Event("TravelComplete")
+	travelGate = Throttle.perPlayer(Config.Travel.RequestRatePerSec, Config.Travel.RequestBurst)
 end
 
 function PlaceService:Start()

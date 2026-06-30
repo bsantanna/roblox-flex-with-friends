@@ -15,6 +15,7 @@ local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Receipts = require(ReplicatedStorage.Shared.Logic.Receipts)
+local Throttle = require(ReplicatedStorage.Shared.Util.Throttle)
 local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local Log = require(ReplicatedStorage.Shared.Util.Log)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -25,6 +26,7 @@ local MonetizationService = {}
 
 local requestPurchase: RemoteEvent
 local purchaseResult: RemoteEvent
+local purchaseGate: (Player) -> boolean
 
 -- Resolve VIP ownership once per join and cache it on the profile + a player attribute (so clients
 -- can gate UI without a round-trip). UserOwnsGamePassAsync is the authority; the cached flag is a
@@ -131,7 +133,7 @@ end
 -- The Shop sends a purchase kind; the server prompts the matching real Robux purchase. Inputs are
 -- validated (rule 4): a non-string or unknown kind, or an unset id, is a no-op.
 local function onRequestPurchase(player: Player, kind: unknown)
-	if type(kind) ~= "string" then
+	if not purchaseGate(player) or type(kind) ~= "string" then
 		return
 	end
 	if kind == "Vip" then
@@ -164,6 +166,7 @@ end
 function MonetizationService:Init()
 	requestPurchase = Net.Event("RequestPurchase")
 	purchaseResult = Net.Event("PurchaseResult")
+	purchaseGate = Throttle.perPlayer(Config.Monetization.PromptRatePerSec, Config.Monetization.PromptBurst)
 end
 
 function MonetizationService:Start()

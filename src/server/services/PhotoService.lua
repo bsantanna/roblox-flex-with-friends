@@ -92,7 +92,8 @@ local function onRequestPhotoCapture(capturer: Player)
 
 	-- Capturer always gets the base reward; co-op adds the bonus to everyone posing. VIP players
 	-- earn a multiplied reward (the VIP aura buff), applied per participant.
-	local capturerReward = vipAdjusted(capturer, Config.Photo.BaseReward + (if isCoop then Config.Photo.CoopBonus else 0))
+	local capturerReward =
+		vipAdjusted(capturer, Config.Photo.BaseReward + (if isCoop then Config.Photo.CoopBonus else 0))
 	FollowerService:Award(capturer, capturerReward, "photo")
 	profile.Data.Stats.PhotosTaken += 1
 

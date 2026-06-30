@@ -1,5 +1,5 @@
 --!strict
--- Monetization tunables: the VIP game pass and the philanthropy developer products.
+-- Monetization tunables: the VIP game pass and the philanthropy ("Donate") developer product.
 -- MonetizationService owns ProcessReceipt (developer products) and the VIP entitlement (game pass).
 --
 -- The ids below are real Roblox asset ids that must be created in the Creator Dashboard
@@ -21,9 +21,22 @@ Monetization.Vip = {
 	PhotoMultiplier = 2, -- multiplies the photo follower reward for VIP players
 }
 
--- Philanthropy developer products: each purchase awards followers. Map the real developer-product
--- asset id to its follower reward. Add a row per product you publish.
---   [developerProductId] = followerReward
+-- Philanthropy "Donate" developer product: a purchase awards followers.
+Monetization.DonateProductId = 0 -- 0 = unset
+Monetization.DonateReward = 500 -- followers granted per Donate purchase
+
+-- Developer-product reward lookup consumed by ProcessReceipt: developerProductId -> followerReward.
+-- Derived from the named products above so each id/reward has a single source of truth.
 Monetization.Products = {} :: { [number]: number }
+if Monetization.DonateProductId > 0 then
+	Monetization.Products[Monetization.DonateProductId] = Monetization.DonateReward
+end
+
+-- The phone Shop catalog, in display order. `kind` is the string the client sends in RequestPurchase;
+-- the server maps it to the game pass / developer product to prompt.
+Monetization.Shop = {
+	{ kind = "Vip", emoji = "👑", label = "VIP Pass" },
+	{ kind = "Donate", emoji = "💝", label = "Donate" },
+}
 
 return Monetization

@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
+local Net = require(ReplicatedStorage.Shared.Net)
 local Receipts = require(ReplicatedStorage.Shared.Logic.Receipts)
 local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local Log = require(ReplicatedStorage.Shared.Util.Log)
@@ -21,6 +22,9 @@ local Types = require(ReplicatedStorage.Shared.Types)
 type Profile = Types.PlayerProfile
 
 local MonetizationService = {}
+
+local requestPurchase: RemoteEvent
+local purchaseResult: RemoteEvent
 
 -- Resolve VIP ownership once per join and cache it on the profile + a player attribute (so clients
 -- can gate UI without a round-trip). UserOwnsGamePassAsync is the authority; the cached flag is a
@@ -54,6 +58,7 @@ local function grantProduct(player: Player, productId: number)
 	assert(reward ~= nil, `no philanthropy product configured for id {productId}`)
 	FollowerService:Award(player, reward, "philanthropy")
 	Analytics.event(player, "Purchase", reward, "philanthropy")
+	purchaseResult:FireClient(player, "Donate", true)
 end
 
 -- ProfileStore idempotent receipt handling: grant once into the capped PurchaseId cache, then yield
@@ -123,9 +128,49 @@ local function processReceipt(receiptInfo): Enum.ProductPurchaseDecision
 	end)
 end
 
+-- The Shop sends a purchase kind; the server prompts the matching real Robux purchase. Inputs are
+-- validated (rule 4): a non-string or unknown kind, or an unset id, is a no-op.
+local function onRequestPurchase(player: Player, kind: unknown)
+	if type(kind) ~= "string" then
+		return
+	end
+	if kind == "Vip" then
+		local id = Config.Monetization.VipGamePassId
+		if id > 0 and not MonetizationService:IsVip(player) then
+			MarketplaceService:PromptGamePassPurchase(player, id)
+		end
+	elseif kind == "Donate" then
+		local id = Config.Monetization.DonateProductId
+		if id > 0 then
+			MarketplaceService:PromptProductPurchase(player, id)
+		end
+	end
+end
+
+-- VIP entitlement is granted the moment the game pass is bought (no rejoin needed). The flag is
+-- persisted on the profile and re-resolved every join, so it survives across sessions.
+local function onGamePassFinished(player: Player, gamePassId: number, purchased: boolean)
+	if not purchased or gamePassId ~= Config.Monetization.VipGamePassId then
+		return
+	end
+	local profile = DataService:GetProfile(player)
+	if profile then
+		profile.Data.IsVip = true
+		player:SetAttribute("IsVip", true)
+		purchaseResult:FireClient(player, "Vip", true)
+	end
+end
+
+function MonetizationService:Init()
+	requestPurchase = Net.Event("RequestPurchase")
+	purchaseResult = Net.Event("PurchaseResult")
+end
+
 function MonetizationService:Start()
 	DataService:OnProfileLoaded(resolveVip)
 	MarketplaceService.ProcessReceipt = processReceipt
+	requestPurchase.OnServerEvent:Connect(onRequestPurchase)
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(onGamePassFinished)
 end
 
 return MonetizationService

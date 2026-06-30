@@ -35,6 +35,7 @@ Ui.UI = {
 			{ emoji = "👥", label = "Invite Friends", action = "Invite" },
 			{ emoji = "🚕", label = "Call a Cab", action = "Cab" },
 			{ emoji = "🤩", label = "Social Media", action = "Social" },
+			{ emoji = "🛍️", label = "Shop", action = "Shop" },
 		},
 	},
 }

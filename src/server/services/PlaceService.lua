@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
 local Throttle = require(ReplicatedStorage.Shared.Util.Throttle)
+local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 
@@ -64,6 +65,7 @@ local function onRequestTravel(player: Player)
 	teleport(player, dest)
 	setLocation(player, dest)
 	profile.Data.Stats.TripsTaken += 1
+	Analytics.event(player, "Travel", profile.Data.Stats.TripsTaken, dest)
 	if dest == "Home" and not player:GetAttribute("QuestActive") then
 		-- Returning home costs followers (carbon footprint); arriving at the Airport is free. Quest trips
 		-- are exempt -- flying to the city to run an errand isn't a holiday (QuestService sets the flag).
@@ -95,6 +97,7 @@ function PlaceService:TravelTo(player: Player, zoneName: string, position: Vecto
 	end
 	setLocation(player, zoneName)
 	profile.Data.Stats.TripsTaken += 1
+	Analytics.event(player, "Travel", profile.Data.Stats.TripsTaken, zoneName)
 	travelComplete:FireClient(player, true, nil, zoneName)
 	traveling[player] = false
 end

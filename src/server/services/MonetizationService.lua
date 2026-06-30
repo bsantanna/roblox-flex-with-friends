@@ -159,6 +159,7 @@ local function onGamePassFinished(player: Player, gamePassId: number, purchased:
 	if profile then
 		profile.Data.IsVip = true
 		player:SetAttribute("IsVip", true)
+		Analytics.event(player, "Purchase", nil, "vip")
 		purchaseResult:FireClient(player, "Vip", true)
 	end
 end

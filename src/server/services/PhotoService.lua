@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
+local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 local MonetizationService = require(script.Parent.MonetizationService)
@@ -103,6 +104,7 @@ local function onRequestPhotoCapture(capturer: Player)
 		end
 	end
 
+	Analytics.event(capturer, "PhotoTaken", capturerReward, if isCoop then "coop" else "solo")
 	photoResult:FireClient(capturer, true, capturerReward, isCoop, nil)
 end
 

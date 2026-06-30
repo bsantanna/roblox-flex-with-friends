@@ -27,6 +27,7 @@ local TrophyService = require(script.Parent.TrophyService)
 local PlaceService = require(script.Parent.PlaceService)
 local NpcPromptService = require(script.Parent.NpcPromptService)
 local NpcActor = require(script.Parent.minigame.NpcActor)
+local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 
 local QuestService = {}
 
@@ -146,6 +147,7 @@ local function deliver(player: Player, questId: string)
 		profile.Data.CompletedQuests[questId] = true
 		FollowerService:Award(player, cfg.Reward, "quest-" .. questId:lower())
 		TrophyService:AwardTrophy(player, cfg.TrophyNpcId)
+		Analytics.event(player, "QuestCompleted", cfg.Reward, questId)
 	end
 
 	local npcId = cfg.NpcId
@@ -250,6 +252,7 @@ local function onAccept(player: Player)
 	task.spawn(function()
 		speak(s.questId, { cfg.Lines.Accepted })
 	end)
+	Analytics.event(player, "QuestAccepted", nil, s.questId)
 	startCollecting(s)
 end
 

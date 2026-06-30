@@ -264,16 +264,21 @@ Three parallel workstreams for the upcoming release, scoped 2026-06-29. Each fol
 conventions (single writers, `Config` tunables, remotes registered + validated in `Net.lua`, one
 verifiable step per commit) and is Studio-verified spatially where it touches the world.
 
-### A. More quests & NPCs (extend what shipped) — ⏳ NOT STARTED
+### A. More quests & NPCs (extend what shipped) — ◑ STARTED (`feat/phase-2-f`, 2026-06-30)
 - **Build:** Add new story quests on the existing multi-quest framework — data + `Config.Quest`
   entries + giver placement, **no new framework**. Add minigame NPCs and/or gym friends. Optionally
   build the deferred **companion / party-travel** system from Phase 3.
   - **Verify:** each new quest is gated/timed/rewarded and persists `CompletedQuests`; each new NPC
     unlock is follower-/trophy-gated; new minigame logic has a Lune spec; givers/NPCs are
     Studio-verified in place.
-  - **Status:** deferred — this stream is content whose correctness is *spatial* (giver/NPC
-    placement, arenas), so it needs a **live Rojo-synced Studio** to run the edit→capture→adjust
-    placement loop (golden rule #6). Pick it up once live sync is connected.
+  - **Shipped:** **Hank the Rancher** — a new Farm minigame NPC hosting the existing Rock-Paper-
+    Scissors plugin (auto-registered via its `RockPaperScissors` config subtable, so no framework
+    change; the pure RPS logic keeps its Lune spec). Follower-/trophy-gated (250 followers + the
+    Cowboy's `cowboy_roundup`), extending the ranch progression; trophy `rancher_wrangler` wired
+    server-side + into the phone gallery. Spawn/arena placement Studio-verified (a stand-in avatar
+    stands clean on the pasture floor beside the cattle).
+  - **Still open:** more quests/NPCs, gym friends, and the deferred **companion / party-travel**
+    system remain available on this same framework — content scale is open-ended.
 
 ### B. Monetization & VIP (was Phase 5) — ✅ COMPLETE (`feat/phase-2-f`, 2026-06-30)
 - **Build:** Robux developer products / game passes — **VIP** (exclusive zones/areas, aura buffs)

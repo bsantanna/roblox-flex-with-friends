@@ -57,6 +57,7 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 	["personal_trainer_strength"] = { Id = "personal_trainer_strength", Name = "Strength", Emoji = "\u{1F4AA}" },
 	["farmer_farmhand"] = { Id = "farmer_farmhand", Name = "Fresh Milk", Emoji = "\u{1F95B}" },
 	["cowboy_roundup"] = { Id = "cowboy_roundup", Name = "Cowboy", Emoji = "\u{1F404}" },
+	["rancher_wrangler"] = { Id = "rancher_wrangler", Name = "Wrangler", Emoji = "\u{1F40E}" },
 	["postman_swiftpost"] = { Id = "postman_swiftpost", Name = "Swift Post", Emoji = "\u{1F4E6}" },
 	["sage_quickdraw"] = { Id = "sage_quickdraw", Name = "Fast Hands", Emoji = "\u{26A1}" },
 	["taxi_driver_mobility"] = { Id = "taxi_driver_mobility", Name = "Mobility", Emoji = "\u{1F695}" },
@@ -88,6 +89,7 @@ local TROPHY_ZONE: { [string]: string } = {
 	["personal_trainer_strength"] = "City",
 	["farmer_farmhand"] = "City",
 	["cowboy_roundup"] = "City",
+	["rancher_wrangler"] = "City",
 	["postman_swiftpost"] = "City",
 	["sage_quickdraw"] = "City",
 	["taxi_driver_mobility"] = "City",
@@ -121,8 +123,12 @@ local TABS: { [string]: { label: string, activeColor: Color3, inactiveColor: Col
 }
 
 local index = 1
-local mode: "carousel" | "social" = "carousel"
+local mode: "carousel" | "social" | "shop" = "carousel"
 local hasArt = false
+
+-- Shop modal: the VIP button is relabelled once VIP is owned.
+local requestPurchase: RemoteEvent
+local shopVipButton: TextButton? = nil
 
 -- Pilot-quest phase, mirrored from the QuestState sync. While a quest is active the Call a Cab item is
 -- revealed for everyone (and the ride is free, waived server-side) so the player can travel to the city
@@ -160,7 +166,7 @@ local function renderCarousel(step: number?)
 	titleLabel.Text = item.label
 end
 
-local function setMode(m: "carousel" | "social")
+local function setMode(m: "carousel" | "social" | "shop")
 	mode = m
 	local carousel = m == "carousel"
 	emojiLabel.Visible = carousel
@@ -174,6 +180,8 @@ local function open()
 	phone.Visible = true
 	launcher.Visible = false
 	assert(launcherLabel).Visible = false
+	-- Client-local signal for the onboarding HintController (stays on the client; never replicates).
+	player:SetAttribute("PhoneOpened", true)
 	setMode("carousel")
 end
 
@@ -746,12 +754,117 @@ local function closeModal()
 		modal:Destroy()
 		modal = nil
 	end
+	shopVipButton = nil
 	setMode("carousel")
+end
+
+-- One full-width Shop row (a purchase button).
+local function makeShopButton(parent: Instance, text: string, order: number): TextButton
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(300, 52)
+	b.LayoutOrder = order
+	b.BackgroundColor3 = Color3.fromRGB(55, 60, 72)
+	b.Text = text
+	b.TextColor3 = Color3.fromRGB(255, 255, 255)
+	b.Font = Enum.Font.GothamBold
+	b.TextScaled = true
+	b.BorderSizePixel = 0
+	b.Parent = parent
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = b
+	local pad = Instance.new("UIPadding")
+	pad.PaddingTop = UDim.new(0, 10)
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.PaddingLeft = UDim.new(0, 14)
+	pad.PaddingRight = UDim.new(0, 14)
+	pad.Parent = b
+	return b
+end
+
+-- Relabel the VIP button once owned (the IsVip attribute is set server-side on purchase / join).
+local function refreshVipButton()
+	if shopVipButton == nil then
+		return
+	end
+	local owned = player:GetAttribute("IsVip") == true
+	shopVipButton.Text = if owned then "👑  VIP — Owned" else "👑  VIP Pass"
+	shopVipButton.AutoButtonColor = not owned
+	shopVipButton.BackgroundColor3 = if owned then Color3.fromRGB(70, 80, 60) else Color3.fromRGB(55, 60, 72)
+end
+
+-- The Shop: buttons built from Config.Monetization.Shop. Each fires RequestPurchase; the server
+-- prompts the real Robux purchase and grants the entitlement (single source of truth on the server).
+local function showShopModal()
+	if modal ~= nil then
+		modal:Destroy()
+		modal = nil
+	end
+	shopVipButton = nil
+
+	local m = Instance.new("Frame")
+	m.Name = "ShopModal"
+	m.Size = UDim2.fromScale(0.5, 0.5)
+	m.AnchorPoint = Vector2.new(0.5, 0.5)
+	m.Position = UDim2.fromScale(0.5, 0.5)
+	m.BackgroundColor3 = Color3.fromRGB(36, 38, 52)
+	m.BackgroundTransparency = 0.15
+	m.BorderSizePixel = 0
+	m.Parent = gui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = m
+
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 12)
+	padding.PaddingBottom = UDim.new(0, 12)
+	padding.PaddingLeft = UDim.new(0, 12)
+	padding.PaddingRight = UDim.new(0, 12)
+	padding.Parent = m
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 12)
+	layout.Parent = m
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.LayoutOrder = 1
+	title.Size = UDim2.fromOffset(200, 28)
+	title.BackgroundTransparency = 1
+	title.Text = "🛍️ Shop"
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.Font = Enum.Font.GothamBold
+	title.Parent = m
+
+	for i, entry in Config.Monetization.Shop do
+		local button = makeShopButton(m, `{entry.emoji}  {entry.label}`, i + 1)
+		local kind = entry.kind
+		button.Activated:Connect(function()
+			requestPurchase:FireServer(kind)
+		end)
+		if kind == "Vip" then
+			shopVipButton = button
+		end
+	end
+	refreshVipButton()
+
+	local closeBtn = makeShopButton(m, "Close", #Config.Monetization.Shop + 2)
+	closeBtn.BackgroundColor3 = Color3.fromRGB(45, 48, 60)
+	closeBtn.Activated:Connect(closeModal)
+
+	modal = m
+	setMode("shop")
 end
 
 -- A modal view is a leaf: any nav (left/right/ok) backs out to the carousel; only close exits.
 local function cycle(delta: number)
-	if mode == "social" then
+	if mode ~= "carousel" then
 		closeModal()
 		return
 	end
@@ -760,7 +873,7 @@ local function cycle(delta: number)
 end
 
 local function activate()
-	if mode == "social" then
+	if mode ~= "carousel" then
 		closeModal()
 		return
 	end
@@ -772,6 +885,8 @@ local function activate()
 		FriendController:PromptInvite()
 	elseif action == "Social" then
 		showSocialModal()
+	elseif action == "Shop" then
+		showShopModal()
 	elseif action == "Cab" then
 		close()
 		TravelController:OpenCabConfirm()
@@ -919,6 +1034,12 @@ function PhoneMenuController:Start()
 
 	-- Pilot quest: mirror the phase so Call a Cab is revealed (and free) while a quest is active.
 	Net.Event("QuestState").OnClientEvent:Connect(onQuestState)
+
+	-- Shop purchases: prompt requests go up, results come back to refresh the VIP button.
+	requestPurchase = Net.Event("RequestPurchase")
+	Net.Event("PurchaseResult").OnClientEvent:Connect(function(_kind: string, _success: boolean)
+		refreshVipButton()
+	end)
 
 	-- Keyboard shortcuts while the phone is open.
 	UserInputService.InputBegan:Connect(function(input: InputObject)

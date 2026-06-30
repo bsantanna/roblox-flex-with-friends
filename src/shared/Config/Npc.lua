@@ -308,6 +308,58 @@ Npc.Npc = {
 			},
 		},
 	},
+
+	Rancher = {
+		Zone = "Farm",
+		UnlockFollowers = 250,
+		RequiredTrophies = { "cowboy_roundup" }, -- beat Cole the Cowboy first, then challenge the Rancher
+		SpawnPosition = Vector3.new(330, 0, -150), -- clear pasture grass east of the Cowboy (Studio-verified)
+		SpawnYaw = 90, -- face west, toward players approaching from town
+		AvatarUserId = 1, -- Roblox's own avatar as the base; dressed by Outfit below
+		Outfit = { -- rancher look: cowboy hat + flannel and western jeans (same proven asset ids as the Cowboy)
+			Hats = { 10473499273 }, -- Cowboy Hat
+			Layered = {
+				{ AssetId = 111812538083330, Type = Enum.AccessoryType.Shirt }, -- Light Brown Flannel Plaid Shirt
+				{ AssetId = 113643430156923, Type = Enum.AccessoryType.Pants }, -- Western Jeans
+			},
+		},
+		ArenaPosition = Vector3.new(318, 0, -150), -- a short walk west to clear pasture for the duel (Studio-verified)
+		MoveSeconds = 2,
+		WalkAnimation = "rbxassetid://913402848", -- Roblox default R15 walk
+		Instructions = "Welcome to the ranch! Reckon you can beat me at Rock, Paper, Scissors?\n  Pick yer hand — best two outta three wins. Step on the mark when yer ready!",
+		Dialog = {
+			Lines = {
+				"Howdy! I'm Hank, I run the horses out here on the back forty.",
+				"Cole tells me you've got a sharp hand at Roshambo. Care to prove it?",
+			},
+			QualifiedLine = "Let's settle it the ranch way — Rock, Paper, Scissors, best two outta three!",
+			GateLine = "Earn {threshold} followers and beat Cole the Cowboy first, then come challenge me.",
+			QualifiedChoices = { "Let's play!", "Maybe later" },
+			GateChoices = { "Will do" },
+			TimeoutSeconds = 30,
+		},
+		RockPaperScissors = {
+			WinsNeeded = 2,
+			InputTimeoutSeconds = 15,
+			ReelSeconds = 2,
+			RevealSeconds = 1.5,
+			RoundDelaySeconds = 1,
+			BaseReward = 50,
+			MatchBonus = 100,
+			Choices = { "Rock", "Paper", "Scissors" },
+			Emoji = {
+				Rock = "\u{270A}", -- raised fist
+				Paper = "\u{270B}", -- raised hand
+				Scissors = "\u{270C}\u{FE0F}", -- victory hand
+			},
+			Poses = {
+				-- Roblox default emotes as stand-in throws; swap for custom uploads later.
+				Rock = "rbxassetid://507770677", -- cheer (fist up)
+				Paper = "rbxassetid://507770239", -- wave (open hand)
+				Scissors = "rbxassetid://507770453", -- point
+			},
+		},
+	},
 	Postman = {
 		Zone = "Home",
 		UnlockFollowers = 0, -- no follower gate: anyone can challenge the postman

@@ -33,6 +33,11 @@ local TROPHY_DEFS: { [string]: { Id: string, Name: string, Emoji: string } } = {
 		Name = "Cowboy",
 		Emoji = "\u{1F404}", -- cow emoji
 	},
+	Rancher = {
+		Id = "rancher_wrangler",
+		Name = "Wrangler",
+		Emoji = "\u{1F40E}", -- horse emoji
+	},
 	Postman = {
 		Id = "postman_swiftpost",
 		Name = "Swift Post",

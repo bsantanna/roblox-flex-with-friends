@@ -10,6 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Net = require(ReplicatedStorage.Shared.Net)
+local Throttle = require(ReplicatedStorage.Shared.Util.Throttle)
+local Analytics = require(ReplicatedStorage.Shared.Util.Analytics)
 local DataService = require(script.Parent.DataService)
 local FollowerService = require(script.Parent.FollowerService)
 
@@ -17,6 +19,7 @@ local PlaceService = {}
 
 local requestTravel: RemoteEvent
 local travelComplete: RemoteEvent
+local travelGate: (Player) -> boolean
 
 local location: { [Player]: string } = {} -- current zone per player ("Home" or "Airport")
 local traveling: { [Player]: boolean } = {} -- guards against concurrent travel
@@ -45,6 +48,9 @@ local function teleport(player: Player, zoneName: string)
 end
 
 local function onRequestTravel(player: Player)
+	if not travelGate(player) then
+		return
+	end
 	local profile = DataService:GetProfile(player)
 	if not profile or traveling[player] then
 		return
@@ -59,6 +65,7 @@ local function onRequestTravel(player: Player)
 	teleport(player, dest)
 	setLocation(player, dest)
 	profile.Data.Stats.TripsTaken += 1
+	Analytics.event(player, "Travel", profile.Data.Stats.TripsTaken, dest)
 	if dest == "Home" and not player:GetAttribute("QuestActive") then
 		-- Returning home costs followers (carbon footprint); arriving at the Airport is free. Quest trips
 		-- are exempt -- flying to the city to run an errand isn't a holiday (QuestService sets the flag).
@@ -90,6 +97,7 @@ function PlaceService:TravelTo(player: Player, zoneName: string, position: Vecto
 	end
 	setLocation(player, zoneName)
 	profile.Data.Stats.TripsTaken += 1
+	Analytics.event(player, "Travel", profile.Data.Stats.TripsTaken, zoneName)
 	travelComplete:FireClient(player, true, nil, zoneName)
 	traveling[player] = false
 end
@@ -97,6 +105,7 @@ end
 function PlaceService:Init()
 	requestTravel = Net.Event("RequestTravel")
 	travelComplete = Net.Event("TravelComplete")
+	travelGate = Throttle.perPlayer(Config.Travel.RequestRatePerSec, Config.Travel.RequestBurst)
 end
 
 function PlaceService:Start()

@@ -73,6 +73,9 @@ local EVENTS = {
 	"RequestCollectPackage", -- client -> server: (index: number) -- triggered a beacon; server validates proximity
 	"CutscenePlay", -- server -> client: (sequenceId: string, reward: number?) -- take camera control, play a named cutscene; reward (>0) shows on the Ending's Mission Complete banner
 	"CutsceneDone", -- client -> server: () -- cutscene finished/skipped; lets the server sequence the next beat
+	-- Monetization (MonetizationService): the phone Shop asks the server to prompt a Robux purchase.
+	"RequestPurchase", -- client -> server: (kind: string) -- "Vip" (game pass) or "Donate" (product); server prompts the real purchase, validated server-side
+	"PurchaseResult", -- server -> client: (kind: string, success: boolean) -- purchase outcome for Shop UI feedback
 }
 
 -- Request/response functions.
